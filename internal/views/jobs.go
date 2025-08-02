@@ -11,6 +11,7 @@ import (
 	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
 	"github.com/jontk/s9s/internal/ui/components"
+	"github.com/jontk/s9s/internal/ui/filters"
 )
 
 // JobsView displays the jobs list
@@ -33,11 +34,32 @@ type JobsView struct {
 	templateManager *JobTemplateManager
 	autoRefresh     bool
 	selectedJobs    map[string]bool
+	filterBar       *components.FilterBar
+	advancedFilter  *filters.Filter
+	isAdvancedMode  bool
+	globalSearch    *GlobalSearch
 }
 
 // SetPages sets the pages reference for modal handling
 func (v *JobsView) SetPages(pages *tview.Pages) {
 	v.pages = pages
+	// Set pages for filter bar if it exists
+	if v.filterBar != nil {
+		v.filterBar.SetPages(pages)
+	}
+}
+
+// SetApp sets the application reference
+func (v *JobsView) SetApp(app *tview.Application) {
+	v.app = app
+	// Create filter bar now that we have app reference
+	v.filterBar = components.NewFilterBar("jobs", app)
+	v.filterBar.SetPages(v.pages)
+	v.filterBar.SetOnFilterChange(v.onAdvancedFilterChange)
+	v.filterBar.SetOnClose(v.closeAdvancedFilter)
+
+	// Create global search
+	v.globalSearch = NewGlobalSearch(v.client, app)
 }
 
 // NewJobsView creates a new jobs view
@@ -156,7 +178,7 @@ func (v *JobsView) Stop() error {
 
 // Hints returns keyboard hints
 func (v *JobsView) Hints() []string {
-	return []string{
+	hints := []string{
 		"[yellow]Enter[white] Details",
 		"[yellow]s[white] Submit Job",
 		"[yellow]F2[white] Templates",
@@ -169,9 +191,17 @@ func (v *JobsView) Hints() []string {
 		"[yellow]b[white] Batch Ops",
 		"[yellow]m[white] Monitor",
 		"[yellow]/[white] Filter",
+		"[yellow]F3[white] Adv Filter",
+		"[yellow]Ctrl+F[white] Search",
 		"[yellow]F1[white] Actions Menu",
 		"[yellow]R[white] Refresh",
 	}
+
+	if v.isAdvancedMode {
+		hints = append([]string{"[yellow]ESC[white] Exit Adv Filter"}, hints...)
+	}
+
+	return hints
 }
 
 // OnKey handles keyboard events
@@ -181,9 +211,21 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		return event // Let modal handle it
 	}
 
+	// Handle advanced filter mode
+	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
+		v.closeAdvancedFilter()
+		return nil
+	}
+
 	switch event.Key() {
 	case tcell.KeyF2:
 		v.showJobTemplateSelector()
+		return nil
+	case tcell.KeyF3:
+		v.showAdvancedFilter()
+		return nil
+	case tcell.KeyCtrlF:
+		v.showGlobalSearch()
 		return nil
 	case tcell.KeyRune:
 		switch event.Rune() {
@@ -264,8 +306,14 @@ func (v *JobsView) updateTable() {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
-	data := make([][]string, len(v.jobs))
-	for i, job := range v.jobs {
+	// Apply advanced filter if active
+	filteredJobs := v.jobs
+	if v.advancedFilter != nil && len(v.advancedFilter.Expressions) > 0 {
+		filteredJobs = v.applyAdvancedFilter(v.jobs)
+	}
+
+	data := make([][]string, len(filteredJobs))
+	for i, job := range filteredJobs {
 		stateColor := dao.GetJobStateColor(job.State)
 		coloredState := fmt.Sprintf("[%s]%s[white]", stateColor, job.State)
 
@@ -1205,4 +1253,133 @@ func (v *JobsView) batchReleaseSelected() {
 		time.Sleep(500 * time.Millisecond)
 		v.Refresh()
 	}()
+}
+
+// showAdvancedFilter shows the advanced filter bar
+func (v *JobsView) showAdvancedFilter() {
+	if v.filterBar == nil || v.pages == nil {
+		return
+	}
+
+	v.isAdvancedMode = true
+
+	// Replace the simple filter with advanced filter bar
+	v.container.Clear()
+	v.container.
+		AddItem(v.filterBar, 5, 0, true).
+		AddItem(v.table.Table, 0, 1, false).
+		AddItem(v.statusBar, 1, 0, false)
+
+	v.filterBar.Show()
+	v.updateStatusBar("[yellow]Advanced Filter Mode - Tab for presets, F1 for help[white]")
+}
+
+// closeAdvancedFilter closes the advanced filter bar
+func (v *JobsView) closeAdvancedFilter() {
+	v.isAdvancedMode = false
+
+	// Restore the simple filter
+	v.container.Clear()
+	v.container.
+		AddItem(v.filterInput, 1, 0, false).
+		AddItem(v.table.Table, 0, 1, true).
+		AddItem(v.statusBar, 1, 0, false)
+
+	if v.app != nil {
+		v.app.SetFocus(v.table.Table)
+	}
+
+	v.updateStatusBar("")
+}
+
+// onAdvancedFilterChange handles advanced filter changes
+func (v *JobsView) onAdvancedFilterChange(filter *filters.Filter) {
+	v.advancedFilter = filter
+	v.updateTable()
+
+	if filter != nil && len(filter.Expressions) > 0 {
+		v.updateStatusBar(fmt.Sprintf("[green]Filter applied: %d conditions[white]", len(filter.Expressions)))
+	} else {
+		v.updateStatusBar("")
+	}
+}
+
+// applyAdvancedFilter applies the advanced filter to jobs
+func (v *JobsView) applyAdvancedFilter(jobs []*dao.Job) []*dao.Job {
+	if v.advancedFilter == nil || len(v.advancedFilter.Expressions) == 0 {
+		return jobs
+	}
+
+	var filtered []*dao.Job
+	for _, job := range jobs {
+		// Convert job to map for filter evaluation
+		jobData := v.jobToMap(job)
+		if v.advancedFilter.Evaluate(jobData) {
+			filtered = append(filtered, job)
+		}
+	}
+
+	return filtered
+}
+
+// jobToMap converts a job to a map for filter evaluation
+func (v *JobsView) jobToMap(job *dao.Job) map[string]interface{} {
+	return map[string]interface{}{
+		"ID":         job.ID,
+		"Name":       job.Name,
+		"User":       job.User,
+		"Account":    job.Account,
+		"State":      job.State,
+		"Partition":  job.Partition,
+		"NodeCount":  job.NodeCount,
+		"NodeList":   job.NodeList,
+		"TimeLimit":  job.TimeLimit,
+		"TimeUsed":   job.TimeUsed,
+		"Priority":   job.Priority,
+		"QoS":        job.QOS,
+		"SubmitTime": job.SubmitTime,
+		"StartTime":  job.StartTime,
+		"EndTime":    job.EndTime,
+		"WorkingDir": job.WorkingDir,
+		"Command":    job.Command,
+	}
+}
+
+// showGlobalSearch shows the global search interface
+func (v *JobsView) showGlobalSearch() {
+	if v.globalSearch == nil || v.pages == nil {
+		return
+	}
+
+	v.globalSearch.Show(v.pages, func(result SearchResult) {
+		// Handle search result selection
+		switch result.Type {
+		case "job":
+			// Focus on the selected job
+			if job, ok := result.Data.(*dao.Job); ok {
+				v.focusOnJob(job.ID)
+			}
+		default:
+			// For other types, just close the search
+			v.updateStatusBar(fmt.Sprintf("Selected %s: %s", result.Type, result.Name))
+		}
+	})
+}
+
+// focusOnJob focuses the table on a specific job
+func (v *JobsView) focusOnJob(jobID string) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	// Find the job in our job list
+	for i, job := range v.jobs {
+		if job.ID == jobID {
+			// Select the row in the table
+			v.table.Table.Select(i, 0)
+			v.updateStatusBar(fmt.Sprintf("Focused on job: %s", jobID))
+			return
+		}
+	}
+
+	v.updateStatusBar(fmt.Sprintf("[yellow]Job %s not found in current view[white]", jobID))
 }

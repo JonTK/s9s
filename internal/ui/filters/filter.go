@@ -1,0 +1,373 @@
+package filters
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// FilterOperator represents comparison operators
+type FilterOperator string
+
+const (
+	OpEquals      FilterOperator = "="
+	OpNotEquals   FilterOperator = "!="
+	OpContains    FilterOperator = "~"
+	OpNotContains FilterOperator = "!~"
+	OpGreater     FilterOperator = ">"
+	OpLess        FilterOperator = "<"
+	OpGreaterEq   FilterOperator = ">="
+	OpLessEq      FilterOperator = "<="
+	OpRegex       FilterOperator = "=~"
+	OpIn          FilterOperator = "in"
+	OpNotIn       FilterOperator = "not in"
+)
+
+// FilterExpression represents a single filter condition
+type FilterExpression struct {
+	Field    string
+	Operator FilterOperator
+	Value    interface{}
+}
+
+// Filter represents a complex filter with multiple expressions
+type Filter struct {
+	Expressions []FilterExpression
+	Logic       string // "AND" or "OR"
+	Name        string // For saved filters
+	Description string
+}
+
+// FilterParser parses filter strings into filter expressions
+type FilterParser struct {
+	fieldAliases map[string]string
+}
+
+// NewFilterParser creates a new filter parser
+func NewFilterParser() *FilterParser {
+	return &FilterParser{
+		fieldAliases: map[string]string{
+			// Common aliases
+			"name":      "Name",
+			"user":      "User",
+			"state":     "State",
+			"partition": "Partition",
+			"status":    "State",
+			"node":      "NodeList",
+			"nodes":     "NodeList",
+			"time":      "TimeUsed",
+			"timelimit": "TimeLimit",
+			"cpu":       "CPUs",
+			"cpus":      "CPUs",
+			"mem":       "Memory",
+			"memory":    "Memory",
+			"account":   "Account",
+			"qos":       "QoS",
+			"priority":  "Priority",
+		},
+	}
+}
+
+// Parse parses a filter string into filter expressions
+// Examples:
+//   - "state=running"
+//   - "user=john state=pending"
+//   - "memory>4G cpus>=8"
+//   - "name~test partition=gpu"
+//   - "state in (running,pending)"
+func (p *FilterParser) Parse(filterStr string) (*Filter, error) {
+	if filterStr == "" {
+		return &Filter{Logic: "AND"}, nil
+	}
+
+	filter := &Filter{
+		Logic:       "AND",
+		Expressions: []FilterExpression{},
+	}
+
+	// Split by spaces, but respect quotes
+	parts := splitRespectingQuotes(filterStr)
+
+	for _, part := range parts {
+		expr, err := p.parseExpression(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter expression '%s': %w", part, err)
+		}
+		filter.Expressions = append(filter.Expressions, *expr)
+	}
+
+	return filter, nil
+}
+
+// parseExpression parses a single filter expression
+func (p *FilterParser) parseExpression(expr string) (*FilterExpression, error) {
+	// Check for "in" operator
+	if strings.Contains(expr, " in ") {
+		parts := strings.SplitN(expr, " in ", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid 'in' expression")
+		}
+		field := p.normalizeField(strings.TrimSpace(parts[0]))
+		valueList := strings.Trim(parts[1], "()")
+		values := strings.Split(valueList, ",")
+		for i := range values {
+			values[i] = strings.TrimSpace(values[i])
+		}
+		return &FilterExpression{
+			Field:    field,
+			Operator: OpIn,
+			Value:    values,
+		}, nil
+	}
+
+	// Check for "not in" operator
+	if strings.Contains(expr, " not in ") {
+		parts := strings.SplitN(expr, " not in ", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid 'not in' expression")
+		}
+		field := p.normalizeField(strings.TrimSpace(parts[0]))
+		valueList := strings.Trim(parts[1], "()")
+		values := strings.Split(valueList, ",")
+		for i := range values {
+			values[i] = strings.TrimSpace(values[i])
+		}
+		return &FilterExpression{
+			Field:    field,
+			Operator: OpNotIn,
+			Value:    values,
+		}, nil
+	}
+
+	// Regular operators
+	operators := []struct {
+		op  string
+		typ FilterOperator
+	}{
+		{"!=", OpNotEquals},
+		{"!~", OpNotContains},
+		{">=", OpGreaterEq},
+		{"<=", OpLessEq},
+		{"=~", OpRegex},
+		{"=", OpEquals},
+		{"~", OpContains},
+		{">", OpGreater},
+		{"<", OpLess},
+	}
+
+	for _, op := range operators {
+		if idx := strings.Index(expr, op.op); idx > 0 {
+			field := p.normalizeField(strings.TrimSpace(expr[:idx]))
+			value := strings.TrimSpace(expr[idx+len(op.op):])
+			value = strings.Trim(value, "\"'")
+
+			return &FilterExpression{
+				Field:    field,
+				Operator: op.typ,
+				Value:    p.parseValue(value),
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no valid operator found")
+}
+
+// normalizeField converts field aliases to canonical field names
+func (p *FilterParser) normalizeField(field string) string {
+	field = strings.ToLower(field)
+	if canonical, ok := p.fieldAliases[field]; ok {
+		return canonical
+	}
+	// Capitalize first letter if not found in aliases
+	if len(field) > 0 {
+		return strings.ToUpper(field[:1]) + field[1:]
+	}
+	return field
+}
+
+// parseValue attempts to parse the value into appropriate type
+func (p *FilterParser) parseValue(value string) interface{} {
+	// Try to parse as number
+	if i, err := strconv.Atoi(value); err == nil {
+		return i
+	}
+	if f, err := strconv.ParseFloat(value, 64); err == nil {
+		return f
+	}
+	// Try to parse as bool
+	if b, err := strconv.ParseBool(value); err == nil {
+		return b
+	}
+	// Try to parse as duration
+	if d, err := time.ParseDuration(value); err == nil {
+		return d
+	}
+	// Return as string
+	return value
+}
+
+// Evaluate evaluates a filter against a data object
+func (f *Filter) Evaluate(data map[string]interface{}) bool {
+	if len(f.Expressions) == 0 {
+		return true
+	}
+
+	if f.Logic == "OR" {
+		for _, expr := range f.Expressions {
+			if expr.Evaluate(data) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Default to AND logic
+	for _, expr := range f.Expressions {
+		if !expr.Evaluate(data) {
+			return false
+		}
+	}
+	return true
+}
+
+// Evaluate evaluates a single filter expression
+func (e *FilterExpression) Evaluate(data map[string]interface{}) bool {
+	value, exists := data[e.Field]
+	if !exists {
+		return false
+	}
+
+	switch e.Operator {
+	case OpEquals:
+		return compareEqual(value, e.Value)
+	case OpNotEquals:
+		return !compareEqual(value, e.Value)
+	case OpContains:
+		return contains(value, e.Value)
+	case OpNotContains:
+		return !contains(value, e.Value)
+	case OpGreater:
+		return compareGreater(value, e.Value)
+	case OpLess:
+		return compareLess(value, e.Value)
+	case OpGreaterEq:
+		return compareGreater(value, e.Value) || compareEqual(value, e.Value)
+	case OpLessEq:
+		return compareLess(value, e.Value) || compareEqual(value, e.Value)
+	case OpRegex:
+		return matchRegex(value, e.Value)
+	case OpIn:
+		return isIn(value, e.Value)
+	case OpNotIn:
+		return !isIn(value, e.Value)
+	default:
+		return false
+	}
+}
+
+// Helper functions for comparisons
+
+func compareEqual(a, b interface{}) bool {
+	// Convert both to strings for comparison
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+func contains(haystack, needle interface{}) bool {
+	haystackStr := strings.ToLower(fmt.Sprintf("%v", haystack))
+	needleStr := strings.ToLower(fmt.Sprintf("%v", needle))
+	return strings.Contains(haystackStr, needleStr)
+}
+
+func compareGreater(a, b interface{}) bool {
+	// Try numeric comparison first
+	if aNum, aOk := toFloat64(a); aOk {
+		if bNum, bOk := toFloat64(b); bOk {
+			return aNum > bNum
+		}
+	}
+	// Fall back to string comparison
+	return fmt.Sprintf("%v", a) > fmt.Sprintf("%v", b)
+}
+
+func compareLess(a, b interface{}) bool {
+	// Try numeric comparison first
+	if aNum, aOk := toFloat64(a); aOk {
+		if bNum, bOk := toFloat64(b); bOk {
+			return aNum < bNum
+		}
+	}
+	// Fall back to string comparison
+	return fmt.Sprintf("%v", a) < fmt.Sprintf("%v", b)
+}
+
+func matchRegex(value, pattern interface{}) bool {
+	re, err := regexp.Compile(fmt.Sprintf("%v", pattern))
+	if err != nil {
+		return false
+	}
+	return re.MatchString(fmt.Sprintf("%v", value))
+}
+
+func isIn(value, list interface{}) bool {
+	valueStr := fmt.Sprintf("%v", value)
+	if listSlice, ok := list.([]string); ok {
+		for _, item := range listSlice {
+			if valueStr == item {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func toFloat64(v interface{}) (float64, bool) {
+	switch val := v.(type) {
+	case int:
+		return float64(val), true
+	case int64:
+		return float64(val), true
+	case float64:
+		return val, true
+	case float32:
+		return float64(val), true
+	case string:
+		if f, err := strconv.ParseFloat(val, 64); err == nil {
+			return f, true
+		}
+	}
+	return 0, false
+}
+
+// splitRespectingQuotes splits a string by spaces while respecting quotes
+func splitRespectingQuotes(s string) []string {
+	var result []string
+	var current strings.Builder
+	inQuotes := false
+	quoteChar := rune(0)
+
+	for _, r := range s {
+		switch {
+		case !inQuotes && (r == '"' || r == '\''):
+			inQuotes = true
+			quoteChar = r
+		case inQuotes && r == quoteChar:
+			inQuotes = false
+			quoteChar = 0
+		case !inQuotes && r == ' ':
+			if current.Len() > 0 {
+				result = append(result, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+
+	if current.Len() > 0 {
+		result = append(result, current.String())
+	}
+
+	return result
+}

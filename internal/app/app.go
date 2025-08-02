@@ -213,6 +213,7 @@ func (s *S9s) initUI() error {
 func (s *S9s) initViews() error {
 	// Create jobs view
 	jobsView := views.NewJobsView(s.client)
+	jobsView.SetApp(s.app)
 	if err := jobsView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize jobs view: %w", err)
 	}
