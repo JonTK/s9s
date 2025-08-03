@@ -162,13 +162,13 @@ func (fb *FilterBar) getHelpText() string {
 func (fb *FilterBar) getExamplesForView() string {
 	switch fb.viewType {
 	case "jobs":
-		return "state=running | user=john | priority>1000 | partition in (gpu,compute)"
+		return "state=running | memory>4G | time>2:00:00 | submittime=today"
 	case "nodes":
-		return "state=idle | memory>256G | features~gpu | partition=compute"
+		return "state=idle | memory>256G | features~gpu | name=~node[0-9]+"
 	case "partitions":
-		return "state=up | nodes>10 | qos~normal"
+		return "state=up | nodes>10 | maxmemory>1TB | qos~normal"
 	default:
-		return "field=value | field>100 | field~contains | field in (a,b,c)"
+		return "field=value | field>4G | field=~pattern | time>1:30:00"
 	}
 }
 
@@ -299,8 +299,15 @@ func (fb *FilterBar) showSavePresetDialog() {
 
 // showManagePresetsDialog shows dialog to manage existing presets
 func (fb *FilterBar) showManagePresetsDialog() {
-	// TODO: Implement preset management UI
-	fb.helpText.SetText("[yellow]Preset management coming soon[white]")
+	if fb.pages == nil {
+		return
+	}
+
+	presetManager := NewPresetManagerUI(fb.app, fb.presetManager, fb.viewType)
+	presetManager.Show(fb.pages, func() {
+		// Refresh help text when done
+		fb.helpText.SetText(fb.getHelpText())
+	})
 }
 
 // ShowFilterHelp shows detailed filter help
@@ -323,20 +330,50 @@ func (fb *FilterBar) ShowFilterHelp() {
   =~   Regex match          name=~^job_\d+
   in   In list              state in (running,pending)
 
+[teal]Memory & Size Units:[white]
+  memory>4G                 Memory greater than 4 gigabytes
+  memory>=1024M             Memory at least 1024 megabytes
+  memory<512MB              Memory less than 512 megabytes
+  size!=2TB                 Size not equal to 2 terabytes
+
+[teal]Time & Duration:[white]
+  time>2:30:00              Time greater than 2h 30m
+  time<=1-12:00:00          Time up to 1 day 12 hours
+  elapsed>90m               Elapsed time over 90 minutes
+  runtime>=2h30m            Runtime at least 2.5 hours
+
+[teal]Date Ranges:[white]
+  submittime=today          Jobs submitted today
+  starttime=yesterday       Jobs started yesterday
+  endtime="last week"       Jobs ended last week
+  created="last 7 days"     Created in last 7 days
+  submittime=2024-01-01..2024-01-31   Date range
+
+[teal]Advanced Regex:[white]
+  name=~^test_\d+$          Job names starting with test_
+  user=~john|jane           User john or jane
+  partition=~gpu.*compute   Partition containing gpu and compute
+  node=~node[0-9]{2,3}      Node names like node01, node123
+
 [teal]Field Names:[white]
-  Jobs:       id, name, user, state, partition, priority, cpus, memory, time
-  Nodes:      name, state, partition, cpus, memory, features
-  Partitions: name, state, nodes, cpus, qos
+  Jobs:       id, name, user, state, partition, priority, cpus, memory, time,
+              submittime, starttime, endtime, elapsed, runtime
+  Nodes:      name, state, partition, cpus, memory, features, uptime
+  Partitions: name, state, nodes, cpus, qos, maxmemory, maxtime
 
 [teal]Examples:[white]
-  state=running user=john           Jobs running by john
-  memory>256G features~gpu          Nodes with >256GB RAM and GPU
-  priority>1000 partition!=debug    High priority non-debug jobs
-  state in (idle,mixed)             Available nodes
-  name=~test_\d+                    Jobs matching regex pattern
+  state=running memory>4G           Running jobs with >4GB RAM
+  submittime=today user=john        Today's jobs by john
+  memory>=256G features~gpu         High-mem GPU nodes
+  time>2:00:00 partition!=debug     Long jobs not in debug
+  name=~^job_\d+ state=pending      Pending jobs matching pattern
+  endtime="last 24h" state=failed   Failed jobs in last day
 
 [teal]Tips:[white]
-  • Use quotes for values with spaces: name="my job"
+  • Memory units: B, KB, MB, GB, TB (e.g., 4G, 1024M)
+  • Time formats: HH:MM:SS or D-HH:MM:SS (e.g., 2:30:00, 1-12:00:00)
+  • Date ranges: today, yesterday, "last week", "last N days"
+  • Regex patterns: Use =~ for pattern matching
   • Multiple conditions are AND'ed by default
   • Field names are case-insensitive
   • Press Tab to see and select from saved presets

@@ -38,6 +38,9 @@ type JobsView struct {
 	advancedFilter  *filters.Filter
 	isAdvancedMode  bool
 	globalSearch    *GlobalSearch
+	jobOutputView   *JobOutputView
+	batchOpsView    *BatchOperationsView
+	multiSelectMode bool
 }
 
 // SetPages sets the pages reference for modal handling
@@ -46,6 +49,13 @@ func (v *JobsView) SetPages(pages *tview.Pages) {
 	// Set pages for filter bar if it exists
 	if v.filterBar != nil {
 		v.filterBar.SetPages(pages)
+	}
+	// Set pages for other views
+	if v.jobOutputView != nil {
+		v.jobOutputView.SetPages(pages)
+	}
+	if v.batchOpsView != nil {
+		v.batchOpsView.SetPages(pages)
 	}
 }
 
@@ -60,6 +70,12 @@ func (v *JobsView) SetApp(app *tview.Application) {
 
 	// Create global search
 	v.globalSearch = NewGlobalSearch(v.client, app)
+	
+	// Create job output view
+	v.jobOutputView = NewJobOutputView(v.client, app)
+	
+	// Create batch operations view
+	v.batchOpsView = NewBatchOperationsView(v.client, app)
 }
 
 // NewJobsView creates a new jobs view
@@ -658,7 +674,7 @@ func (v *JobsView) formatJobDetails(job *dao.Job) string {
 	return details.String()
 }
 
-// showJobOutput shows job output logs
+// showJobOutput shows job output logs using the new output viewer
 func (v *JobsView) showJobOutput() {
 	data := v.table.GetSelectedData()
 	if data == nil || len(data) == 0 {
@@ -668,65 +684,10 @@ func (v *JobsView) showJobOutput() {
 	jobID := data[0]
 	jobName := data[1]
 
-	// Note: Status bar update removed since individual view status bars are no longer used
-
-	go func() {
-		output, err := v.client.Jobs().GetOutput(jobID)
-		if err != nil {
-			// Note: Status bar update removed since individual view status bars are no longer used
-			return
-		}
-
-		// Create output view
-		textView := tview.NewTextView().
-			SetDynamicColors(true).
-			SetText(output).
-			SetScrollable(true).
-			SetWrap(true)
-
-		// Add basic controls info
-		textView.SetBorder(true).
-			SetTitle(fmt.Sprintf(" Job %s (%s) Output ", jobID, jobName)).
-			SetTitleAlign(tview.AlignCenter)
-
-		// Create a flex layout with controls
-		controlsText := "Press [yellow]ESC[white] to close | [yellow]↑↓[white] scroll | [yellow]Page Up/Down[white] page scroll"
-		controls := tview.NewTextView().
-			SetDynamicColors(true).
-			SetText(controlsText).
-			SetTextAlign(tview.AlignCenter)
-
-		modal := tview.NewFlex().
-			SetDirection(tview.FlexRow).
-			AddItem(textView, 0, 1, true).
-			AddItem(controls, 1, 0, false)
-
-		// Create centered modal layout
-		centeredModal := tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(nil, 0, 1, false).
-				AddItem(modal, 0, 8, true).
-				AddItem(nil, 0, 1, false), 0, 8, true).
-			AddItem(nil, 0, 1, false)
-
-		// Handle ESC key
-		textView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyEsc {
-				if v.pages != nil {
-					v.pages.RemovePage("job-output")
-				}
-				return nil
-			}
-			return event
-		})
-
-		if v.pages != nil {
-			v.pages.AddPage("job-output", centeredModal, true, true)
-		}
-
-		// Note: Status bar update removed since individual view status bars are no longer used
-	}()
+	// Use the new job output viewer
+	if v.jobOutputView != nil {
+		v.jobOutputView.ShowJobOutput(jobID, jobName, "stdout")
+	}
 }
 
 // performJobSubmission performs the actual job submission
@@ -991,42 +952,74 @@ func (v *JobsView) toggleAutoRefresh() {
 
 // showBatchOperations shows batch operations menu
 func (v *JobsView) showBatchOperations() {
-	// Create batch operations menu
+	// Get currently selected jobs or allow manual selection
+	var selectedJobs []string
+	var selectedJobsData []map[string]interface{}
+	
+	// Check if any jobs are already selected
+	if len(v.selectedJobs) > 0 {
+		v.mu.RLock()
+		for _, job := range v.jobs {
+			if v.selectedJobs[job.ID] {
+				selectedJobs = append(selectedJobs, job.ID)
+				jobData := map[string]interface{}{
+					"name":  job.Name,
+					"state": job.State,
+					"user":  job.User,
+				}
+				selectedJobsData = append(selectedJobsData, jobData)
+			}
+		}
+		v.mu.RUnlock()
+	} else {
+		// If no jobs selected, use currently highlighted job
+		data := v.table.GetSelectedData()
+		if data != nil && len(data) > 0 {
+			selectedJobs = append(selectedJobs, data[0])
+			jobData := map[string]interface{}{
+				"name":  data[1],
+				"state": data[4],
+				"user":  data[2],
+			}
+			selectedJobsData = append(selectedJobsData, jobData)
+		}
+	}
+	
+	// Use the new batch operations view
+	if v.batchOpsView != nil && len(selectedJobs) > 0 {
+		v.batchOpsView.ShowBatchOperations(selectedJobs, selectedJobsData, func() {
+			// Refresh the jobs view after batch operations complete
+			go v.Refresh()
+		})
+	} else {
+		// Show job selection menu if no jobs selected
+		v.showJobSelectionMenu()
+	}
+}
+
+// showJobSelectionMenu shows a menu to select jobs for batch operations
+func (v *JobsView) showJobSelectionMenu() {
 	list := tview.NewList()
 
 	list.AddItem("Select All Running Jobs", "Select all currently running jobs", 0, func() {
 		v.selectJobsByState(dao.JobStateRunning)
 		v.closeBatchMenu()
+		v.showBatchOperations() // Show batch operations after selection
 	})
 
 	list.AddItem("Select All Pending Jobs", "Select all pending jobs", 0, func() {
 		v.selectJobsByState(dao.JobStatePending)
 		v.closeBatchMenu()
+		v.showBatchOperations() // Show batch operations after selection
 	})
 
-	list.AddItem("Cancel All Selected", "Cancel all selected jobs", 0, func() {
-		v.batchCancelSelected()
+	list.AddItem("Select Current Job", "Select the currently highlighted job", 0, func() {
+		data := v.table.GetSelectedData()
+		if data != nil && len(data) > 0 {
+			v.selectedJobs[data[0]] = true
+		}
 		v.closeBatchMenu()
-	})
-
-	list.AddItem("Hold All Selected", "Hold all selected jobs", 0, func() {
-		v.batchHoldSelected()
-		v.closeBatchMenu()
-	})
-
-	list.AddItem("Release All Selected", "Release all selected jobs", 0, func() {
-		v.batchReleaseSelected()
-		v.closeBatchMenu()
-	})
-
-	list.AddItem("Clear Selection", "Clear all selected jobs", 0, func() {
-		v.clearJobSelection()
-		v.closeBatchMenu()
-	})
-
-	list.AddItem("Show Selected Jobs", "View currently selected jobs", 0, func() {
-		v.showSelectedJobs()
-		v.closeBatchMenu()
+		v.showBatchOperations() // Show batch operations after selection
 	})
 
 	list.AddItem("Cancel", "Close batch operations menu", 0, func() {

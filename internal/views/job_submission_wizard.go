@@ -125,41 +125,41 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 	}
 
 	// Job Name
-	form.AddInputField("Job Name", job.Name, 40, nil, func(text string) {
+	form.AddInputField("Job Name", job.Name, 50, nil, func(text string) {
 		job.Name = text
 	})
 
 	// Script/Command
-	form.AddTextArea("Script/Command", job.Script, 40, 5, 0, func(text string) {
+	form.AddTextArea("Script/Command", job.Script, 50, 5, 0, func(text string) {
 		job.Script = text
 	})
 
 	// Partition
-	form.AddInputField("Partition", job.Partition, 20, nil, func(text string) {
+	form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
 		job.Partition = text
 	})
 
 	// Time Limit
-	form.AddInputField("Time Limit (HH:MM:SS)", job.TimeLimit, 20, nil, func(text string) {
+	form.AddInputField("Time Limit (HH:MM:SS)", job.TimeLimit, 30, nil, func(text string) {
 		job.TimeLimit = text
 	})
 
 	// Nodes
-	form.AddInputField("Nodes", fmt.Sprintf("%d", job.Nodes), 10, nil, func(text string) {
+	form.AddInputField("Nodes", fmt.Sprintf("%d", job.Nodes), 15, nil, func(text string) {
 		if n, err := strconv.Atoi(text); err == nil && n > 0 {
 			job.Nodes = n
 		}
 	})
 
 	// CPUs per Node
-	form.AddInputField("CPUs per Node", fmt.Sprintf("%d", job.CPUs), 10, nil, func(text string) {
+	form.AddInputField("CPUs per Node", fmt.Sprintf("%d", job.CPUs), 15, nil, func(text string) {
 		if n, err := strconv.Atoi(text); err == nil && n > 0 {
 			job.CPUs = n
 		}
 	})
 
 	// Memory
-	form.AddInputField("Memory (e.g., 4G, 1024M)", job.Memory, 20, nil, func(text string) {
+	form.AddInputField("Memory (e.g., 4G, 1024M)", job.Memory, 30, nil, func(text string) {
 		job.Memory = text
 	})
 
@@ -168,7 +168,7 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 	if job.GPUs > 0 {
 		gpusStr = fmt.Sprintf("%d", job.GPUs)
 	}
-	form.AddInputField("GPUs (optional)", gpusStr, 10, nil, func(text string) {
+	form.AddInputField("GPUs (optional)", gpusStr, 15, nil, func(text string) {
 		if text == "" {
 			job.GPUs = 0
 		} else if n, err := strconv.Atoi(text); err == nil && n >= 0 {
@@ -177,27 +177,27 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 	})
 
 	// QoS (optional)
-	form.AddInputField("QoS (optional)", job.QoS, 20, nil, func(text string) {
+	form.AddInputField("QoS (optional)", job.QoS, 30, nil, func(text string) {
 		job.QoS = text
 	})
 
 	// Account (optional)
-	form.AddInputField("Account (optional)", job.Account, 20, nil, func(text string) {
+	form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
 		job.Account = text
 	})
 
 	// Working Directory
-	form.AddInputField("Working Directory", job.WorkingDir, 40, nil, func(text string) {
+	form.AddInputField("Working Directory", job.WorkingDir, 50, nil, func(text string) {
 		job.WorkingDir = text
 	})
 
 	// Output File
-	form.AddInputField("Output File", job.OutputFile, 40, nil, func(text string) {
+	form.AddInputField("Output File", job.OutputFile, 50, nil, func(text string) {
 		job.OutputFile = text
 	})
 
 	// Error File
-	form.AddInputField("Error File", job.ErrorFile, 40, nil, func(text string) {
+	form.AddInputField("Error File", job.ErrorFile, 50, nil, func(text string) {
 		job.ErrorFile = text
 	})
 
@@ -250,8 +250,8 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 		return event
 	})
 
-	// Create centered layout
-	centered := createCenteredModal(form, 60, 25)
+	// Create centered layout - make it much larger to accommodate all fields
+	centered := createCenteredModal(form, 80, 35)
 	w.pages.AddPage("job-wizard-form", centered, true, true)
 	w.pages.RemovePage("job-wizard-templates") // Remove template selection
 }
@@ -284,6 +284,9 @@ func (w *JobSubmissionWizard) validateAndSubmitJob(job *dao.JobSubmission) error
 	if err != nil {
 		return fmt.Errorf("failed to submit job: %v", err)
 	}
+
+	// Show success message
+	w.showSuccess(fmt.Sprintf("Job successfully submitted!\n\nJob ID: %s\nJob Name: %s", jobID, job.Name))
 
 	// Close wizard and callback
 	w.pages.RemovePage("job-wizard-form")
@@ -337,6 +340,21 @@ func (w *JobSubmissionWizard) showError(message string) {
 		SetTextColor(tcell.ColorRed)
 
 	w.pages.AddPage("job-error", modal, true, true)
+}
+
+// showSuccess shows a success message
+func (w *JobSubmissionWizard) showSuccess(message string) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			w.pages.RemovePage("job-success")
+		})
+
+	modal.SetBackgroundColor(tcell.ColorDefault).
+		SetTextColor(tcell.ColorGreen)
+
+	w.pages.AddPage("job-success", modal, true, true)
 }
 
 // Helper functions

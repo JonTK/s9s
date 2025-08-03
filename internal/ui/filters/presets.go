@@ -140,6 +140,30 @@ func (m *PresetManager) createDefaultPresets() {
 			ViewType:    "jobs",
 			FilterStr:   "priority>1000",
 		},
+		{
+			Name:        "Large Memory Jobs",
+			Description: "Jobs requiring more than 32GB RAM",
+			ViewType:    "jobs",
+			FilterStr:   "memory>32G",
+		},
+		{
+			Name:        "Long Running Jobs",
+			Description: "Jobs running longer than 4 hours",
+			ViewType:    "jobs",
+			FilterStr:   "time>4:00:00",
+		},
+		{
+			Name:        "Today's Jobs",
+			Description: "Jobs submitted today",
+			ViewType:    "jobs",
+			FilterStr:   "submittime=today",
+		},
+		{
+			Name:        "Recent Failures",
+			Description: "Jobs that failed in last 24 hours",
+			ViewType:    "jobs",
+			FilterStr:   "state=FAILED endtime=\"last 24h\"",
+		},
 	}
 
 	// Node presets
@@ -173,6 +197,24 @@ func (m *PresetManager) createDefaultPresets() {
 			Description: "Show nodes in compute partition",
 			ViewType:    "nodes",
 			FilterStr:   "partition=compute",
+		},
+		{
+			Name:        "Super High Memory",
+			Description: "Nodes with more than 512GB RAM",
+			ViewType:    "nodes",
+			FilterStr:   "memory>512G",
+		},
+		{
+			Name:        "Multi-GPU Nodes",
+			Description: "Nodes with multiple GPU features",
+			ViewType:    "nodes",
+			FilterStr:   "features=~gpu.*gpu|features~v100|features~a100",
+		},
+		{
+			Name:        "Specific Node Pattern",
+			Description: "Nodes matching compute node naming pattern",
+			ViewType:    "nodes",
+			FilterStr:   "name=~^compute[0-9]{3}$",
 		},
 	}
 

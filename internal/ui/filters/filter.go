@@ -187,7 +187,7 @@ func (p *FilterParser) normalizeField(field string) string {
 	return field
 }
 
-// parseValue attempts to parse the value into appropriate type
+// parseValue attempts to parse the value into appropriate type with advanced parsing
 func (p *FilterParser) parseValue(value string) interface{} {
 	// Try to parse as number
 	if i, err := strconv.Atoi(value); err == nil {
@@ -200,7 +200,15 @@ func (p *FilterParser) parseValue(value string) interface{} {
 	if b, err := strconv.ParseBool(value); err == nil {
 		return b
 	}
-	// Try to parse as duration
+	// Try to parse as memory size (e.g., "4G", "1024M")
+	if m, err := ParseMemorySize(value); err == nil {
+		return m
+	}
+	// Try to parse as SLURM duration (e.g., "2:30:00", "1-12:00:00")
+	if d, err := ParseSlurmDuration(value); err == nil {
+		return d
+	}
+	// Try to parse as Go duration (e.g., "30m", "2h")
 	if d, err := time.ParseDuration(value); err == nil {
 		return d
 	}
@@ -281,23 +289,53 @@ func contains(haystack, needle interface{}) bool {
 }
 
 func compareGreater(a, b interface{}) bool {
-	// Try numeric comparison first
+	// Try memory comparison for memory values
+	if aSize, aErr := parseMemoryValue(a); aErr == nil {
+		if bSize, bErr := parseMemoryValue(b); bErr == nil {
+			return aSize > bSize
+		}
+	}
+	
+	// Try duration comparison for time values
+	if aDur, aErr := parseDurationValue(a); aErr == nil {
+		if bDur, bErr := parseDurationValue(b); bErr == nil {
+			return aDur > bDur
+		}
+	}
+	
+	// Try numeric comparison
 	if aNum, aOk := toFloat64(a); aOk {
 		if bNum, bOk := toFloat64(b); bOk {
 			return aNum > bNum
 		}
 	}
+	
 	// Fall back to string comparison
 	return fmt.Sprintf("%v", a) > fmt.Sprintf("%v", b)
 }
 
 func compareLess(a, b interface{}) bool {
-	// Try numeric comparison first
+	// Try memory comparison for memory values
+	if aSize, aErr := parseMemoryValue(a); aErr == nil {
+		if bSize, bErr := parseMemoryValue(b); bErr == nil {
+			return aSize < bSize
+		}
+	}
+	
+	// Try duration comparison for time values
+	if aDur, aErr := parseDurationValue(a); aErr == nil {
+		if bDur, bErr := parseDurationValue(b); bErr == nil {
+			return aDur < bDur
+		}
+	}
+	
+	// Try numeric comparison
 	if aNum, aOk := toFloat64(a); aOk {
 		if bNum, bOk := toFloat64(b); bOk {
 			return aNum < bNum
 		}
 	}
+	
 	// Fall back to string comparison
 	return fmt.Sprintf("%v", a) < fmt.Sprintf("%v", b)
 }

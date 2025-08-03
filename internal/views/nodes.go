@@ -9,6 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/jontk/s9s/internal/ssh"
 	"github.com/jontk/s9s/internal/ui/components"
 	"github.com/jontk/s9s/internal/ui/filters"
 	"github.com/rivo/tview"
@@ -37,6 +38,7 @@ type NodesView struct {
 	advancedFilter *filters.Filter
 	isAdvancedMode bool
 	globalSearch   *GlobalSearch
+	sshClient      *ssh.SSHClient
 }
 
 // SetPages sets the pages reference for modal handling
@@ -59,6 +61,9 @@ func (v *NodesView) SetApp(app *tview.Application) {
 
 	// Create global search
 	v.globalSearch = NewGlobalSearch(v.client, app)
+	
+	// Initialize SSH client with default configuration
+	v.sshClient = ssh.NewSSHClient(ssh.DefaultSSHConfig())
 }
 
 // NewNodesView creates a new nodes view
@@ -730,10 +735,235 @@ func (v *NodesView) sshToNode() {
 		return
 	}
 
-	_ = data[0] // nodeName not used for SSH yet
+	nodeName := data[0]
+	nodeState := data[2]
 
-	// TODO: Implement SSH functionality
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Check if SSH is available
+	if !ssh.IsSSHAvailable() {
+		v.showError("SSH command not found. Please install OpenSSH client.")
+		return
+	}
+
+	// Check if node is in a good state for SSH
+	if strings.Contains(nodeState, "DOWN") || strings.Contains(nodeState, "DRAIN") {
+		message := fmt.Sprintf("Node %s is in state %s. SSH may not work.\n\nDo you want to try anyway?", nodeName, nodeState)
+		v.confirmSSH(nodeName, message)
+		return
+	}
+
+	// Proceed with SSH
+	v.performSSH(nodeName)
+}
+
+// confirmSSH shows confirmation dialog for SSH to problematic nodes
+func (v *NodesView) confirmSSH(nodeName, message string) {
+	modal := tview.NewModal()
+	modal.SetText(message)
+	modal.AddButtons([]string{"Yes", "No"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		v.pages.RemovePage("ssh-confirm")
+		if buttonIndex == 0 { // Yes
+			v.performSSH(nodeName)
+		}
+	})
+
+	if v.pages != nil {
+		v.pages.AddPage("ssh-confirm", modal, true, true)
+	}
+}
+
+// performSSH initiates SSH connection to the node
+func (v *NodesView) performSSH(nodeName string) {
+	if v.sshClient == nil {
+		v.showError("SSH client not initialized")
+		return
+	}
+
+	// Show SSH connection modal with options
+	v.showSSHOptionsModal(nodeName)
+}
+
+// showSSHOptionsModal shows SSH connection options
+func (v *NodesView) showSSHOptionsModal(nodeName string) {
+	list := tview.NewList()
+	list.SetBorder(true)
+	list.SetTitle(fmt.Sprintf(" SSH to %s ", nodeName))
+	list.SetTitleAlign(tview.AlignCenter)
+
+	// Add SSH options
+	list.AddItem("Connect to Terminal", "Open SSH in new terminal", 't', func() {
+		v.pages.RemovePage("ssh-options")
+		v.sshToTerminal(nodeName)
+	})
+
+	list.AddItem("Test Connection", "Test SSH connectivity", 'c', func() {
+		v.pages.RemovePage("ssh-options")
+		v.testSSHConnection(nodeName)
+	})
+
+	list.AddItem("Get Node Info", "Retrieve basic node information", 'i', func() {
+		v.pages.RemovePage("ssh-options")
+		v.getNodeInfoViaSSH(nodeName)
+	})
+
+	list.AddItem("Cancel", "Cancel SSH operation", 'x', func() {
+		v.pages.RemovePage("ssh-options")
+	})
+
+	// Create modal
+	modal := tview.NewFlex()
+	modal.AddItem(nil, 0, 1, false)
+	modal.AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(list, 12, 0, true).
+		AddItem(nil, 0, 1, false), 40, 0, true)
+	modal.AddItem(nil, 0, 1, false)
+
+	// Handle keyboard shortcuts
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			v.pages.RemovePage("ssh-options")
+			return nil
+		}
+		return event
+	})
+
+	if v.pages != nil {
+		v.pages.AddPage("ssh-options", modal, true, true)
+		v.app.SetFocus(list)
+	}
+}
+
+// sshToTerminal opens SSH in a new terminal (placeholder implementation)
+func (v *NodesView) sshToTerminal(nodeName string) {
+	// This would actually open SSH in external terminal
+	// For now, show a notification about the SSH command
+	message := fmt.Sprintf("SSH command to run:\n\nssh %s\n\nNote: This would normally open in a new terminal window.", nodeName)
+	v.showNotification("SSH Terminal", message)
+}
+
+// testSSHConnection tests SSH connectivity to the node
+func (v *NodesView) testSSHConnection(nodeName string) {
+	v.showProgressDialog("Testing SSH connection to " + nodeName + "...")
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		err := v.sshClient.TestConnection(ctx, nodeName)
+		
+		v.app.QueueUpdateDraw(func() {
+			v.pages.RemovePage("progress")
+			
+			if err != nil {
+				v.showError(fmt.Sprintf("SSH connection failed: %v", err))
+			} else {
+				v.showNotification("SSH Test", fmt.Sprintf("SSH connection to %s successful!", nodeName))
+			}
+		})
+	}()
+}
+
+// getNodeInfoViaSSH retrieves node information via SSH
+func (v *NodesView) getNodeInfoViaSSH(nodeName string) {
+	v.showProgressDialog("Retrieving node information from " + nodeName + "...")
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		info, err := v.sshClient.GetNodeInfo(ctx, nodeName)
+		
+		v.app.QueueUpdateDraw(func() {
+			v.pages.RemovePage("progress")
+			
+			if err != nil {
+				v.showError(fmt.Sprintf("Failed to get node info: %v", err))
+			} else {
+				v.showNodeInfoModal(nodeName, info)
+			}
+		})
+	}()
+}
+
+// showNodeInfoModal displays node information retrieved via SSH
+func (v *NodesView) showNodeInfoModal(nodeName string, info map[string]string) {
+	var content strings.Builder
+	content.WriteString(fmt.Sprintf("[yellow]Node Information for %s[white]\n\n", nodeName))
+
+	for key, value := range info {
+		content.WriteString(fmt.Sprintf("[blue]%s:[white] %s\n", key, value))
+	}
+
+	textView := tview.NewTextView()
+	textView.SetDynamicColors(true)
+	textView.SetText(content.String())
+	textView.SetBorder(true)
+	textView.SetTitle(fmt.Sprintf(" %s Info ", nodeName))
+	textView.SetTitleAlign(tview.AlignCenter)
+
+	// Create modal
+	modal := tview.NewFlex()
+	modal.AddItem(nil, 0, 1, false)
+	modal.AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(textView, 0, 3, true).
+		AddItem(nil, 0, 1, false), 0, 3, true)
+	modal.AddItem(nil, 0, 1, false)
+
+	textView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			v.pages.RemovePage("node-info")
+			return nil
+		}
+		return event
+	})
+
+	if v.pages != nil {
+		v.pages.AddPage("node-info", modal, true, true)
+		v.app.SetFocus(textView)
+	}
+}
+
+// showProgressDialog shows a progress dialog
+func (v *NodesView) showProgressDialog(message string) {
+	modal := tview.NewModal()
+	modal.SetText(message)
+	modal.SetBorder(true)
+	modal.SetTitle(" Working... ")
+	modal.SetTitleAlign(tview.AlignCenter)
+
+	if v.pages != nil {
+		v.pages.AddPage("progress", modal, true, true)
+	}
+}
+
+// showNotification shows a notification dialog
+func (v *NodesView) showNotification(title, message string) {
+	modal := tview.NewModal()
+	modal.SetText(message)
+	modal.AddButtons([]string{"OK"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		v.pages.RemovePage("notification")
+	})
+
+	if v.pages != nil {
+		v.pages.AddPage("notification", modal, true, true)
+	}
+}
+
+// showError shows an error dialog
+func (v *NodesView) showError(message string) {
+	modal := tview.NewModal()
+	modal.SetText("[red]Error:[white] " + message)
+	modal.AddButtons([]string{"OK"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		v.pages.RemovePage("error")
+	})
+
+	if v.pages != nil {
+		v.pages.AddPage("error", modal, true, true)
+	}
 }
 
 // toggleStateFilter toggles node state filter
