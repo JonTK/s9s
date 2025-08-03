@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jontk/s9s/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/jontk/s9s/internal/config"
 )
 
 func TestNew(t *testing.T) {
@@ -41,14 +41,14 @@ func TestNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			app, err := New(ctx, tt.config)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, app)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, app)
-				
+
 				// Verify initialization
 				assert.NotNil(t, app.app)
 				assert.NotNil(t, app.pages)
@@ -59,7 +59,7 @@ func TestNew(t *testing.T) {
 				assert.NotNil(t, app.views)
 				assert.NotNil(t, app.errorChan)
 				assert.NotNil(t, app.flashChan)
-				
+
 				// Clean up
 				app.Stop(context.Background())
 			}
@@ -74,24 +74,24 @@ func TestFlashMessages(t *testing.T) {
 			Endpoint: "http://localhost:6820",
 		},
 	}
-	
+
 	ctx := context.Background()
 	app, err := New(ctx, cfg)
 	require.NoError(t, err)
 	defer app.Stop(context.Background())
-	
+
 	// Start flash message handler
 	go app.handleFlashMessages()
-	
+
 	// Test different flash levels
 	app.Flash(flashInfo, "Info message")
 	app.Flash(flashSuccess, "Success message")
 	app.Flash(flashWarning, "Warning message")
 	app.Flash(flashError, "Error message")
-	
+
 	// Give time for messages to be processed
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Messages should have been processed without panic
 	// (In a real test, we'd check the UI output)
 }
@@ -103,18 +103,18 @@ func TestStop(t *testing.T) {
 			Endpoint: "http://localhost:6820",
 		},
 	}
-	
+
 	ctx := context.Background()
 	app, err := New(ctx, cfg)
 	require.NoError(t, err)
-	
+
 	// Start the app in a goroutine
 	app.isRunning = true
-	
+
 	// Create a stop context with timeout
 	stopCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	// Stop should complete without error
 	err = app.Stop(stopCtx)
 	assert.NoError(t, err)

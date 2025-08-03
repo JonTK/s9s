@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
 	"github.com/jontk/s9s/internal/monitoring"
+	"github.com/rivo/tview"
 )
 
 // HealthView displays cluster health monitoring information
@@ -35,7 +35,7 @@ func NewHealthView(client dao.SlurmClient) *HealthView {
 	v := &HealthView{
 		BaseView:      NewBaseView("health", "Health Monitor"),
 		client:        client,
-		refreshRate:   10 * time.Second, // Refresh every 10 seconds
+		refreshRate:   10 * time.Second,                                    // Refresh every 10 seconds
 		healthMonitor: monitoring.NewHealthMonitor(client, 30*time.Second), // Check every 30 seconds
 	}
 

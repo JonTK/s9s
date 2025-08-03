@@ -15,10 +15,10 @@ import (
 const (
 	// KeyringService is the service name for storing tokens in the system keyring
 	KeyringService = "s9s"
-	
+
 	// TokenCacheFile is the filename for the cached tokens
 	TokenCacheFile = "tokens.json"
-	
+
 	// DefaultTokenExpiry is the default token expiration time
 	DefaultTokenExpiry = 24 * time.Hour
 )
@@ -38,10 +38,10 @@ func (t *Token) IsExpired() bool {
 
 // TokenManager manages authentication tokens for multiple clusters
 type TokenManager struct {
-	mu          sync.RWMutex
-	tokens      map[string]*Token // key is cluster name
-	cacheDir    string
-	useKeyring  bool
+	mu         sync.RWMutex
+	tokens     map[string]*Token // key is cluster name
+	cacheDir   string
+	useKeyring bool
 }
 
 // NewTokenManager creates a new token manager
@@ -167,7 +167,7 @@ func (tm *TokenManager) saveToKeyring(clusterName string, token *Token) error {
 // loadFromFile loads a token from the file cache
 func (tm *TokenManager) loadFromFile(clusterName string) (*Token, error) {
 	cachePath := filepath.Join(tm.cacheDir, TokenCacheFile)
-	
+
 	data, err := os.ReadFile(cachePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -192,7 +192,7 @@ func (tm *TokenManager) loadFromFile(clusterName string) (*Token, error) {
 // saveToFile saves a token to the file cache
 func (tm *TokenManager) saveToFile(clusterName string, token *Token) error {
 	cachePath := filepath.Join(tm.cacheDir, TokenCacheFile)
-	
+
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(tm.cacheDir, 0700); err != nil {
 		return err
@@ -219,7 +219,7 @@ func (tm *TokenManager) saveToFile(clusterName string, token *Token) error {
 // removeFromFile removes a token from the file cache
 func (tm *TokenManager) removeFromFile(clusterName string) error {
 	cachePath := filepath.Join(tm.cacheDir, TokenCacheFile)
-	
+
 	// Load existing cache
 	cache := make(map[string]*Token)
 	if data, err := os.ReadFile(cachePath); err == nil {
@@ -262,7 +262,7 @@ func ValidateJWT(tokenString string) (*jwt.RegisteredClaims, error) {
 // CreateToken creates a new token with the specified expiration
 func CreateToken(username, clusterURL string, expiry time.Duration) (*Token, error) {
 	expiresAt := time.Now().Add(expiry)
-	
+
 	// Create JWT claims
 	claims := &jwt.RegisteredClaims{
 		Subject:   username,
@@ -273,7 +273,7 @@ func CreateToken(username, clusterURL string, expiry time.Duration) (*Token, err
 
 	// Create token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	
+
 	// Sign token
 	// In production, this should use a proper signing key
 	tokenString, err := token.SignedString([]byte("secret"))

@@ -9,20 +9,20 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/rivo/tview"
 )
 
 // DashboardView displays a comprehensive cluster overview
 type DashboardView struct {
 	*BaseView
-	client         dao.SlurmClient
-	mu             sync.RWMutex
-	refreshTimer   *time.Timer
-	refreshRate    time.Duration
-	container      *tview.Flex
-	app            *tview.Application
-	pages          *tview.Pages
+	client       dao.SlurmClient
+	mu           sync.RWMutex
+	refreshTimer *time.Timer
+	refreshRate  time.Duration
+	container    *tview.Flex
+	app          *tview.Application
+	pages        *tview.Pages
 
 	// Dashboard components
 	clusterOverview *tview.TextView

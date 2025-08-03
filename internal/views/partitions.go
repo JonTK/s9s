@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
 	"github.com/jontk/s9s/internal/ui/components"
 	"github.com/jontk/s9s/internal/ui/filters"
+	"github.com/rivo/tview"
 )
 
 // PartitionsView displays the partitions list with queue depth visualization
@@ -406,11 +406,11 @@ func (v *PartitionsView) createEfficiencyBar(percentage float64) string {
 	// Choose color based on efficiency
 	var color string
 	if percentage < 50 {
-		color = "red"      // Low efficiency
+		color = "red" // Low efficiency
 	} else if percentage < 80 {
-		color = "yellow"   // Medium efficiency
+		color = "yellow" // Medium efficiency
 	} else {
-		color = "green"    // High efficiency
+		color = "green" // High efficiency
 	}
 
 	bar.WriteString(fmt.Sprintf("[%s]", color))
@@ -688,7 +688,6 @@ func (v *PartitionsView) showPartitionNodes() {
 	// TODO: Switch to nodes view with partition filter
 	v.updateStatusBar(fmt.Sprintf("[yellow]Node view filtering not yet implemented for partition %s[white]", partitionName))
 }
-
 
 // showPartitionAnalytics shows comprehensive analytics for the selected partition
 func (v *PartitionsView) showPartitionAnalytics() {
@@ -1010,6 +1009,7 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 
 	return analytics.String()
 }
+
 // showAdvancedFilter shows the advanced filter bar
 func (v *PartitionsView) showAdvancedFilter() {
 	if v.filterBar == nil || v.pages == nil {
@@ -1080,13 +1080,13 @@ func (v *PartitionsView) applyAdvancedFilter(partitions []*dao.Partition) []*dao
 // partitionToMap converts a partition to a map for filter evaluation
 func (v *PartitionsView) partitionToMap(partition *dao.Partition) map[string]interface{} {
 	data := map[string]interface{}{
-		"Name":         partition.Name,
-		"State":        partition.State,
-		"TotalNodes":   partition.TotalNodes,
-		"TotalCPUs":    partition.TotalCPUs,
-		"DefaultTime":  partition.DefaultTime,
-		"MaxTime":      partition.MaxTime,
-		"QOS":          strings.Join(partition.QOS, ","),
+		"Name":        partition.Name,
+		"State":       partition.State,
+		"TotalNodes":  partition.TotalNodes,
+		"TotalCPUs":   partition.TotalCPUs,
+		"DefaultTime": partition.DefaultTime,
+		"MaxTime":     partition.MaxTime,
+		"QOS":         strings.Join(partition.QOS, ","),
 	}
 
 	// Add queue information if available

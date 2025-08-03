@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/rivo/tview"
 )
 
 // JobTemplate represents a saved job configuration
 type JobTemplate struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
 	JobSubmission *dao.JobSubmission `json:"job_submission"`
 }
 
@@ -321,14 +321,14 @@ func (v *JobsView) showJobSubmissionFormWithTemplate(template *dao.JobSubmission
 	form.AddButton("Submit", func() {
 		// v.submitJobFromForm - removed, use wizard instead(form)
 	}).
-	AddButton("Save as Template", func() {
-		v.saveFormAsTemplate(form)
-	}).
-	AddButton("Cancel", func() {
-		if v.pages != nil {
-			v.pages.RemovePage("job-submission")
-		}
-	})
+		AddButton("Save as Template", func() {
+			v.saveFormAsTemplate(form)
+		}).
+		AddButton("Cancel", func() {
+			if v.pages != nil {
+				v.pages.RemovePage("job-submission")
+			}
+		})
 
 	form.SetBorder(true).
 		SetTitle(" Submit Job from Template ").
@@ -454,14 +454,14 @@ func (v *JobsView) extractJobSubmissionFromForm(form *tview.Form) *dao.JobSubmis
 // showSaveTemplateForm shows form to save job as template
 func (v *JobsView) showSaveTemplateForm(job *dao.Job) {
 	jobSub := &dao.JobSubmission{
-		Name:        job.Name,
-		Command:     job.Command,
-		Partition:   job.Partition,
-		Account:     job.Account,
-		QoS:         job.QOS,
-		Nodes:       job.NodeCount,
-		TimeLimit:   job.TimeLimit,
-		WorkingDir:  job.WorkingDir,
+		Name:       job.Name,
+		Command:    job.Command,
+		Partition:  job.Partition,
+		Account:    job.Account,
+		QoS:        job.QOS,
+		Nodes:      job.NodeCount,
+		TimeLimit:  job.TimeLimit,
+		WorkingDir: job.WorkingDir,
 	}
 
 	v.showSaveTemplateFormFromSubmission(jobSub)
@@ -487,8 +487,8 @@ func (v *JobsView) showSaveTemplateFormFromSubmission(jobSub *dao.JobSubmission)
 		}
 
 		template := JobTemplate{
-			Name:        templateName,
-			Description: description,
+			Name:          templateName,
+			Description:   description,
 			JobSubmission: jobSub,
 		}
 
@@ -503,11 +503,11 @@ func (v *JobsView) showSaveTemplateFormFromSubmission(jobSub *dao.JobSubmission)
 			v.pages.RemovePage("save-template")
 		}
 	}).
-	AddButton("Cancel", func() {
-		if v.pages != nil {
-			v.pages.RemovePage("save-template")
-		}
-	})
+		AddButton("Cancel", func() {
+			if v.pages != nil {
+				v.pages.RemovePage("save-template")
+			}
+		})
 
 	form.SetBorder(true).
 		SetTitle(" Save Job Template ").

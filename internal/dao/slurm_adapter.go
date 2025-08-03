@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jontk/s9s/internal/config"
 	slurm "github.com/jontk/slurm-client"
 	"github.com/jontk/slurm-client/pkg/auth"
 	slurmconfig "github.com/jontk/slurm-client/pkg/config"
-	"github.com/jontk/s9s/internal/config"
 )
 
 // SlurmAdapter wraps the slurm-client library and provides version abstraction
@@ -557,26 +557,26 @@ func convertJob(job *slurm.Job) *Job {
 	}
 
 	return &Job{
-		ID:          job.ID,
-		Name:        job.Name,
-		User:        job.UserID,
-		Account:     "", // Not available in basic Job struct
-		Partition:   job.Partition,
-		State:       job.State,
-		Priority:    float64(job.Priority),
-		QOS:         "", // Not available in basic Job struct
-		NodeCount:   len(job.Nodes),
-		TimeLimit:   fmt.Sprintf("%d", job.TimeLimit),
-		TimeUsed:    "", // Not available in basic Job struct
-		SubmitTime:  job.SubmitTime,
-		StartTime:   job.StartTime,
-		EndTime:     job.EndTime,
-		NodeList:    strings.Join(job.Nodes, ","),
-		Command:     job.Command,
-		WorkingDir:  job.WorkingDir,
-		StdOut:      "", // Not available in basic Job struct
-		StdErr:      "", // Not available in basic Job struct
-		ExitCode:    exitCode,
+		ID:         job.ID,
+		Name:       job.Name,
+		User:       job.UserID,
+		Account:    "", // Not available in basic Job struct
+		Partition:  job.Partition,
+		State:      job.State,
+		Priority:   float64(job.Priority),
+		QOS:        "", // Not available in basic Job struct
+		NodeCount:  len(job.Nodes),
+		TimeLimit:  fmt.Sprintf("%d", job.TimeLimit),
+		TimeUsed:   "", // Not available in basic Job struct
+		SubmitTime: job.SubmitTime,
+		StartTime:  job.StartTime,
+		EndTime:    job.EndTime,
+		NodeList:   strings.Join(job.Nodes, ","),
+		Command:    job.Command,
+		WorkingDir: job.WorkingDir,
+		StdOut:     "", // Not available in basic Job struct
+		StdErr:     "", // Not available in basic Job struct
+		ExitCode:   exitCode,
 	}
 }
 
@@ -586,10 +586,10 @@ func convertNode(node *slurm.Node) *Node {
 		State:           node.State,
 		Partitions:      node.Partitions,
 		CPUsTotal:       node.CPUs,
-		CPUsAllocated:   0, // Not available in basic Node struct
+		CPUsAllocated:   0,         // Not available in basic Node struct
 		CPUsIdle:        node.CPUs, // Assume all idle for now
 		MemoryTotal:     int64(node.Memory),
-		MemoryAllocated: 0, // Not available in basic Node struct
+		MemoryAllocated: 0,                  // Not available in basic Node struct
 		MemoryFree:      int64(node.Memory), // Assume all free for now
 		Features:        node.Features,
 		Reason:          node.Reason,
@@ -725,20 +725,20 @@ func (u *userManager) Get(name string) (*User, error) {
 // Conversion functions for new types
 func convertQoS(qos *slurm.QoS) *QoS {
 	return &QoS{
-		Name:                  qos.Name,
-		Priority:              qos.Priority,
-		PreemptMode:           qos.PreemptMode,
-		Flags:                 qos.Flags,
-		GraceTime:             qos.GraceTime,
-		MaxJobsPerUser:        qos.MaxJobsPerUser,
-		MaxJobsPerAccount:     qos.MaxJobsPerAccount,
-		MaxSubmitJobsPerUser:  qos.MaxSubmitJobs,
-		MaxCPUsPerUser:        qos.MaxCPUsPerUser,
-		MaxNodesPerUser:       qos.MaxNodes,
-		MaxWallTime:           qos.MaxWallTime,
-		MaxMemoryPerUser:      0, // Not directly available
-		MinCPUs:               qos.MinCPUs,
-		MinNodes:              qos.MinNodes,
+		Name:                 qos.Name,
+		Priority:             qos.Priority,
+		PreemptMode:          qos.PreemptMode,
+		Flags:                qos.Flags,
+		GraceTime:            qos.GraceTime,
+		MaxJobsPerUser:       qos.MaxJobsPerUser,
+		MaxJobsPerAccount:    qos.MaxJobsPerAccount,
+		MaxSubmitJobsPerUser: qos.MaxSubmitJobs,
+		MaxCPUsPerUser:       qos.MaxCPUsPerUser,
+		MaxNodesPerUser:      qos.MaxNodes,
+		MaxWallTime:          qos.MaxWallTime,
+		MaxMemoryPerUser:     0, // Not directly available
+		MinCPUs:              qos.MinCPUs,
+		MinNodes:             qos.MinNodes,
 	}
 }
 

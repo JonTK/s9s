@@ -3,12 +3,19 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
+	"path/filepath"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jontk/s9s/internal/config"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/jontk/s9s/internal/notifications"
+	"github.com/jontk/s9s/internal/preferences"
 	"github.com/jontk/s9s/internal/ui/components"
+	"github.com/jontk/s9s/internal/ui/views/settings"
 	"github.com/jontk/s9s/internal/views"
 	"github.com/jontk/s9s/pkg/slurm"
 	"github.com/rivo/tview"
@@ -24,11 +31,16 @@ type S9s struct {
 	client dao.SlurmClient
 
 	// UI components
-	app       *tview.Application
-	pages     *tview.Pages
-	header    *components.Header
-	statusBar *components.StatusBar
-	viewMgr   *views.ViewManager
+	app               *tview.Application
+	pages             *tview.Pages
+	header            *components.Header
+	statusBar         *components.StatusBar
+	viewMgr           *views.ViewManager
+	alertsManager     *components.AlertsManager
+	alertsBadge       *components.AlertsBadge
+	notificationMgr   interface{} // Will be set to *notifications.NotificationManager
+
+	userPrefs         *preferences.UserPreferences
 
 	// Main layout
 	mainLayout *tview.Flex
@@ -90,6 +102,16 @@ func New(ctx context.Context, cfg *config.Config) (*S9s, error) {
 		app:    app,
 		pages:  tview.NewPages(),
 	}
+
+	// Initialize user preferences
+	prefsPath := filepath.Join(filepath.Join(os.Getenv("HOME"), ".s9s"), "preferences.json")
+	userPrefs, err := preferences.NewUserPreferences(prefsPath)
+	if err != nil {
+		log.Printf("Warning: Failed to load user preferences: %v", err)
+		// Continue with defaults
+		userPrefs, _ = preferences.NewUserPreferences("")
+	}
+	s9s.userPrefs = userPrefs
 
 	// Initialize UI components
 	if err := s9s.initUI(); err != nil {
@@ -175,11 +197,31 @@ func (s *S9s) Stop() error {
 
 // initUI initializes the UI components
 func (s *S9s) initUI() error {
+	// Create alerts manager
+	s.alertsManager = components.NewAlertsManager(100) // Keep last 100 alerts
+	
+	// Initialize notification system
+	configPath := "" // Will use default path
+	notificationMgr, err := notifications.NewNotificationManager(configPath)
+	if err != nil {
+		log.Printf("Failed to initialize notification manager: %v", err)
+		// Continue without notifications
+	} else {
+		s.notificationMgr = notificationMgr
+		// Connect notification manager to alerts manager
+		adapter := notifications.NewAlertNotifierAdapter(notificationMgr)
+		s.alertsManager.SetNotifier(adapter)
+	}
+	
 	// Create header
 	s.header = components.NewHeader()
 
 	// Create status bar
 	s.statusBar = components.NewStatusBar()
+	
+	// Create alerts badge for header
+	s.alertsBadge = components.NewAlertsBadge(s.alertsManager)
+	s.header.SetAlertsBadge(s.alertsBadge)
 
 	// Create view manager
 	s.viewMgr = views.NewViewManager(s.app)
@@ -306,6 +348,14 @@ func (s *S9s) setupKeyboardShortcuts() {
 			// Show help modal
 			views.ShowHelpModal(s.pages)
 			return nil
+		case tcell.KeyF2:
+			// Show alerts modal
+			s.showAlertsModal()
+			return nil
+		case tcell.KeyF3:
+			// Show preferences modal
+			s.showPreferences()
+			return nil
 		case tcell.KeyF5:
 			// Refresh current view
 			if err := s.viewMgr.RefreshCurrentView(); err != nil {
@@ -428,6 +478,12 @@ func (s *S9s) updateClusterInfo() {
 			s.header.SetMetrics(metrics)
 		}
 	}
+	
+	// Generate demo alerts for mock client (remove this in production)
+	if s.config.UseMockClient {
+		// Add some demo alerts to show functionality
+		s.generateDemoAlerts()
+	}
 }
 
 // switchToView switches to the specified view
@@ -529,6 +585,8 @@ func (s *S9s) executeCommand(command string) {
 		}
 	case "help", "h":
 		s.showHelp()
+	case "prefs", "preferences":
+		s.showPreferences()
 	default:
 		s.statusBar.Error(fmt.Sprintf("Unknown command: %s", command))
 	}
@@ -541,6 +599,9 @@ func (s *S9s) showHelp() {
 [teal]Global Keys:[white]
   [yellow]1-8[white]         Switch to Jobs/Nodes/Partitions/Reservations/QoS/Accounts/Users/Health view
   [yellow]Tab/Shift+Tab[white] Switch between views
+  [yellow]F1[white]         Show help
+  [yellow]F2[white]         Show system alerts
+  [yellow]F5[white]         Refresh current view
   [yellow]:[white]          Enter command mode
   [yellow]?[white]          Show this help
   [yellow]q, Ctrl+C[white]  Quit application
@@ -601,4 +662,98 @@ func (s *S9s) startRefreshTimer(duration time.Duration) {
 			}
 		}
 	}()
+}
+
+// showAlertsModal displays the alerts modal
+func (s *S9s) showAlertsModal() {
+	alertsView := components.NewAlertsView(s.alertsManager, s.app)
+	alertsView.SetPages(s.pages)
+	alertsView.SetNotificationManager(s.notificationMgr)
+	alertsView.SetKeyHandler()
+	
+	// Create modal layout with help text
+	helpText := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText("[yellow]Keys:[white] a=Acknowledge d=Dismiss c=Clear r=Refresh s=Settings Tab=Switch ESC=Close")
+	
+	modal := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(tview.NewFlex().
+				SetDirection(tview.FlexRow).
+				AddItem(alertsView.GetView(), 0, 1, true).
+				AddItem(helpText, 1, 0, false), 0, 4, true).
+			AddItem(nil, 0, 1, false), 0, 3, true).
+		AddItem(nil, 0, 1, false)
+	
+	modal.SetBorder(true).
+		SetTitle(" System Alerts ").
+		SetTitleAlign(tview.AlignCenter)
+	
+	// Handle ESC to close and 's' for settings
+	modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			s.pages.RemovePage("alerts")
+			return nil
+		}
+		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+			// Show notification settings
+			settings.ShowNotificationSettings(s.pages, s.app, s.notificationMgr)
+			return nil
+		}
+		return event
+	})
+	
+	s.pages.AddPage("alerts", modal, true, true)
+}
+
+// generateDemoAlerts creates some demonstration alerts for the mock client
+func (s *S9s) generateDemoAlerts() {
+	// Only generate alerts once per minute to avoid spam
+	static := struct {
+		sync.Mutex
+		lastGenerated time.Time
+	}{}
+	
+	static.Lock()
+	defer static.Unlock()
+	
+	if time.Since(static.lastGenerated) < time.Minute {
+		return
+	}
+	static.lastGenerated = time.Now()
+	
+	// Add a variety of demo alerts
+	s.alertsManager.AddAlert(&components.Alert{
+		Level:   components.AlertWarning,
+		Title:   "High Job Queue",
+		Message: "245 jobs are waiting in queue - average wait time is 15 minutes",
+		Source:  "jobs",
+		AutoDismiss: true,
+		DismissAfter: 5 * time.Minute,
+	})
+	
+	s.alertsManager.AddAlert(&components.Alert{
+		Level:   components.AlertError,
+		Title:   "Node Down",
+		Message: "Node compute-042 is down - 3 jobs affected",
+		Source:  "nodes",
+	})
+	
+	s.alertsManager.AddAlert(&components.Alert{
+		Level:   components.AlertInfo,
+		Title:   "Maintenance Scheduled",
+		Message: "System maintenance scheduled for tomorrow at 2:00 AM",
+		Source:  "system",
+		AutoDismiss: true,
+		DismissAfter: 30 * time.Minute,
+	})
+}
+
+
+// showPreferences displays the preferences modal
+func (s *S9s) showPreferences() {
+	settings.ShowPreferences(s.pages, s.app, s.userPrefs)
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/ui/filters"
+	"github.com/rivo/tview"
 )
 
 // FilterBar provides an advanced filtering interface
@@ -195,7 +195,7 @@ func (fb *FilterBar) showPresets() {
 		p := preset // Capture for closure
 		list.AddItem(
 			p.Name,
-			p.Description + " (" + p.FilterStr + ")",
+			p.Description+" ("+p.FilterStr+")",
 			0,
 			func() {
 				fb.SetFilter(p.FilterStr)

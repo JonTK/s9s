@@ -12,10 +12,10 @@ import (
 type HealthStatus string
 
 const (
-	HealthStatusHealthy   HealthStatus = "healthy"
-	HealthStatusWarning   HealthStatus = "warning"
-	HealthStatusCritical  HealthStatus = "critical"
-	HealthStatusUnknown   HealthStatus = "unknown"
+	HealthStatusHealthy  HealthStatus = "healthy"
+	HealthStatusWarning  HealthStatus = "warning"
+	HealthStatusCritical HealthStatus = "critical"
+	HealthStatusUnknown  HealthStatus = "unknown"
 )
 
 // HealthCheck represents a single health check
@@ -31,10 +31,10 @@ type HealthCheck struct {
 
 // HealthThreshold defines warning and critical thresholds for metrics
 type HealthThreshold struct {
-	WarningMin   *float64
-	WarningMax   *float64
-	CriticalMin  *float64
-	CriticalMax  *float64
+	WarningMin  *float64
+	WarningMax  *float64
+	CriticalMin *float64
+	CriticalMax *float64
 }
 
 // ClusterHealth represents the overall cluster health
@@ -218,13 +218,13 @@ func (hm *HealthMonitor) updateOverallStatus() {
 // generateAlert creates an alert for a health check issue
 func (hm *HealthMonitor) generateAlert(check *HealthCheck) {
 	alert := &Alert{
-		ID:          fmt.Sprintf("%s-%d", check.Name, time.Now().Unix()),
-		Type:        AlertTypeHealth,
-		Severity:    AlertSeverity(check.Status),
-		Title:       fmt.Sprintf("Health Check Alert: %s", check.Name),
-		Message:     check.Message,
-		Component:   check.Name,
-		Timestamp:   time.Now(),
+		ID:           fmt.Sprintf("%s-%d", check.Name, time.Now().Unix()),
+		Type:         AlertTypeHealth,
+		Severity:     AlertSeverity(check.Status),
+		Title:        fmt.Sprintf("Health Check Alert: %s", check.Name),
+		Message:      check.Message,
+		Component:    check.Name,
+		Timestamp:    time.Now(),
 		Acknowledged: false,
 	}
 

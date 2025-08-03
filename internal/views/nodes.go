@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
 	"github.com/jontk/s9s/internal/ui/components"
 	"github.com/jontk/s9s/internal/ui/filters"
+	"github.com/rivo/tview"
 )
 
 // NodesView displays the nodes list with resource utilization
@@ -26,7 +26,7 @@ type NodesView struct {
 	filter         string
 	stateFilter    []string
 	partFilter     string
-	groupBy        string  // "none", "partition", "state", "features"
+	groupBy        string // "none", "partition", "state", "features"
 	groupExpanded  map[string]bool
 	container      *tview.Flex
 	filterInput    *tview.InputField
@@ -418,7 +418,6 @@ func (v *NodesView) createUsageBar(used, total int) string {
 
 	return bar.String()
 }
-
 
 // updateStatusBar updates the status bar
 func (v *NodesView) updateStatusBar(message string) {
@@ -990,15 +989,15 @@ func (v *NodesView) applyAdvancedFilter(nodes []*dao.Node) []*dao.Node {
 // nodeToMap converts a node to a map for filter evaluation
 func (v *NodesView) nodeToMap(node *dao.Node) map[string]interface{} {
 	return map[string]interface{}{
-		"Name":           node.Name,
-		"State":          node.State,
-		"CPUsAllocated":  node.CPUsAllocated,
-		"CPUsTotal":      node.CPUsTotal,
+		"Name":            node.Name,
+		"State":           node.State,
+		"CPUsAllocated":   node.CPUsAllocated,
+		"CPUsTotal":       node.CPUsTotal,
 		"MemoryAllocated": node.MemoryAllocated,
-		"MemoryTotal":    node.MemoryTotal,
-		"Features":       strings.Join(node.Features, ","),
-		"Partitions":     strings.Join(node.Partitions, ","),
-		"Reason":         node.Reason,
+		"MemoryTotal":     node.MemoryTotal,
+		"Features":        strings.Join(node.Features, ","),
+		"Partitions":      strings.Join(node.Partitions, ","),
+		"Reason":          node.Reason,
 	}
 }
 

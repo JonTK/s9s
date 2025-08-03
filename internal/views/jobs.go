@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
 	"github.com/jontk/s9s/internal/ui/components"
 	"github.com/jontk/s9s/internal/ui/filters"
+	"github.com/rivo/tview"
 )
 
 // JobsView displays the jobs list
@@ -729,8 +729,6 @@ func (v *JobsView) showJobOutput() {
 		v.updateStatusBar("")
 	}()
 }
-
-
 
 // performJobSubmission performs the actual job submission
 func (v *JobsView) performJobSubmission(jobSub *dao.JobSubmission) {

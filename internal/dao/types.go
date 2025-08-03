@@ -6,26 +6,26 @@ import (
 
 // Job represents a SLURM job
 type Job struct {
-	ID          string
-	Name        string
-	User        string
-	Account     string
-	Partition   string
-	State       string
-	Priority    float64
-	QOS         string
-	NodeCount   int
-	TimeLimit   string
-	TimeUsed    string
-	SubmitTime  time.Time
-	StartTime   *time.Time
-	EndTime     *time.Time
-	NodeList    string
-	Command     string
-	WorkingDir  string
-	StdOut      string
-	StdErr      string
-	ExitCode    *int
+	ID         string
+	Name       string
+	User       string
+	Account    string
+	Partition  string
+	State      string
+	Priority   float64
+	QOS        string
+	NodeCount  int
+	TimeLimit  string
+	TimeUsed   string
+	SubmitTime time.Time
+	StartTime  *time.Time
+	EndTime    *time.Time
+	NodeList   string
+	Command    string
+	WorkingDir string
+	StdOut     string
+	StdErr     string
+	ExitCode   *int
 }
 
 // JobList represents a list of jobs
@@ -46,30 +46,30 @@ type ListJobsOptions struct {
 
 // JobSubmission represents a job submission request
 type JobSubmission struct {
-	Name           string            `json:"name"`
-	Script         string            `json:"script,omitempty"`
-	Command        string            `json:"command,omitempty"`
-	Partition      string            `json:"partition,omitempty"`
-	Account        string            `json:"account,omitempty"`
-	QoS            string            `json:"qos,omitempty"`
-	Nodes          int               `json:"nodes,omitempty"`
-	CPUs           int               `json:"cpus,omitempty"`          // Simplified from CPUsPerNode
-	CPUsPerNode    int               `json:"cpus_per_node,omitempty"`
-	Memory         string            `json:"memory,omitempty"`
-	GPUs           int               `json:"gpus,omitempty"`
-	TimeLimit      string            `json:"time_limit,omitempty"`
-	WorkingDir     string            `json:"working_directory,omitempty"`
-	OutputFile     string            `json:"output_file,omitempty"`
-	ErrorFile      string            `json:"error_file,omitempty"`
-	StdOut         string            `json:"stdout,omitempty"`
-	StdErr         string            `json:"stderr,omitempty"`
-	EmailNotify    bool              `json:"email_notify,omitempty"`
-	Email          string            `json:"email,omitempty"`
-	Environment    map[string]string `json:"environment,omitempty"`
-	Dependencies   []string          `json:"dependencies,omitempty"`
-	ArraySpec      string            `json:"array,omitempty"`
-	Exclusive      bool              `json:"exclusive,omitempty"`
-	Requeue        bool              `json:"requeue,omitempty"`
+	Name         string            `json:"name"`
+	Script       string            `json:"script,omitempty"`
+	Command      string            `json:"command,omitempty"`
+	Partition    string            `json:"partition,omitempty"`
+	Account      string            `json:"account,omitempty"`
+	QoS          string            `json:"qos,omitempty"`
+	Nodes        int               `json:"nodes,omitempty"`
+	CPUs         int               `json:"cpus,omitempty"` // Simplified from CPUsPerNode
+	CPUsPerNode  int               `json:"cpus_per_node,omitempty"`
+	Memory       string            `json:"memory,omitempty"`
+	GPUs         int               `json:"gpus,omitempty"`
+	TimeLimit    string            `json:"time_limit,omitempty"`
+	WorkingDir   string            `json:"working_directory,omitempty"`
+	OutputFile   string            `json:"output_file,omitempty"`
+	ErrorFile    string            `json:"error_file,omitempty"`
+	StdOut       string            `json:"stdout,omitempty"`
+	StdErr       string            `json:"stderr,omitempty"`
+	EmailNotify  bool              `json:"email_notify,omitempty"`
+	Email        string            `json:"email,omitempty"`
+	Environment  map[string]string `json:"environment,omitempty"`
+	Dependencies []string          `json:"dependencies,omitempty"`
+	ArraySpec    string            `json:"array,omitempty"`
+	Exclusive    bool              `json:"exclusive,omitempty"`
+	Requeue      bool              `json:"requeue,omitempty"`
 }
 
 // JobTemplate represents a predefined job template
@@ -147,51 +147,51 @@ type ReservationList struct {
 
 // QueueInfo represents queue information for a partition
 type QueueInfo struct {
-	Partition    string
-	PendingJobs  int
-	RunningJobs  int
-	TotalJobs    int
-	AverageWait  time.Duration
-	LongestWait  time.Duration
+	Partition   string
+	PendingJobs int
+	RunningJobs int
+	TotalJobs   int
+	AverageWait time.Duration
+	LongestWait time.Duration
 }
 
 // ClusterMetrics represents overall cluster metrics
 type ClusterMetrics struct {
-	TotalJobs       int
-	RunningJobs     int
-	PendingJobs     int
-	TotalNodes      int
-	ActiveNodes     int
-	IdleNodes       int
-	DownNodes       int
-	CPUUsage        float64 // percentage
-	MemoryUsage     float64 // percentage
-	LastUpdated     time.Time
+	TotalJobs   int
+	RunningJobs int
+	PendingJobs int
+	TotalNodes  int
+	ActiveNodes int
+	IdleNodes   int
+	DownNodes   int
+	CPUUsage    float64 // percentage
+	MemoryUsage float64 // percentage
+	LastUpdated time.Time
 }
 
 // JobState constants
 const (
-	JobStatePending    = "PENDING"
-	JobStateRunning    = "RUNNING"
-	JobStateCompleted  = "COMPLETED"
-	JobStateFailed     = "FAILED"
-	JobStateCancelled  = "CANCELLED"
-	JobStateSuspended  = "SUSPENDED"
-	JobStateCompleting = "COMPLETING"
+	JobStatePending     = "PENDING"
+	JobStateRunning     = "RUNNING"
+	JobStateCompleted   = "COMPLETED"
+	JobStateFailed      = "FAILED"
+	JobStateCancelled   = "CANCELLED"
+	JobStateSuspended   = "SUSPENDED"
+	JobStateCompleting  = "COMPLETING"
 	JobStateConfiguring = "CONFIGURING"
-	JobStatePreempted  = "PREEMPTED"
-	JobStateTimeout    = "TIMEOUT"
+	JobStatePreempted   = "PREEMPTED"
+	JobStateTimeout     = "TIMEOUT"
 )
 
 // NodeState constants
 const (
-	NodeStateIdle       = "IDLE"
-	NodeStateAllocated  = "ALLOCATED"
-	NodeStateMixed      = "MIXED"
-	NodeStateDown       = "DOWN"
-	NodeStateDrain      = "DRAIN"
-	NodeStateDraining   = "DRAINING"
-	NodeStateReserved   = "RESERVED"
+	NodeStateIdle        = "IDLE"
+	NodeStateAllocated   = "ALLOCATED"
+	NodeStateMixed       = "MIXED"
+	NodeStateDown        = "DOWN"
+	NodeStateDrain       = "DRAIN"
+	NodeStateDraining    = "DRAINING"
+	NodeStateReserved    = "RESERVED"
 	NodeStateMaintenance = "MAINTENANCE"
 )
 
@@ -279,20 +279,20 @@ func GetPartitionStateColor(state string) string {
 
 // QoS represents a SLURM Quality of Service
 type QoS struct {
-	Name                  string
-	Priority              int
-	PreemptMode           string
-	Flags                 []string
-	GraceTime             int // in minutes
-	MaxJobsPerUser        int
-	MaxJobsPerAccount     int
-	MaxSubmitJobsPerUser  int
-	MaxCPUsPerUser        int
-	MaxNodesPerUser       int
-	MaxWallTime           int   // in minutes
-	MaxMemoryPerUser      int64 // in MB
-	MinCPUs               int
-	MinNodes              int
+	Name                 string
+	Priority             int
+	PreemptMode          string
+	Flags                []string
+	GraceTime            int // in minutes
+	MaxJobsPerUser       int
+	MaxJobsPerAccount    int
+	MaxSubmitJobsPerUser int
+	MaxCPUsPerUser       int
+	MaxNodesPerUser      int
+	MaxWallTime          int   // in minutes
+	MaxMemoryPerUser     int64 // in MB
+	MinCPUs              int
+	MinNodes             int
 }
 
 // QoSList represents a list of QoS entries
@@ -326,17 +326,17 @@ type AccountList struct {
 
 // User represents a SLURM user
 type User struct {
-	Name          string
-	UID           int
+	Name           string
+	UID            int
 	DefaultAccount string
-	Accounts      []string
-	AdminLevel    string
-	DefaultQoS    string
-	QoSList       []string
-	MaxJobs       int
-	MaxNodes      int
-	MaxCPUs       int
-	MaxSubmit     int
+	Accounts       []string
+	AdminLevel     string
+	DefaultQoS     string
+	QoSList        []string
+	MaxJobs        int
+	MaxNodes       int
+	MaxCPUs        int
+	MaxSubmit      int
 }
 
 // UserList represents a list of users

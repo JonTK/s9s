@@ -87,8 +87,8 @@ func (p *FilterParser) Parse(filterStr string) (*Filter, error) {
 		Expressions: []FilterExpression{},
 	}
 
-	// Split by spaces, but respect quotes
-	parts := splitRespectingQuotes(filterStr)
+	// Pre-process for multi-word operators like "in" and "not in"
+	parts := p.smartSplit(filterStr)
 
 	for _, part := range parts {
 		expr, err := p.parseExpression(part)
@@ -103,6 +103,25 @@ func (p *FilterParser) Parse(filterStr string) (*Filter, error) {
 
 // parseExpression parses a single filter expression
 func (p *FilterParser) parseExpression(expr string) (*FilterExpression, error) {
+	// Check for "not in" operator FIRST (longer pattern)
+	if strings.Contains(expr, " not in ") {
+		parts := strings.SplitN(expr, " not in ", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid 'not in' expression")
+		}
+		field := p.normalizeField(strings.TrimSpace(parts[0]))
+		valueList := strings.Trim(parts[1], "()")
+		values := strings.Split(valueList, ",")
+		for i := range values {
+			values[i] = strings.TrimSpace(values[i])
+		}
+		return &FilterExpression{
+			Field:    field,
+			Operator: OpNotIn,
+			Value:    values,
+		}, nil
+	}
+
 	// Check for "in" operator
 	if strings.Contains(expr, " in ") {
 		parts := strings.SplitN(expr, " in ", 2)
@@ -118,25 +137,6 @@ func (p *FilterParser) parseExpression(expr string) (*FilterExpression, error) {
 		return &FilterExpression{
 			Field:    field,
 			Operator: OpIn,
-			Value:    values,
-		}, nil
-	}
-
-	// Check for "not in" operator
-	if strings.Contains(expr, " not in ") {
-		parts := strings.SplitN(expr, " not in ", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid 'not in' expression")
-		}
-		field := p.normalizeField(strings.TrimSpace(parts[0]))
-		valueList := strings.Trim(parts[1], "()")
-		values := strings.Split(valueList, ",")
-		for i := range values {
-			values[i] = strings.TrimSpace(values[i])
-		}
-		return &FilterExpression{
-			Field:    field,
-			Operator: OpNotIn,
 			Value:    values,
 		}, nil
 	}
@@ -341,7 +341,7 @@ func toFloat64(v interface{}) (float64, bool) {
 }
 
 // splitRespectingQuotes splits a string by spaces while respecting quotes
-func splitRespectingQuotes(s string) []string {
+func SplitRespectingQuotes(s string) []string {
 	var result []string
 	var current strings.Builder
 	inQuotes := false
@@ -370,4 +370,25 @@ func splitRespectingQuotes(s string) []string {
 	}
 
 	return result
+}
+
+// smartSplit splits filter string while respecting multi-word operators like "in" and "not in"
+func (p *FilterParser) smartSplit(s string) []string {
+	// Pre-process to handle multi-word operators
+	// Replace " not in " with a placeholder first (longer match) - no spaces in placeholder
+	s = strings.ReplaceAll(s, " not in ", "__NOT_IN__")
+	// Replace " in " with a placeholder (but not the ones already replaced) - no spaces in placeholder
+	s = strings.ReplaceAll(s, " in ", "__IN__")
+	
+	// Now split normally
+	parts := SplitRespectingQuotes(s)
+	
+	// Post-process to restore operators
+	for i, part := range parts {
+		part = strings.ReplaceAll(part, "__NOT_IN__", " not in ")
+		part = strings.ReplaceAll(part, "__IN__", " in ")
+		parts[i] = part
+	}
+	
+	return parts
 }

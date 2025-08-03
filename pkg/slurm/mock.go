@@ -160,16 +160,48 @@ func (m *MockClient) populateSampleData() {
 		}
 
 		m.nodes[fmt.Sprintf("node%03d", i)] = &dao.Node{
-			Name:            fmt.Sprintf("node%03d", i),
-			State:           state,
-			Partitions:      []string{"compute"},
-			CPUsTotal:       32,
-			CPUsAllocated:   func() int { if state == dao.NodeStateAllocated { return 32 } else if state == dao.NodeStateMixed { return 16 } else { return 0 } }(),
-			CPUsIdle:        func() int { if state == dao.NodeStateIdle { return 32 } else if state == dao.NodeStateMixed { return 16 } else { return 0 } }(),
-			MemoryTotal:     128 * 1024, // 128GB
-			MemoryAllocated: func() int64 { if state == dao.NodeStateAllocated { return 128 * 1024 } else if state == dao.NodeStateMixed { return 64 * 1024 } else { return 0 } }(),
-			MemoryFree:      func() int64 { if state == dao.NodeStateIdle { return 128 * 1024 } else if state == dao.NodeStateMixed { return 64 * 1024 } else { return 0 } }(),
-			Features:        []string{"avx2", "sse4.2"},
+			Name:       fmt.Sprintf("node%03d", i),
+			State:      state,
+			Partitions: []string{"compute"},
+			CPUsTotal:  32,
+			CPUsAllocated: func() int {
+				if state == dao.NodeStateAllocated {
+					return 32
+				} else if state == dao.NodeStateMixed {
+					return 16
+				} else {
+					return 0
+				}
+			}(),
+			CPUsIdle: func() int {
+				if state == dao.NodeStateIdle {
+					return 32
+				} else if state == dao.NodeStateMixed {
+					return 16
+				} else {
+					return 0
+				}
+			}(),
+			MemoryTotal: 128 * 1024, // 128GB
+			MemoryAllocated: func() int64 {
+				if state == dao.NodeStateAllocated {
+					return 128 * 1024
+				} else if state == dao.NodeStateMixed {
+					return 64 * 1024
+				} else {
+					return 0
+				}
+			}(),
+			MemoryFree: func() int64 {
+				if state == dao.NodeStateIdle {
+					return 128 * 1024
+				} else if state == dao.NodeStateMixed {
+					return 64 * 1024
+				} else {
+					return 0
+				}
+			}(),
+			Features: []string{"avx2", "sse4.2"},
 		}
 	}
 
@@ -210,7 +242,7 @@ func (m *MockClient) populateSampleData() {
 		state := jobStates[rand.Intn(len(jobStates))]
 		user := users[rand.Intn(len(users))]
 		account := accounts[rand.Intn(len(accounts))]
-		
+
 		job := &dao.Job{
 			ID:         fmt.Sprintf("%d", 1000+i),
 			Name:       fmt.Sprintf("job_%s_%d", user, i),
@@ -889,7 +921,7 @@ func (m *mockInfoManager) GetStats() (*dao.ClusterMetrics, error) {
 	totalJobs := len(m.client.jobs)
 	runningJobs := 0
 	pendingJobs := 0
-	
+
 	for _, job := range m.client.jobs {
 		switch job.State {
 		case dao.JobStateRunning:

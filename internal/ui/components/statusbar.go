@@ -68,7 +68,7 @@ func (s *StatusBar) ClearMessage() {
 func (s *StatusBar) Flash(message string, color tcell.Color, duration time.Duration) {
 	s.flashColor = color
 	s.SetMessage(message, duration)
-	
+
 	// Reset flash color after duration
 	go func() {
 		time.Sleep(duration)

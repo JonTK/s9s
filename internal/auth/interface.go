@@ -10,13 +10,13 @@ import (
 type AuthProvider interface {
 	// Authenticate performs authentication and returns a token
 	Authenticate(ctx context.Context, username, password string) (*Token, error)
-	
+
 	// RefreshToken refreshes an existing token
 	RefreshToken(ctx context.Context, token *Token) (*Token, error)
-	
+
 	// ValidateToken validates if a token is still valid
 	ValidateToken(ctx context.Context, token *Token) error
-	
+
 	// Logout invalidates a token
 	Logout(ctx context.Context, token *Token) error
 }
@@ -41,7 +41,7 @@ func (s *SlurmAuthProvider) Authenticate(ctx context.Context, username, password
 	// 1. Make an HTTP POST request to the SLURM REST API auth endpoint
 	// 2. Parse the response to extract the JWT token
 	// 3. Create and return a Token object
-	
+
 	// For now, create a mock token
 	return CreateToken(username, s.baseURL, DefaultTokenExpiry)
 }
@@ -58,7 +58,7 @@ func (s *SlurmAuthProvider) ValidateToken(ctx context.Context, token *Token) err
 	if token.IsExpired() {
 		return ErrTokenExpired
 	}
-	
+
 	// In a real implementation, this would make a request to validate the token
 	// For now, just check JWT validity
 	_, err := ValidateJWT(token.Value)

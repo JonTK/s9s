@@ -19,16 +19,16 @@ type Column struct {
 
 // TableConfig holds table configuration
 type TableConfig struct {
-	Columns        []Column
-	Selectable     bool
-	Scrollable     bool
-	FixedRows      int // Number of header rows
-	ShowHeader     bool
-	BorderColor    tcell.Color
-	SelectedColor  tcell.Color
-	HeaderColor    tcell.Color
-	EvenRowColor   tcell.Color
-	OddRowColor    tcell.Color
+	Columns       []Column
+	Selectable    bool
+	Scrollable    bool
+	FixedRows     int // Number of header rows
+	ShowHeader    bool
+	BorderColor   tcell.Color
+	SelectedColor tcell.Color
+	HeaderColor   tcell.Color
+	EvenRowColor  tcell.Color
+	OddRowColor   tcell.Color
 }
 
 // DefaultTableConfig returns default table configuration
@@ -228,7 +228,7 @@ func (t *Table) refresh() {
 	// Add data rows
 	for rowIdx, rowData := range t.filteredData {
 		displayRow := rowIdx + t.config.FixedRows
-		
+
 		for colIdx, cellData := range rowData {
 			if colIdx >= len(t.config.Columns) || t.config.Columns[colIdx].Hidden {
 				continue

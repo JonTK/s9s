@@ -13,31 +13,31 @@ type ErrorType string
 const (
 	// ErrorTypeUnknown is for unknown errors
 	ErrorTypeUnknown ErrorType = "unknown"
-	
+
 	// ErrorTypeValidation is for validation errors
 	ErrorTypeValidation ErrorType = "validation"
-	
+
 	// ErrorTypeNotFound is for resource not found errors
 	ErrorTypeNotFound ErrorType = "not_found"
-	
+
 	// ErrorTypeConflict is for conflict errors
 	ErrorTypeConflict ErrorType = "conflict"
-	
+
 	// ErrorTypeInternal is for internal server errors
 	ErrorTypeInternal ErrorType = "internal"
-	
+
 	// ErrorTypeTimeout is for timeout errors
 	ErrorTypeTimeout ErrorType = "timeout"
-	
+
 	// ErrorTypeAuthentication is for authentication errors
 	ErrorTypeAuthentication ErrorType = "authentication"
-	
+
 	// ErrorTypeAuthorization is for authorization errors
 	ErrorTypeAuthorization ErrorType = "authorization"
-	
+
 	// ErrorTypeNetwork is for network-related errors
 	ErrorTypeNetwork ErrorType = "network"
-	
+
 	// ErrorTypeConfiguration is for configuration errors
 	ErrorTypeConfiguration ErrorType = "configuration"
 )
@@ -76,12 +76,12 @@ func (e *S9sError) Is(target error) bool {
 	if target == nil {
 		return false
 	}
-	
+
 	var targetErr *S9sError
 	if errors.As(target, &targetErr) {
 		return e.Type == targetErr.Type
 	}
-	
+
 	return errors.Is(e.Cause, target)
 }
 
@@ -117,7 +117,7 @@ func Wrap(err error, errType ErrorType, message string) *S9sError {
 	if err == nil {
 		return nil
 	}
-	
+
 	// If already a S9sError, preserve the original stack
 	var s9sErr *S9sError
 	if errors.As(err, &s9sErr) {
@@ -129,7 +129,7 @@ func Wrap(err error, errType ErrorType, message string) *S9sError {
 			Stack:   s9sErr.Stack,
 		}
 	}
-	
+
 	return &S9sError{
 		Type:    errType,
 		Message: message,
@@ -143,44 +143,44 @@ func Wrapf(err error, errType ErrorType, format string, args ...interface{}) *S9
 	if err == nil {
 		return nil
 	}
-	
+
 	return Wrap(err, errType, fmt.Sprintf(format, args...))
 }
 
 // captureStack captures the current call stack
 func captureStack(skip int) []StackFrame {
 	var frames []StackFrame
-	
+
 	for i := skip; ; i++ {
 		pc, file, line, ok := runtime.Caller(i)
 		if !ok {
 			break
 		}
-		
+
 		fn := runtime.FuncForPC(pc)
 		if fn == nil {
 			continue
 		}
-		
+
 		// Skip runtime and testing functions
 		fnName := fn.Name()
-		if strings.Contains(fnName, "runtime.") || 
-		   strings.Contains(fnName, "testing.") {
+		if strings.Contains(fnName, "runtime.") ||
+			strings.Contains(fnName, "testing.") {
 			continue
 		}
-		
+
 		frames = append(frames, StackFrame{
 			Function: fnName,
 			File:     file,
 			Line:     line,
 		})
-		
+
 		// Limit stack depth
 		if len(frames) >= 10 {
 			break
 		}
 	}
-	
+
 	return frames
 }
 

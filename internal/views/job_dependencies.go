@@ -5,16 +5,16 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/rivo/tview"
 )
 
 // JobDependency represents a job dependency relationship
 type JobDependency struct {
-	JobID      string
-	DependsOn  []string
-	Type       string // "afterok", "afternotok", "afterany", "after"
-	Status     string // "waiting", "satisfied", "failed"
+	JobID     string
+	DependsOn []string
+	Type      string // "afterok", "afternotok", "afterany", "after"
+	Status    string // "waiting", "satisfied", "failed"
 }
 
 // showJobDependencies shows job dependency visualization
@@ -254,11 +254,11 @@ func (v *JobsView) showAddDependencyForm(jobID string) {
 			v.pages.RemovePage("job-dependencies") // Close parent dialog too
 		}
 	}).
-	AddButton("Cancel", func() {
-		if v.pages != nil {
-			v.pages.RemovePage("add-dependency")
-		}
-	})
+		AddButton("Cancel", func() {
+			if v.pages != nil {
+				v.pages.RemovePage("add-dependency")
+			}
+		})
 
 	depForm.SetBorder(true).
 		SetTitle(fmt.Sprintf(" Add Dependency to Job %s ", jobID)).

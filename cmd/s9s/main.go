@@ -73,7 +73,7 @@ func main() {
 	select {
 	case sig := <-sigChan:
 		log.Printf("Received signal: %v. Starting graceful shutdown...", sig)
-		
+
 		// Create shutdown context with timeout
 		_, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()

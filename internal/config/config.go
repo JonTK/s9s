@@ -11,18 +11,18 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	RefreshRate    string                    `mapstructure:"refreshRate"`
-	MaxRetries     int                       `mapstructure:"maxRetries"`
-	CurrentContext string                    `mapstructure:"currentContext"`
-	Contexts       []ContextConfig           `mapstructure:"contexts"`
-	UI             UIConfig                  `mapstructure:"ui"`
-	Views          ViewsConfig               `mapstructure:"views"`
-	Features       FeaturesConfig            `mapstructure:"features"`
-	Shortcuts      []ShortcutConfig          `mapstructure:"shortcuts"`
-	Aliases        map[string]string         `mapstructure:"aliases"`
-	Plugins        []PluginConfig            `mapstructure:"plugins"`
-	UseMockClient  bool                      `mapstructure:"useMockClient"`
-	
+	RefreshRate    string            `mapstructure:"refreshRate"`
+	MaxRetries     int               `mapstructure:"maxRetries"`
+	CurrentContext string            `mapstructure:"currentContext"`
+	Contexts       []ContextConfig   `mapstructure:"contexts"`
+	UI             UIConfig          `mapstructure:"ui"`
+	Views          ViewsConfig       `mapstructure:"views"`
+	Features       FeaturesConfig    `mapstructure:"features"`
+	Shortcuts      []ShortcutConfig  `mapstructure:"shortcuts"`
+	Aliases        map[string]string `mapstructure:"aliases"`
+	Plugins        []PluginConfig    `mapstructure:"plugins"`
+	UseMockClient  bool              `mapstructure:"useMockClient"`
+
 	// Computed fields
 	Cluster ClusterConfig `mapstructure:"-"`
 }
@@ -112,11 +112,11 @@ func Load() (*Config, error) {
 // LoadWithPath reads configuration from a specific file path
 func LoadWithPath(configPath string) (*Config, error) {
 	v := viper.New()
-	
+
 	// Set config file details
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	
+
 	// Config search paths
 	if configPath != "" {
 		v.SetConfigFile(configPath)
@@ -125,15 +125,15 @@ func LoadWithPath(configPath string) (*Config, error) {
 		v.AddConfigPath("$HOME/.s9s")
 		v.AddConfigPath("/etc/s9s")
 	}
-	
+
 	// Environment variable support
 	v.SetEnvPrefix("S9S")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-	
+
 	// Set defaults
 	setDefaults(v)
-	
+
 	// Read config file if exists
 	if err := v.ReadInConfig(); err != nil {
 		// If config file not found, use defaults and environment
@@ -141,27 +141,27 @@ func LoadWithPath(configPath string) (*Config, error) {
 			return nil, fmt.Errorf("reading config: %w", err)
 		}
 	}
-	
+
 	// Create config struct
 	cfg := &Config{}
-	
+
 	// Unmarshal configuration
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
 	}
-	
+
 	// Override with environment variables
 	applyEnvironmentOverrides(cfg)
-	
+
 	// Set the current cluster based on context
 	if err := cfg.setCurrentCluster(); err != nil {
 		return nil, err
 	}
-	
+
 	// Ensure config directory exists
 	configDir := filepath.Join(os.Getenv("HOME"), ".s9s")
 	os.MkdirAll(configDir, 0755)
-	
+
 	return cfg, nil
 }
 
@@ -172,7 +172,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("maxRetries", 3)
 	v.SetDefault("currentContext", "default")
 	v.SetDefault("useMockClient", true)
-	
+
 	// UI defaults
 	v.SetDefault("ui.skin", "default")
 	v.SetDefault("ui.enableMouse", true)
@@ -181,25 +181,25 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ui.statusless", false)
 	v.SetDefault("ui.headless", false)
 	v.SetDefault("ui.noIcons", false)
-	
+
 	// Views defaults
 	v.SetDefault("views.jobs.columns", []string{"id", "name", "user", "state", "time", "nodes", "priority"})
 	v.SetDefault("views.jobs.showOnlyActive", true)
 	v.SetDefault("views.jobs.defaultSort", "time")
 	v.SetDefault("views.jobs.maxJobs", 1000)
-	
+
 	v.SetDefault("views.nodes.groupBy", "partition")
 	v.SetDefault("views.nodes.showUtilization", true)
 	v.SetDefault("views.nodes.maxNodes", 500)
-	
+
 	v.SetDefault("views.partitions.showQueueDepth", true)
 	v.SetDefault("views.partitions.showWaitTime", true)
-	
+
 	// Features defaults
 	v.SetDefault("features.streaming", true)
 	v.SetDefault("features.pulseye", true)
 	v.SetDefault("features.xray", false)
-	
+
 	// Default aliases
 	v.SetDefault("aliases", map[string]string{
 		"ctx": "context",
@@ -234,7 +234,7 @@ func (c *Config) setCurrentCluster() error {
 	if c.CurrentContext == "" {
 		c.CurrentContext = "default"
 	}
-	
+
 	// Find the current context
 	for _, ctx := range c.Contexts {
 		if ctx.Name == c.CurrentContext {
@@ -242,7 +242,7 @@ func (c *Config) setCurrentCluster() error {
 			return nil
 		}
 	}
-	
+
 	// If no context found but we have environment variables, use them
 	if endpoint := os.Getenv("SLURM_REST_URL"); endpoint != "" {
 		c.Cluster = ClusterConfig{
@@ -253,7 +253,7 @@ func (c *Config) setCurrentCluster() error {
 		}
 		return nil
 	}
-	
+
 	return fmt.Errorf("context %q not found", c.CurrentContext)
 }
 
@@ -270,7 +270,7 @@ func (c *Config) GetContext(name string) (*ContextConfig, error) {
 // SaveToFile saves the configuration to a file
 func (c *Config) SaveToFile(path string) error {
 	v := viper.New()
-	
+
 	// Set all values from the config struct
 	v.Set("refreshRate", c.RefreshRate)
 	v.Set("maxRetries", c.MaxRetries)
@@ -282,7 +282,7 @@ func (c *Config) SaveToFile(path string) error {
 	v.Set("shortcuts", c.Shortcuts)
 	v.Set("aliases", c.Aliases)
 	v.Set("plugins", c.Plugins)
-	
+
 	// Write to file
 	return v.WriteConfigAs(path)
 }

@@ -41,28 +41,28 @@ const (
 type Config struct {
 	// Level is the minimum log level
 	Level Level
-	
+
 	// Console enables console output
 	Console bool
-	
+
 	// ConsoleJSON enables JSON format for console output
 	ConsoleJSON bool
-	
+
 	// File enables file output
 	File bool
-	
+
 	// Filename is the file to write logs to
 	Filename string
-	
+
 	// MaxSize is the maximum size in megabytes of the log file
 	MaxSize int
-	
+
 	// MaxBackups is the maximum number of old log files to retain
 	MaxBackups int
-	
+
 	// MaxAge is the maximum number of days to retain old log files
 	MaxAge int
-	
+
 	// Compress determines if the rotated log files should be compressed
 	Compress bool
 }
@@ -92,7 +92,7 @@ type Logger struct {
 func Init(config *Config) {
 	once.Do(func() {
 		logger = newLogger(config)
-		
+
 		// Set global logger
 		log.Logger = *logger.Logger
 	})
@@ -153,7 +153,7 @@ func newLogger(config *Config) *Logger {
 
 	// Create logger
 	zl := zerolog.New(writer).With().Timestamp().Logger()
-	
+
 	// Set log level
 	zl = zl.Level(convertLevel(config.Level))
 

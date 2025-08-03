@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/rivo/tview"
 )
 
 // Header displays cluster status and navigation information
@@ -18,14 +18,15 @@ type Header struct {
 	views         []string
 	lastUpdate    time.Time
 	refreshTicker *time.Ticker
+	alertsBadge   *AlertsBadge
 }
 
 // NewHeader creates a new header component
 func NewHeader() *Header {
 	h := &Header{
-		TextView:    tview.NewTextView(),
-		views:       []string{},
-		lastUpdate:  time.Now(),
+		TextView:   tview.NewTextView(),
+		views:      []string{},
+		lastUpdate: time.Now(),
 	}
 
 	h.TextView.
@@ -64,6 +65,12 @@ func (h *Header) SetViews(views []string) {
 	h.updateDisplay()
 }
 
+// SetAlertsBadge sets the alerts badge for display in the header
+func (h *Header) SetAlertsBadge(badge *AlertsBadge) {
+	h.alertsBadge = badge
+	h.updateDisplay()
+}
+
 // Stop stops the header update ticker
 func (h *Header) Stop() {
 	if h.refreshTicker != nil {
@@ -84,15 +91,25 @@ func (h *Header) updateDisplay() {
 
 	// First line: S9S title and cluster info
 	content.WriteString("[white::b]S9S - SLURM Terminal UI[white::-]")
-	
+
 	if h.clusterInfo != nil {
-		content.WriteString(fmt.Sprintf(" | [cyan]%s[white] (%s)", 
+		content.WriteString(fmt.Sprintf(" | [cyan]%s[white] (%s)",
 			h.clusterInfo.Name, h.clusterInfo.Version))
 	}
 
 	// Add current time
 	now := time.Now()
 	content.WriteString(fmt.Sprintf(" | %s", now.Format("15:04:05")))
+	
+	// Add alerts badge if available
+	if h.alertsBadge != nil {
+		h.alertsBadge.update()
+		badgeText := h.alertsBadge.text.GetText(true)
+		if badgeText != "" {
+			content.WriteString(" | ")
+			content.WriteString(badgeText)
+		}
+	}
 
 	content.WriteString("\n")
 
@@ -103,7 +120,7 @@ func (h *Header) updateDisplay() {
 			if i > 0 {
 				content.WriteString(" | ")
 			}
-			
+
 			if view == h.currentView {
 				content.WriteString(fmt.Sprintf("[black:yellow] %s [white:-:-]", strings.ToUpper(view)))
 			} else {
@@ -134,20 +151,20 @@ func (h *Header) updateDisplay() {
 // formatMetrics formats cluster metrics for display
 func (h *Header) formatMetrics() string {
 	m := h.metrics
-	
+
 	// Job statistics
-	jobStats := fmt.Sprintf("[green]%d R[white]/[yellow]%d P[white]/[cyan]%d T[white]", 
+	jobStats := fmt.Sprintf("[green]%d R[white]/[yellow]%d P[white]/[cyan]%d T[white]",
 		m.RunningJobs, m.PendingJobs, m.TotalJobs)
 
 	// Node statistics
-	nodeStats := fmt.Sprintf("[green]%d A[white]/[blue]%d I[white]/[red]%d D[white]/[gray]%d T[white]", 
+	nodeStats := fmt.Sprintf("[green]%d A[white]/[blue]%d I[white]/[red]%d D[white]/[gray]%d T[white]",
 		m.ActiveNodes, m.IdleNodes, m.DownNodes, m.TotalNodes)
 
 	// Resource utilization
 	cpuBar := createMiniBar(m.CPUUsage)
 	memBar := createMiniBar(m.MemoryUsage)
-	
-	return fmt.Sprintf("Jobs: %s | Nodes: %s | CPU: %s %.1f%% | Mem: %s %.1f%%", 
+
+	return fmt.Sprintf("Jobs: %s | Nodes: %s | CPU: %s %.1f%% | Mem: %s %.1f%%",
 		jobStats, nodeStats, cpuBar, m.CPUUsage, memBar, m.MemoryUsage)
 }
 
@@ -167,16 +184,16 @@ func createMiniBar(percentage float64) string {
 
 	var bar strings.Builder
 	bar.WriteString(fmt.Sprintf("[%s]", color))
-	
+
 	for i := 0; i < filled; i++ {
 		bar.WriteString("▰")
 	}
-	
+
 	bar.WriteString("[gray]")
 	for i := filled; i < barLength; i++ {
 		bar.WriteString("▱")
 	}
-	
+
 	bar.WriteString("[white]")
 	return bar.String()
 }

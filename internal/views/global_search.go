@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/rivo/tview"
 )
 
 // SearchResult represents a single search result

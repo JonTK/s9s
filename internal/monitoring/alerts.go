@@ -10,12 +10,12 @@ import (
 type AlertType string
 
 const (
-	AlertTypeHealth     AlertType = "health"
+	AlertTypeHealth      AlertType = "health"
 	AlertTypePerformance AlertType = "performance"
-	AlertTypeResource   AlertType = "resource"
-	AlertTypeJob        AlertType = "job"
-	AlertTypeNode       AlertType = "node"
-	AlertTypeSystem     AlertType = "system"
+	AlertTypeResource    AlertType = "resource"
+	AlertTypeJob         AlertType = "job"
+	AlertTypeNode        AlertType = "node"
+	AlertTypeSystem      AlertType = "system"
 )
 
 // AlertSeverity represents the severity level of an alert
@@ -61,14 +61,14 @@ type AlertListener interface {
 
 // AlertStats provides statistics about alerts
 type AlertStats struct {
-	Total         int
-	Critical      int
-	Warning       int
-	Info          int
-	Acknowledged  int
+	Total          int
+	Critical       int
+	Warning        int
+	Info           int
+	Acknowledged   int
 	Unacknowledged int
-	Active        int
-	Resolved      int
+	Active         int
+	Resolved       int
 }
 
 // NewAlertManager creates a new alert manager
