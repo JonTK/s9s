@@ -44,6 +44,7 @@ type JobsView struct {
 	selectionStatusText *tview.TextView
 	loadingManager      *components.LoadingManager
 	loadingWrapper      *components.LoadingWrapper
+	mainStatusBar       *components.StatusBar  // Reference to main app status bar
 }
 
 // SetPages sets the pages reference for modal handling
@@ -86,6 +87,11 @@ func (v *JobsView) SetApp(app *tview.Application) {
 
 	// Create batch operations view
 	v.batchOpsView = NewBatchOperationsView(v.client, app)
+}
+
+// SetStatusBar sets the main status bar reference
+func (v *JobsView) SetStatusBar(statusBar *components.StatusBar) {
+	v.mainStatusBar = statusBar
 }
 
 // NewJobsView creates a new jobs view
@@ -562,7 +568,9 @@ func (v *JobsView) cancelSelectedJob() {
 
 	// Check if job can be cancelled
 	if !strings.Contains(state, dao.JobStateRunning) && !strings.Contains(state, dao.JobStatePending) {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Warning(fmt.Sprintf("Job %s is not in a cancellable state (current: %s)", jobID, state))
+		}
 		return
 	}
 
@@ -591,15 +599,21 @@ func (v *JobsView) cancelSelectedJob() {
 
 // performCancelJob performs the job cancel operation
 func (v *JobsView) performCancelJob(jobID string) {
-	// Note: Status bar update removed since individual view status bars are no longer used
+	if v.mainStatusBar != nil {
+		v.mainStatusBar.Info(fmt.Sprintf("Cancelling job %s...", jobID))
+	}
 
 	err := v.client.Jobs().Cancel(jobID)
 	if err != nil {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Error(fmt.Sprintf("Failed to cancel job %s: %v", jobID, err))
+		}
 		return
 	}
 
-	// Note: Status bar update removed since individual view status bars are no longer used
+	if v.mainStatusBar != nil {
+		v.mainStatusBar.Success(fmt.Sprintf("Job %s cancelled", jobID))
+	}
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
@@ -618,20 +632,28 @@ func (v *JobsView) holdSelectedJob() {
 
 	// Check if job can be held
 	if !strings.Contains(state, dao.JobStatePending) {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Warning(fmt.Sprintf("Job %s is not in a holdable state (current: %s)", jobID, state))
+		}
 		return
 	}
 
 	go func() {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Info(fmt.Sprintf("Holding job %s...", jobID))
+		}
 
 		err := v.client.Jobs().Hold(jobID)
 		if err != nil {
-			// Note: Status bar update removed since individual view status bars are no longer used
+			if v.mainStatusBar != nil {
+				v.mainStatusBar.Error(fmt.Sprintf("Failed to hold job %s: %v", jobID, err))
+			}
 			return
 		}
 
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Success(fmt.Sprintf("Job %s held", jobID))
+		}
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
@@ -651,20 +673,28 @@ func (v *JobsView) releaseSelectedJob() {
 
 	// Check if job can be released
 	if !strings.Contains(state, dao.JobStateSuspended) {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Warning(fmt.Sprintf("Job %s is not in a suspended state (current: %s)", jobID, state))
+		}
 		return
 	}
 
 	go func() {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Info(fmt.Sprintf("Releasing job %s...", jobID))
+		}
 
 		err := v.client.Jobs().Release(jobID)
 		if err != nil {
-			// Note: Status bar update removed since individual view status bars are no longer used
+			if v.mainStatusBar != nil {
+				v.mainStatusBar.Error(fmt.Sprintf("Failed to release job %s: %v", jobID, err))
+			}
 			return
 		}
 
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Success(fmt.Sprintf("Job %s released", jobID))
+		}
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
@@ -786,6 +816,9 @@ func (v *JobsView) formatJobDetails(job *dao.Job) string {
 func (v *JobsView) showJobOutput() {
 	data := v.table.GetSelectedData()
 	if data == nil || len(data) == 0 {
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Warning("No job selected")
+		}
 		return
 	}
 
@@ -828,7 +861,9 @@ func (v *JobsView) requeueSelectedJob() {
 
 	// Check if job can be requeued (usually completed or failed jobs)
 	if !strings.Contains(state, dao.JobStateCompleted) && !strings.Contains(state, dao.JobStateFailed) && !strings.Contains(state, dao.JobStateCancelled) {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Warning(fmt.Sprintf("Job %s is not in a requeueable state (current: %s)", jobID, state))
+		}
 		return
 	}
 
@@ -857,15 +892,21 @@ func (v *JobsView) requeueSelectedJob() {
 
 // performRequeueJob performs job requeue operation
 func (v *JobsView) performRequeueJob(jobID string) {
-	// Note: Status bar update removed since individual view status bars are no longer used
+	if v.mainStatusBar != nil {
+		v.mainStatusBar.Info(fmt.Sprintf("Requeuing job %s...", jobID))
+	}
 
-	_, err := v.client.Jobs().Requeue(jobID) // newJob no longer used for status updates
+	newJob, err := v.client.Jobs().Requeue(jobID)
 	if err != nil {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		if v.mainStatusBar != nil {
+			v.mainStatusBar.Error(fmt.Sprintf("Failed to requeue job %s: %v", jobID, err))
+		}
 		return
 	}
 
-	// Note: Status bar update removed since individual view status bars are no longer used
+	if v.mainStatusBar != nil {
+		v.mainStatusBar.Success(fmt.Sprintf("Job %s requeued as job %s", jobID, newJob.ID))
+	}
 
 	// Refresh the view to show the new job
 	time.Sleep(500 * time.Millisecond)
