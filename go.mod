@@ -8,7 +8,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/jontk/slurm-client v0.0.0-00010101000000-000000000000
+	github.com/jontk/slurm-client v0.0.0-20250804235548-07c249ed6c1f
 	github.com/rivo/tview v0.0.0-20250625164341-a4a78f1e05cb
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.20.1

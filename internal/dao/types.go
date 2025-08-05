@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"strings"
 	"time"
 )
 
@@ -225,20 +226,26 @@ func GetJobStateColor(state string) string {
 
 // GetNodeStateColor returns the color for a node state
 func GetNodeStateColor(state string) string {
-	switch state {
-	case NodeStateIdle:
-		return "green"
-	case NodeStateAllocated, NodeStateMixed:
-		return "blue"
-	case NodeStateDown, NodeStateDrain, NodeStateDraining:
+	// Handle compound states like "IDLE+DRAIN" - prioritize DRAIN over IDLE
+	if strings.Contains(state, NodeStateDrain) || strings.Contains(state, NodeStateDraining) {
 		return "red"
-	case NodeStateReserved:
-		return "yellow"
-	case NodeStateMaintenance:
-		return "orange"
-	default:
-		return "white"
 	}
+	if strings.Contains(state, NodeStateDown) {
+		return "red"
+	}
+	if strings.Contains(state, NodeStateReserved) {
+		return "yellow"
+	}
+	if strings.Contains(state, NodeStateMaintenance) {
+		return "orange"
+	}
+	if strings.Contains(state, NodeStateAllocated) || strings.Contains(state, NodeStateMixed) {
+		return "blue"
+	}
+	if strings.Contains(state, NodeStateIdle) {
+		return "green"
+	}
+	return "white"
 }
 
 // IsJobActive returns true if the job is in an active state

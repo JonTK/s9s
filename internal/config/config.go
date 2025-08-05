@@ -221,7 +221,7 @@ func applyEnvironmentOverrides(cfg *Config) {
 				Cluster: ClusterConfig{
 					Endpoint:   endpoint,
 					Token:      os.Getenv("SLURM_JWT"),
-					APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.40"),
+					APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.43"),
 				},
 			})
 			cfg.CurrentContext = "default"
@@ -248,7 +248,7 @@ func (c *Config) setCurrentCluster() error {
 		c.Cluster = ClusterConfig{
 			Endpoint:   endpoint,
 			Token:      os.Getenv("SLURM_JWT"),
-			APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.40"),
+			APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.43"),
 			Timeout:    getEnvOrDefault("SLURM_TIMEOUT", "30s"),
 		}
 		return nil

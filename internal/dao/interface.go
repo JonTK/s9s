@@ -62,6 +62,9 @@ type JobManager interface {
 
 	// GetOutput returns the output of a completed job
 	GetOutput(id string) (string, error)
+
+	// Notify sends a message to a running job
+	Notify(id string, message string) error
 }
 
 // NodeManager provides operations for managing SLURM nodes

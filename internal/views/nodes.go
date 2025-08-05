@@ -9,6 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jontk/s9s/internal/dao"
+	"github.com/jontk/s9s/internal/debug"
 	"github.com/jontk/s9s/internal/ssh"
 	"github.com/jontk/s9s/internal/ui/components"
 	"github.com/jontk/s9s/internal/ui/filters"
@@ -352,8 +353,15 @@ func (v *NodesView) updateTableGrouped() {
 
 // formatNodeRow formats a single node row
 func (v *NodesView) formatNodeRow(node *dao.Node) []string {
-	stateColor := dao.GetNodeStateColor(node.State)
-	coloredState := fmt.Sprintf("[%s]%s[white]", stateColor, node.State)
+	// Check if node is actually drained (has a reason) even if state only shows IDLE
+	displayState := node.State
+	isDrainedByReason := node.Reason != "" && node.Reason != "Not responding"
+
+	if node.State == "IDLE" && isDrainedByReason {
+		displayState = "IDLE+DRAIN"
+	}
+	stateColor := dao.GetNodeStateColor(displayState)
+	coloredState := fmt.Sprintf("[%s]%s[white]", stateColor, displayState)
 
 	// CPU usage bar
 	cpuUsage := v.createUsageBar(node.CPUsAllocated, node.CPUsTotal)
@@ -531,8 +539,10 @@ func (v *NodesView) onFilterDone(key tcell.Key) {
 
 // drainSelectedNode drains the selected node
 func (v *NodesView) drainSelectedNode() {
+	debug.Logger.Printf("drainSelectedNode() called")
 	data := v.table.GetSelectedData()
 	if data == nil || len(data) == 0 {
+		debug.Logger.Printf("drainSelectedNode() - no data selected")
 		return
 	}
 
@@ -570,15 +580,33 @@ func (v *NodesView) drainSelectedNode() {
 
 // performDrainNode performs the node drain operation
 func (v *NodesView) performDrainNode(nodeName, reason string) {
-	// Note: Status bar update removed since individual view status bars are no longer used
-
 	err := v.client.Nodes().Drain(nodeName, reason)
 	if err != nil {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		// Show error modal
+		if v.pages != nil {
+			errorModal := tview.NewModal().
+				SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					v.pages.RemovePage("error")
+					v.app.SetFocus(v.table.Table)
+				})
+			v.pages.AddPage("error", errorModal, true, true)
+		}
 		return
 	}
 
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Show success message
+	if v.pages != nil {
+		successModal := tview.NewModal().
+			SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
+			AddButtons([]string{"OK"}).
+			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				v.pages.RemovePage("success")
+				v.app.SetFocus(v.table.Table)
+			})
+		v.pages.AddPage("success", successModal, true, true)
+	}
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
@@ -587,17 +615,57 @@ func (v *NodesView) performDrainNode(nodeName, reason string) {
 
 // resumeSelectedNode resumes the selected node
 func (v *NodesView) resumeSelectedNode() {
+	debug.Logger.Printf("resumeSelectedNode() called")
 	data := v.table.GetSelectedData()
 	if data == nil || len(data) == 0 {
+		debug.Logger.Printf("resumeSelectedNode() - no data selected")
 		return
 	}
 
 	nodeName := data[0] // Still used for resume operation
 	state := data[1]
+	debug.Logger.Printf("resumeSelectedNode() - node: %s, state: %s", nodeName, state)
+
+	// Find the full node object to check reason
+	var node *dao.Node
+	v.mu.RLock()
+	for _, n := range v.nodes {
+		if n.Name == nodeName {
+			node = n
+			break
+		}
+	}
+	v.mu.RUnlock()
+
+	if node == nil {
+		debug.Logger.Printf("resumeSelectedNode() - node %s not found in node list", nodeName)
+		return
+	}
 
 	// Check if node can be resumed
-	if !strings.Contains(state, dao.NodeStateDrain) {
-		// Note: Status bar update removed since individual view status bars are no longer used
+	// - State must contain DRAIN/DRAINING, OR
+	// - Node must have a reason (indicating it was drained)
+	cleanState := strings.ReplaceAll(strings.ReplaceAll(state, "[green]", ""), "[white]", "")
+	cleanState = strings.ReplaceAll(strings.ReplaceAll(cleanState, "[yellow]", ""), "[red]", "")
+	cleanState = strings.ReplaceAll(strings.ReplaceAll(cleanState, "[blue]", ""), "[orange]", "")
+	debug.Logger.Printf("resumeSelectedNode() - clean state: %s, reason: '%s'", cleanState, node.Reason)
+
+	isDrained := strings.Contains(cleanState, dao.NodeStateDrain) ||
+				 strings.Contains(cleanState, dao.NodeStateDraining) ||
+				 (node.Reason != "" && node.Reason != "Not responding")
+	if !isDrained {
+		// Show informative error message
+		if v.pages != nil {
+			errorModal := tview.NewModal().
+				SetText(fmt.Sprintf("Node %s is in state '%s' with no drain reason. Only drained nodes can be resumed.", nodeName, cleanState)).
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					v.pages.RemovePage("error")
+					v.app.SetFocus(v.table.Table)
+				})
+			v.pages.AddPage("error", errorModal, true, true)
+		}
+		debug.Logger.Printf("resumeSelectedNode() - node %s cannot be resumed, state: %s, reason: %s", nodeName, cleanState, node.Reason)
 		return
 	}
 
@@ -617,15 +685,34 @@ func (v *NodesView) resumeSelectedNode() {
 
 // performResumeNode performs the node resume operation
 func (v *NodesView) performResumeNode(nodeName string) {
-	// Note: Status bar update removed since individual view status bars are no longer used
-
 	err := v.client.Nodes().Resume(nodeName)
 	if err != nil {
-		// Note: Status bar update removed since individual view status bars are no longer used
+		// Log the error for debugging
+		if v.pages != nil {
+			// Show error modal
+			errorModal := tview.NewModal().
+				SetText(fmt.Sprintf("Failed to resume node %s: %v", nodeName, err)).
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					v.pages.RemovePage("error")
+					v.app.SetFocus(v.table.Table)
+				})
+			v.pages.AddPage("error", errorModal, true, true)
+		}
 		return
 	}
 
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Show success message
+	if v.pages != nil {
+		successModal := tview.NewModal().
+			SetText(fmt.Sprintf("Node %s resumed successfully", nodeName)).
+			AddButtons([]string{"OK"}).
+			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				v.pages.RemovePage("success")
+				v.app.SetFocus(v.table.Table)
+			})
+		v.pages.AddPage("success", successModal, true, true)
+	}
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)

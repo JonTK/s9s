@@ -755,6 +755,21 @@ func (m *mockJobManager) GetOutput(id string) (string, error) {
 	return fmt.Sprintf("Mock output for job %s\nLine 1: Starting simulation...\nLine 2: Processing data...\nLine 3: Simulation complete.", id), nil
 }
 
+func (m *mockJobManager) Notify(id string, message string) error {
+	m.client.simulateDelay()
+	m.client.mu.RLock()
+	defer m.client.mu.RUnlock()
+
+	_, exists := m.client.jobs[id]
+	if !exists {
+		return fmt.Errorf("job %s not found", id)
+	}
+
+	// In a real implementation, this would send a notification to the job
+	// For the mock, we just return success
+	return nil
+}
+
 // mockNodeManager implements dao.NodeManager
 type mockNodeManager struct {
 	client *MockClient

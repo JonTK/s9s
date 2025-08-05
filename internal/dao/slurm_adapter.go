@@ -275,13 +275,11 @@ func (j *jobManager) Cancel(id string) error {
 }
 
 func (j *jobManager) Hold(id string) error {
-	// Note: May need to implement if slurm-client supports it
-	return fmt.Errorf("hold operation not supported by slurm-client")
+	return j.client.Hold(j.ctx, id)
 }
 
 func (j *jobManager) Release(id string) error {
-	// Note: May need to implement if slurm-client supports it
-	return fmt.Errorf("release operation not supported by slurm-client")
+	return j.client.Release(j.ctx, id)
 }
 
 func (j *jobManager) Requeue(id string) (*Job, error) {
@@ -400,6 +398,10 @@ func (j *jobManager) simulateJobOutput(id string) (string, error) {
 	return output, nil
 }
 
+func (j *jobManager) Notify(id string, message string) error {
+	return j.client.Notify(j.ctx, id, message)
+}
+
 // nodeManager implements NodeManager
 type nodeManager struct {
 	client slurm.NodeManager
@@ -440,13 +442,25 @@ func (n *nodeManager) Get(name string) (*Node, error) {
 }
 
 func (n *nodeManager) Drain(name string, reason string) error {
-	// Note: May need to implement if slurm-client supports it
-	return fmt.Errorf("drain operation not supported by slurm-client")
+	debug.Logger.Printf("Drain node %s with reason: %s", name, reason)
+	err := n.client.Drain(n.ctx, name, reason)
+	if err != nil {
+		debug.Logger.Printf("Drain failed for node %s: %v", name, err)
+	} else {
+		debug.Logger.Printf("Drain successful for node %s", name)
+	}
+	return err
 }
 
 func (n *nodeManager) Resume(name string) error {
-	// Note: May need to implement if slurm-client supports it
-	return fmt.Errorf("resume operation not supported by slurm-client")
+	debug.Logger.Printf("Resume node %s", name)
+	err := n.client.Resume(n.ctx, name)
+	if err != nil {
+		debug.Logger.Printf("Resume failed for node %s: %v", name, err)
+	} else {
+		debug.Logger.Printf("Resume successful for node %s", name)
+	}
+	return err
 }
 
 func (n *nodeManager) SetState(name string, state string) error {
@@ -634,6 +648,7 @@ func convertJob(job *slurm.Job) *Job {
 }
 
 func convertNode(node *slurm.Node) *Node {
+	debug.Logger.Printf("convertNode: %s state='%s'", node.Name, node.State)
 	return &Node{
 		Name:            node.Name,
 		State:           node.State,
