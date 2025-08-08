@@ -1,0 +1,207 @@
+# Phase 2 Authentication Configuration Example
+# Enhanced enterprise features with OAuth2, DNS discovery, and advanced load balancing
+
+# Global authentication settings
+global:
+  token_cache:
+    enabled: true
+    ttl: 3600
+    secure_storage: keyring  # Use system keyring instead of encrypted files
+  
+  logging:
+    auth_events: true
+    audit_file: ~/.s9s/logs/auth-audit.log
+    debug_level: info
+
+# Cluster configurations with Phase 2 features
+clusters:
+  # Production cluster with OAuth2 + DNS discovery + advanced load balancing
+  production:
+    discovery:
+      type: dns
+      config:
+        service_name: _slurmrestd._tcp.prod.cluster.edu
+        port: 6820
+        scheme: https
+        refresh_interval: 300  # 5 minutes
+        cache_ttl: 300
+        health_check_path: /slurm/v0.0.40/ping
+        health_check_timeout: 10
+        dns_servers:
+          - 8.8.8.8
+          - 8.8.4.4
+    
+    auth:
+      type: oauth2
+      config:
+        provider: okta
+        client_id: ${PROD_OAUTH_CLIENT_ID}
+        client_secret: ${PROD_OAUTH_CLIENT_SECRET}
+        discovery_url: https://company.okta.com/.well-known/openid_configuration
+        scopes: "openid profile email slurm:admin"
+        timeout: 300
+        redirect_uri: http://localhost:8080/callback
+    
+    load_balancer:
+      strategy: weighted-least-connections
+      max_consecutive_failures: 3
+      circuit_breaker_timeout: 60s
+      health_check_interval: 30s
+      response_time_weight: 0.3
+    
+    security:
+      tls:
+        verify: true
+        ca_bundle: /etc/ssl/certs/company-ca.pem
+
+  # Development cluster with Google OAuth2 + static discovery
+  development:
+    discovery:
+      type: static
+      endpoints:
+        - url: https://slurm-dev1.cluster.edu:6820
+          weight: 100
+          metadata:
+            datacenter: us-west-1
+            environment: dev
+        - url: https://slurm-dev2.cluster.edu:6820
+          weight: 50
+          metadata:
+            datacenter: us-west-2
+            environment: dev
+    
+    auth:
+      type: oauth2
+      config:
+        provider: google
+        client_id: ${DEV_GOOGLE_CLIENT_ID}
+        client_secret: ${DEV_GOOGLE_CLIENT_SECRET}
+        # Google's discovery URL is auto-detected
+        scopes: "openid email profile"
+        redirect_uri: http://localhost:9080/callback
+    
+    load_balancer:
+      strategy: round-robin
+      health_check_interval: 60s
+
+  # Testing cluster with Azure AD OAuth2 + DNS
+  testing:
+    discovery:
+      type: dns
+      config:
+        service_name: slurmrestd.test.cluster.edu
+        port: 6820
+        scheme: https
+        refresh_interval: 600  # 10 minutes for testing
+    
+    auth:
+      type: oauth2
+      config:
+        provider: azure-ad
+        client_id: ${TEST_AZURE_CLIENT_ID}
+        client_secret: ${TEST_AZURE_CLIENT_SECRET}
+        discovery_url: https://login.microsoftonline.com/common/v2.0/.well-known/openid_configuration
+        scopes: "openid profile email"
+        tenant: ${AZURE_TENANT_ID}
+
+  # High-availability cluster with advanced features
+  enterprise:
+    discovery:
+      type: dns
+      config:
+        service_name: _slurmrestd._tcp.enterprise.cluster.edu
+        port: 6820
+        scheme: https
+        refresh_interval: 120  # 2 minutes
+        cache_ttl: 180
+        dns_servers:
+          - 10.0.0.53  # Internal DNS
+          - 10.0.1.53
+    
+    auth:
+      type: oauth2
+      config:
+        provider: okta
+        client_id: ${ENTERPRISE_OAUTH_CLIENT_ID}
+        client_secret: ${ENTERPRISE_OAUTH_CLIENT_SECRET}
+        discovery_url: https://enterprise.okta.com/.well-known/openid_configuration
+        scopes: "openid profile email groups slurm:read slurm:write slurm:admin"
+        timeout: 120
+    
+    load_balancer:
+      strategy: weighted-least-connections
+      max_consecutive_failures: 2
+      circuit_breaker_timeout: 30s
+      health_check_interval: 15s
+      health_check_timeout: 5s
+      response_time_weight: 0.4
+      weight_update_interval: 60s
+    
+    security:
+      tls:
+        verify: true
+        ca_bundle: /etc/ssl/certs/enterprise-ca.pem
+        min_version: "1.2"
+        ciphers: 
+          - "ECDHE-RSA-AES256-GCM-SHA384"
+          - "ECDHE-RSA-AES128-GCM-SHA256"
+
+  # Local development with SLURM tokens
+  local:
+    discovery:
+      type: static
+      endpoints:
+        - url: http://localhost:6820
+    
+    auth:
+      type: slurm-token
+      config:
+        username: ${USER}
+        token_lifetime: 7200  # 2 hours
+        scontrol_path: /usr/local/bin/scontrol
+    
+    load_balancer:
+      strategy: round-robin
+
+# Default cluster selection
+default_cluster: development
+
+# Advanced configuration options
+advanced:
+  # Token refresh settings
+  token_refresh:
+    refresh_threshold: 300  # Refresh if less than 5 minutes remaining
+    retry_interval: 60      # Retry failed refresh after 1 minute
+    max_retries: 3
+  
+  # Connection pooling
+  http_client:
+    max_idle_conns: 100
+    max_idle_conns_per_host: 10
+    idle_conn_timeout: 90s
+    tls_handshake_timeout: 10s
+    expect_continue_timeout: 1s
+  
+  # Monitoring and metrics
+  monitoring:
+    enable_metrics: true
+    metrics_endpoint: http://localhost:9090/metrics
+    health_check_endpoint: http://localhost:8080/health
+    
+  # Caching
+  cache:
+    discovery_ttl: 300s
+    token_ttl: 3600s
+    endpoint_stats_ttl: 60s
+
+# Environment variable mappings
+env_mappings:
+  PROD_OAUTH_CLIENT_ID: "s9s-prod-client"
+  PROD_OAUTH_CLIENT_SECRET: "secret-from-keyring"
+  DEV_GOOGLE_CLIENT_ID: "google-dev-client-id"
+  DEV_GOOGLE_CLIENT_SECRET: "google-dev-secret"
+  TEST_AZURE_CLIENT_ID: "azure-test-client"
+  TEST_AZURE_CLIENT_SECRET: "azure-test-secret"
+  AZURE_TENANT_ID: "company-tenant-uuid"
+  ENTERPRISE_OAUTH_CLIENT_ID: "enterprise-client"
+  ENTERPRISE_OAUTH_CLIENT_SECRET: "enterprise-secret"
