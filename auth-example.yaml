@@ -1,0 +1,95 @@
+# Example authentication configuration for s9s
+# Save this as ~/.s9s/auth.yaml
+
+# Global authentication settings
+global:
+  token_cache:
+    enabled: true
+    ttl: 3600  # 1 hour
+    secure_storage: true
+  
+  logging:
+    auth_events: true
+    audit_file: ~/.s9s/logs/auth-audit.log
+
+# Cluster configurations
+clusters:
+  # Production cluster with OAuth2 authentication
+  production:
+    discovery:
+      type: static
+      endpoints:
+        - url: https://slurm-api1.cluster.edu:6820
+          weight: 100
+        - url: https://slurm-api2.cluster.edu:6820
+          weight: 50
+    
+    auth:
+      type: oauth2
+      config:
+        provider: okta
+        client_id: ${PROD_OAUTH_CLIENT_ID}
+        client_secret: ${PROD_OAUTH_CLIENT_SECRET}
+        discovery_url: https://prod.okta.com/.well-known/openid_configuration
+        scopes: [slurm:read, slurm:write]
+    
+    security:
+      tls:
+        verify: true
+        ca_bundle: /etc/ssl/certs/prod-ca.pem
+
+  # Development cluster with SLURM native tokens
+  development:
+    discovery:
+      type: static
+      endpoints:
+        - url: https://slurm-dev.cluster.edu:6820
+    
+    auth:
+      type: slurm-token
+      config:
+        username: ${USER}
+        token_lifetime: 3600
+        scontrol_path: /usr/bin/scontrol
+    
+    security:
+      tls:
+        verify: false  # Dev environment
+
+  # Testing cluster with API authentication
+  testing:
+    discovery:
+      type: static  
+      endpoints:
+        - url: https://slurm-test.cluster.edu:6820
+          metadata:
+            environment: testing
+            region: us-west
+    
+    auth:
+      type: api-auth
+      config:
+        endpoint: https://auth.cluster.edu/api/v1/token
+        method: POST
+        username: ${SLURM_USER}
+        password: ${SLURM_PASSWORD}
+        token_path: access_token
+        refresh_token_path: refresh_token
+        expiry_path: expires_in
+        timeout: 30
+
+  # Local cluster for development
+  local:
+    discovery:
+      type: static
+      endpoints:
+        - url: http://localhost:6820
+    
+    auth:
+      type: slurm-token
+      config:
+        username: ${USER}
+        token_lifetime: 7200  # 2 hours for local development
+
+# Default cluster (can be overridden with --cluster flag or S9S_CLUSTER env var)
+default_cluster: development
