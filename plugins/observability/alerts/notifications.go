@@ -13,7 +13,7 @@ type NotificationManager struct {
 	subscriptions map[string][]AlertSubscription
 	history       []NotificationEvent
 	mu            sync.RWMutex
-	
+
 	// Configuration
 	maxHistorySize int
 	rateLimiter    *RateLimiter
@@ -87,16 +87,16 @@ func NewNotificationManager() *NotificationManager {
 func (nm *NotificationManager) RegisterHandler(handler NotificationHandler) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	if handler == nil {
 		return fmt.Errorf("handler cannot be nil")
 	}
-	
+
 	id := handler.GetID()
 	if _, exists := nm.handlers[id]; exists {
 		return fmt.Errorf("handler with ID %s already registered", id)
 	}
-	
+
 	nm.handlers[id] = handler
 	return nil
 }
@@ -105,7 +105,7 @@ func (nm *NotificationManager) RegisterHandler(handler NotificationHandler) erro
 func (nm *NotificationManager) UnregisterHandler(handlerID string) {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	delete(nm.handlers, handlerID)
 }
 
@@ -113,22 +113,22 @@ func (nm *NotificationManager) UnregisterHandler(handlerID string) {
 func (nm *NotificationManager) Subscribe(subscription AlertSubscription) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	if subscription.ID == "" {
 		subscription.ID = generateSubscriptionID()
 	}
-	
+
 	subscription.CreatedAt = time.Now()
-	
+
 	// Group subscriptions by handler
 	for _, handlerID := range subscription.HandlerIDs {
 		if _, exists := nm.handlers[handlerID]; !exists {
 			return fmt.Errorf("handler %s not found", handlerID)
 		}
-		
+
 		nm.subscriptions[handlerID] = append(nm.subscriptions[handlerID], subscription)
 	}
-	
+
 	return nil
 }
 
@@ -136,7 +136,7 @@ func (nm *NotificationManager) Subscribe(subscription AlertSubscription) error {
 func (nm *NotificationManager) Unsubscribe(subscriptionID string) {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	for handlerID, subs := range nm.subscriptions {
 		newSubs := []AlertSubscription{}
 		for _, sub := range subs {
@@ -155,7 +155,7 @@ func (nm *NotificationManager) NotifyAlert(ctx context.Context, alert Alert) err
 		Type:      NotificationTypeAlert,
 		Timestamp: time.Now(),
 	}
-	
+
 	return nm.sendNotification(ctx, notification)
 }
 
@@ -166,7 +166,7 @@ func (nm *NotificationManager) NotifyResolved(ctx context.Context, alert Alert) 
 		Type:      NotificationTypeResolved,
 		Timestamp: time.Now(),
 	}
-	
+
 	return nm.sendNotification(ctx, notification)
 }
 
@@ -174,15 +174,15 @@ func (nm *NotificationManager) NotifyResolved(ctx context.Context, alert Alert) 
 func (nm *NotificationManager) sendNotification(ctx context.Context, notification Notification) error {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
-	
+
 	var lastError error
-	
+
 	// Check each handler's subscriptions
 	for handlerID, handler := range nm.handlers {
 		if !handler.IsEnabled() {
 			continue
 		}
-		
+
 		// Check if any subscription matches
 		for _, sub := range nm.subscriptions[handlerID] {
 			if nm.matchesFilter(notification.Alert, sub.Filter) {
@@ -190,7 +190,7 @@ func (nm *NotificationManager) sendNotification(ctx context.Context, notificatio
 				if !nm.rateLimiter.Allow(fmt.Sprintf("%s:%s", handlerID, sub.ID)) {
 					continue
 				}
-				
+
 				// Send notification
 				event := NotificationEvent{
 					ID:           generateEventID(),
@@ -199,7 +199,7 @@ func (nm *NotificationManager) sendNotification(ctx context.Context, notificatio
 					Status:       "pending",
 					SentAt:       time.Now(),
 				}
-				
+
 				if err := handler.Send(ctx, notification); err != nil {
 					event.Status = "failed"
 					event.Error = err.Error()
@@ -208,12 +208,12 @@ func (nm *NotificationManager) sendNotification(ctx context.Context, notificatio
 					event.Status = "sent"
 					sub.LastNotified = time.Now()
 				}
-				
+
 				nm.addToHistory(event)
 			}
 		}
 	}
-	
+
 	return lastError
 }
 
@@ -232,7 +232,7 @@ func (nm *NotificationManager) matchesFilter(alert Alert, filter AlertFilter) bo
 			return false
 		}
 	}
-	
+
 	// Check source
 	if len(filter.Sources) > 0 {
 		found := false
@@ -246,7 +246,7 @@ func (nm *NotificationManager) matchesFilter(alert Alert, filter AlertFilter) bo
 			return false
 		}
 	}
-	
+
 	// Check rule
 	if len(filter.Rules) > 0 {
 		found := false
@@ -260,21 +260,21 @@ func (nm *NotificationManager) matchesFilter(alert Alert, filter AlertFilter) bo
 			return false
 		}
 	}
-	
+
 	// Check labels
 	for key, value := range filter.Labels {
 		if alertValue, ok := alert.Labels[key]; !ok || alertValue != value {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
 // addToHistory adds an event to the notification history
 func (nm *NotificationManager) addToHistory(event NotificationEvent) {
 	nm.history = append([]NotificationEvent{event}, nm.history...)
-	
+
 	// Limit history size
 	if len(nm.history) > nm.maxHistorySize {
 		nm.history = nm.history[:nm.maxHistorySize]
@@ -285,11 +285,11 @@ func (nm *NotificationManager) addToHistory(event NotificationEvent) {
 func (nm *NotificationManager) GetHistory(limit int) []NotificationEvent {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > len(nm.history) {
 		limit = len(nm.history)
 	}
-	
+
 	return nm.history[:limit]
 }
 
@@ -297,7 +297,7 @@ func (nm *NotificationManager) GetHistory(limit int) []NotificationEvent {
 func (nm *NotificationManager) GetHandlers() map[string]NotificationHandler {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
-	
+
 	handlers := make(map[string]NotificationHandler)
 	for id, handler := range nm.handlers {
 		handlers[id] = handler
@@ -310,11 +310,11 @@ func (nm *NotificationManager) TestNotification(ctx context.Context, handlerID s
 	nm.mu.RLock()
 	handler, exists := nm.handlers[handlerID]
 	nm.mu.RUnlock()
-	
+
 	if !exists {
 		return fmt.Errorf("handler %s not found", handlerID)
 	}
-	
+
 	testAlert := Alert{
 		RuleName:    "test_alert",
 		Severity:    "info",
@@ -325,13 +325,13 @@ func (nm *NotificationManager) TestNotification(ctx context.Context, handlerID s
 		LastSeen:    time.Now(),
 		Source:      "test",
 	}
-	
+
 	notification := Notification{
 		Alert:     testAlert,
 		Type:      NotificationTypeTest,
 		Timestamp: time.Now(),
 	}
-	
+
 	return handler.Send(ctx, notification)
 }
 
@@ -365,14 +365,14 @@ func (h *InAppHandler) GetName() string {
 func (h *InAppHandler) Send(ctx context.Context, notification Notification) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	h.notifications = append([]Notification{notification}, h.notifications...)
-	
+
 	// Limit size
 	if len(h.notifications) > h.maxSize {
 		h.notifications = h.notifications[:h.maxSize]
 	}
-	
+
 	return nil
 }
 
@@ -384,11 +384,11 @@ func (h *InAppHandler) IsEnabled() bool {
 func (h *InAppHandler) GetNotifications(limit int) []Notification {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > len(h.notifications) {
 		limit = len(h.notifications)
 	}
-	
+
 	return h.notifications[:limit]
 }
 
@@ -396,7 +396,7 @@ func (h *InAppHandler) GetNotifications(limit int) []Notification {
 func (h *InAppHandler) ClearNotifications() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	h.notifications = make([]Notification, 0)
 }
 
@@ -426,7 +426,7 @@ func (h *LogHandler) Send(ctx context.Context, notification Notification) error 
 	if h.logger == nil {
 		return fmt.Errorf("logger not configured")
 	}
-	
+
 	message := fmt.Sprintf("[ALERT] %s: %s - %s (severity: %s, source: %s)",
 		notification.Type,
 		notification.Alert.RuleName,
@@ -434,7 +434,7 @@ func (h *LogHandler) Send(ctx context.Context, notification Notification) error 
 		notification.Alert.Severity,
 		notification.Alert.Source,
 	)
-	
+
 	h.logger(message)
 	return nil
 }
@@ -474,10 +474,10 @@ func NewRateLimiter(rate int, period time.Duration) *RateLimiter {
 func (rl *RateLimiter) Allow(key string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	
+
 	now := time.Now()
 	cutoff := now.Add(-rl.period)
-	
+
 	// Clean old requests
 	validRequests := []time.Time{}
 	for _, t := range rl.requests[key] {
@@ -485,13 +485,13 @@ func (rl *RateLimiter) Allow(key string) bool {
 			validRequests = append(validRequests, t)
 		}
 	}
-	
+
 	// Check rate
 	if len(validRequests) >= rl.rate {
 		rl.requests[key] = validRequests
 		return false
 	}
-	
+
 	// Allow and record
 	rl.requests[key] = append(validRequests, now)
 	return true

@@ -116,7 +116,7 @@ var PredefinedRules = []Rule{
 		Enabled:     true,
 		Description: "Disk I/O utilization is saturated",
 	},
-	
+
 	// Job alerts
 	{
 		Name:        "job_memory_limit",
@@ -154,7 +154,7 @@ var PredefinedRules = []Rule{
 		Enabled:     false,
 		Description: "Job CPU is being throttled",
 	},
-	
+
 	// Cluster alerts
 	{
 		Name:        "cluster_cpu_high",
@@ -230,11 +230,11 @@ func ValidateRule(rule Rule) error {
 	if rule.Name == "" {
 		return fmt.Errorf("rule name is required")
 	}
-	
+
 	if rule.Type == "" {
 		return fmt.Errorf("rule type is required")
 	}
-	
+
 	switch rule.Type {
 	case RuleTypeThreshold:
 		if rule.Metric == "" {
@@ -246,12 +246,12 @@ func ValidateRule(rule Rule) error {
 		if !isValidOperator(rule.Operator) {
 			return fmt.Errorf("invalid operator: %s", rule.Operator)
 		}
-		
+
 	case RuleTypeQuery:
 		if rule.Query == "" {
 			return fmt.Errorf("query is required for query rules")
 		}
-		
+
 	case RuleTypeComposite:
 		if len(rule.Conditions) == 0 {
 			return fmt.Errorf("conditions are required for composite rules")
@@ -264,15 +264,15 @@ func ValidateRule(rule Rule) error {
 				return fmt.Errorf("condition %d: invalid operator: %s", i, cond.Operator)
 			}
 		}
-		
+
 	default:
 		return fmt.Errorf("invalid rule type: %s", rule.Type)
 	}
-	
+
 	if !isValidSeverity(rule.Severity) {
 		return fmt.Errorf("invalid severity: %s", rule.Severity)
 	}
-	
+
 	return nil
 }
 

@@ -54,7 +54,7 @@ func (ts *TimeSeries) Average() float64 {
 	if len(ts.Values) == 0 {
 		return 0
 	}
-	
+
 	sum := 0.0
 	for _, v := range ts.Values {
 		sum += v.Value
@@ -67,7 +67,7 @@ func (ts *TimeSeries) Min() float64 {
 	if len(ts.Values) == 0 {
 		return 0
 	}
-	
+
 	min := ts.Values[0].Value
 	for _, v := range ts.Values[1:] {
 		if v.Value < min {
@@ -82,7 +82,7 @@ func (ts *TimeSeries) Max() float64 {
 	if len(ts.Values) == 0 {
 		return 0
 	}
-	
+
 	max := ts.Values[0].Value
 	for _, v := range ts.Values[1:] {
 		if v.Value > max {
@@ -251,13 +251,13 @@ func formatBytes(bytes float64) string {
 	if bytes < 1 {
 		return "0 B"
 	}
-	
+
 	i := 0
 	for bytes >= 1024 && i < len(units)-1 {
 		bytes /= 1024
 		i++
 	}
-	
+
 	if i == 0 {
 		return fmt.Sprintf("%.0f %s", bytes, units[i])
 	}
@@ -280,16 +280,18 @@ func GetColorForUsage(usage float64) string {
 
 // Alert represents a monitoring alert
 type Alert struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	Severity   string    `json:"severity"` // "info", "warning", "critical"
-	Message    string    `json:"message"`
-	Resolution string    `json:"resolution,omitempty"`
-	Source     string    `json:"source"`
-	Metric     string    `json:"metric"`
-	Value      float64   `json:"value"`
-	Threshold  float64   `json:"threshold"`
-	Timestamp  time.Time `json:"timestamp"`
-	Resolved   bool      `json:"resolved"`
-	ResolvedAt time.Time `json:"resolved_at,omitempty"`
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Severity   string            `json:"severity"` // "info", "warning", "critical"
+	State      string            `json:"state"`    // "pending", "firing", "resolved"
+	Message    string            `json:"message"`
+	Resolution string            `json:"resolution,omitempty"`
+	Source     string            `json:"source"`
+	Metric     string            `json:"metric"`
+	Value      float64           `json:"value"`
+	Threshold  float64           `json:"threshold"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Resolved   bool              `json:"resolved"`
+	ResolvedAt time.Time         `json:"resolved_at,omitempty"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }

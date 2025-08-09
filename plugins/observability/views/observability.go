@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	
+
 	"github.com/jontk/s9s/internal/plugin"
 	"github.com/jontk/s9s/plugins/observability/alerts"
 	"github.com/jontk/s9s/plugins/observability/config"
@@ -26,7 +25,7 @@ type ObservabilityView struct {
 	config           *config.Config
 	queryBuilder     *prometheus.QueryBuilder
 	alertEngine      *alerts.Engine
-	
+
 	// Layout components
 	root             *tview.Flex
 	clusterPanel     *tview.TextView
@@ -35,24 +34,24 @@ type ObservabilityView struct {
 	alertsPanel      *widgets.AlertsWidget
 	cpuGauge         *widgets.GaugeWidget
 	memoryGauge      *widgets.GaugeWidget
-	
+
 	// Data collectors
 	nodeCollector    *models.NodeMetricsCollector
 	jobCollector     *models.JobMetricsCollector
-	
+
 	// Data
 	nodeMetrics      map[string]*models.NodeMetrics
 	jobMetrics       map[string]*models.JobMetrics
 	clusterMetrics   *models.AggregateNodeMetrics
 	alerts           []models.Alert
-	
+
 	// State
 	refreshInterval  time.Duration
 	stopChan         chan struct{}
 	refreshTicker    *time.Ticker
 	selectedNode     string
 	selectedJob      string
-	
+
 	// Synchronization
 	mu               sync.RWMutex
 }
@@ -65,13 +64,13 @@ func NewObservabilityView(app *tview.Application, client *prometheus.CachedClien
 		// Use default config if type assertion fails
 		obsConfig = config.DefaultConfig()
 	}
-	
+
 	// Create query builder
 	queryBuilder, _ := prometheus.NewQueryBuilder()
-	
+
 	// Create alert engine
 	alertEngine := alerts.NewEngine(&obsConfig.Alerts, client)
-	
+
 	v := &ObservabilityView{
 		app:             app,
 		client:          client,
@@ -85,10 +84,10 @@ func NewObservabilityView(app *tview.Application, client *prometheus.CachedClien
 		refreshInterval: obsConfig.Display.RefreshInterval,
 		stopChan:        make(chan struct{}),
 	}
-	
+
 	// Set up alert callbacks
 	v.setupAlertCallbacks()
-	
+
 	v.initializeLayout()
 	return v
 }
@@ -96,32 +95,32 @@ func NewObservabilityView(app *tview.Application, client *prometheus.CachedClien
 // initializeLayout sets up the view layout
 func (v *ObservabilityView) initializeLayout() {
 	// Create cluster overview panel
-	v.clusterPanel = tview.NewTextView().
-		SetDynamicColors(true).
-		SetBorder(true).
-		SetTitle(" Cluster Overview ")
-	
+	v.clusterPanel = tview.NewTextView()
+	v.clusterPanel.SetDynamicColors(true)
+	v.clusterPanel.SetBorder(true)
+	v.clusterPanel.SetTitle(" Cluster Overview ")
+
 	// Create CPU and Memory gauges
 	v.cpuGauge = widgets.NewGaugeWidget("CPU Usage", 0, 100, "%")
 	v.memoryGauge = widgets.NewGaugeWidget("Memory Usage", 0, 100, "%")
-	
+
 	// Create gauges container
 	gaugesContainer := tview.NewFlex().
 		AddItem(v.cpuGauge.GetPrimitive(), 0, 1, false).
 		AddItem(v.memoryGauge.GetPrimitive(), 0, 1, false)
-	
+
 	// Create top section with cluster info and gauges
 	topSection := tview.NewFlex().
 		AddItem(v.clusterPanel, 0, 2, false).
 		AddItem(gaugesContainer, 0, 1, false)
-	
+
 	// Create node metrics table
-	v.nodeTable = tview.NewTable().
-		SetBorders(false).
-		SetSelectable(true, false).
-		SetBorder(true).
-		SetTitle(" Node Metrics ")
-	
+	v.nodeTable = tview.NewTable()
+	v.nodeTable.SetBorders(false)
+	v.nodeTable.SetSelectable(true, false)
+	v.nodeTable.SetBorder(true)
+	v.nodeTable.SetTitle(" Node Metrics ")
+
 	// Set up node table headers
 	headers := []string{"Node", "State", "CPU %", "Memory %", "Load", "Jobs", "Network", "Disk I/O"}
 	for i, header := range headers {
@@ -131,14 +130,14 @@ func (v *ObservabilityView) initializeLayout() {
 			SetSelectable(false)
 		v.nodeTable.SetCell(0, i, cell)
 	}
-	
+
 	// Create job metrics table
-	v.jobTable = tview.NewTable().
-		SetBorders(false).
-		SetSelectable(true, false).
-		SetBorder(true).
-		SetTitle(" Job Metrics ")
-	
+	v.jobTable = tview.NewTable()
+	v.jobTable.SetBorders(false)
+	v.jobTable.SetSelectable(true, false)
+	v.jobTable.SetBorder(true)
+	v.jobTable.SetTitle(" Job Metrics ")
+
 	// Set up job table headers
 	jobHeaders := []string{"Job ID", "User", "CPU %", "Memory", "CPU Limit", "Mem Limit", "Efficiency", "Status"}
 	for i, header := range jobHeaders {
@@ -148,23 +147,23 @@ func (v *ObservabilityView) initializeLayout() {
 			SetSelectable(false)
 		v.jobTable.SetCell(0, i, cell)
 	}
-	
+
 	// Create alerts panel
 	v.alertsPanel = widgets.NewAlertsWidget()
-	
+
 	// Create middle section with tables
 	middleSection := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(v.nodeTable, 0, 1, true).
 		AddItem(v.jobTable, 0, 1, false)
-	
+
 	// Create main layout
 	v.root = tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(topSection, 8, 0, false).
 		AddItem(middleSection, 0, 3, true).
 		AddItem(v.alertsPanel.GetPrimitive(), 6, 0, false)
-	
+
 	// Set up keyboard shortcuts
 	v.setupKeyboardShortcuts()
 }
@@ -190,7 +189,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 			// Return to previous view
 			return nil
 		}
-		
+
 		// Handle specific shortcuts
 		switch event.Rune() {
 		case 'n', 'N':
@@ -214,10 +213,10 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 			v.showHelp()
 			return nil
 		}
-		
+
 		return event
 	})
-	
+
 	// Node table selection handler
 	v.nodeTable.SetSelectionChangedFunc(func(row, col int) {
 		if row > 0 && row <= v.nodeTable.GetRowCount()-1 {
@@ -227,7 +226,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 			}
 		}
 	})
-	
+
 	// Job table selection handler
 	v.jobTable.SetSelectionChangedFunc(func(row, col int) {
 		if row > 0 && row <= v.jobTable.GetRowCount()-1 {
@@ -246,17 +245,17 @@ func (v *ObservabilityView) cycleFocus(reverse bool) {
 		v.jobTable,
 		v.alertsPanel.GetPrimitive(),
 	}
-	
+
 	current := v.app.GetFocus()
 	currentIndex := -1
-	
+
 	for i, elem := range elements {
 		if elem == current {
 			currentIndex = i
 			break
 		}
 	}
-	
+
 	var nextIndex int
 	if reverse {
 		if currentIndex <= 0 {
@@ -267,7 +266,7 @@ func (v *ObservabilityView) cycleFocus(reverse bool) {
 	} else {
 		nextIndex = (currentIndex + 1) % len(elements)
 	}
-	
+
 	v.app.SetFocus(elements[nextIndex])
 }
 
@@ -282,16 +281,16 @@ func (v *ObservabilityView) Start(ctx context.Context) error {
 	if err := v.alertEngine.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start alert engine: %w", err)
 	}
-	
+
 	// Initial refresh
 	if err := v.refresh(ctx); err != nil {
 		// Don't fail if initial refresh fails, just log and continue
 		v.showError(fmt.Sprintf("Initial refresh failed: %v", err))
 	}
-	
+
 	// Start refresh ticker
 	v.refreshTicker = time.NewTicker(v.refreshInterval)
-	
+
 	// Start refresh goroutine
 	go func() {
 		for {
@@ -308,7 +307,7 @@ func (v *ObservabilityView) Start(ctx context.Context) error {
 			}
 		}
 	}()
-	
+
 	return nil
 }
 
@@ -318,13 +317,13 @@ func (v *ObservabilityView) Stop(ctx context.Context) error {
 	if v.refreshTicker != nil {
 		v.refreshTicker.Stop()
 	}
-	
+
 	// Stop alert engine
 	if err := v.alertEngine.Stop(); err != nil {
 		// Log error but don't fail the stop operation
 		v.showError(fmt.Sprintf("Error stopping alert engine: %v", err))
 	}
-	
+
 	return nil
 }
 
@@ -332,28 +331,28 @@ func (v *ObservabilityView) Stop(ctx context.Context) error {
 func (v *ObservabilityView) refresh(ctx context.Context) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	// Fetch metrics from Prometheus
 	if err := v.fetchNodeMetrics(ctx); err != nil {
 		// Log error but continue with other metrics
 		v.showError(fmt.Sprintf("Failed to fetch node metrics: %v", err))
 	}
-	
+
 	if err := v.fetchJobMetrics(ctx); err != nil {
 		// Log error but continue
 		v.showError(fmt.Sprintf("Failed to fetch job metrics: %v", err))
 	}
-	
+
 	// Update cluster metrics from aggregated node data
 	v.updateClusterMetrics()
-	
+
 	// Update alert engine collectors with latest data
 	v.alertEngine.SetNodeCollector(v.nodeCollector)
 	v.alertEngine.SetJobCollector(v.jobCollector)
-	
+
 	// Update alerts
 	v.updateAlerts()
-	
+
 	// Refresh UI
 	v.app.QueueUpdateDraw(func() {
 		v.renderClusterPanel()
@@ -361,7 +360,7 @@ func (v *ObservabilityView) refresh(ctx context.Context) error {
 		v.renderJobTable()
 		v.renderAlerts()
 	})
-	
+
 	return nil
 }
 
@@ -370,20 +369,20 @@ func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 	// Get list of nodes - in a real implementation, this would come from SLURM
 	// For now, we'll query Prometheus for all nodes
 	nodes := v.getNodeList(ctx)
-	
+
 	for _, nodeName := range nodes {
 		// Build queries for this node
 		queries, err := v.queryBuilder.GetNodeQueries(nodeName, v.config.Metrics.Node.NodeLabel)
 		if err != nil {
 			continue
 		}
-		
+
 		// Execute queries in batch
 		results, err := v.client.BatchQuery(ctx, queries, time.Now())
 		if err != nil {
 			continue
 		}
-		
+
 		// Convert results to TimeSeries
 		metrics := make(map[string]*models.TimeSeries)
 		for queryName, result := range results {
@@ -395,14 +394,14 @@ func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 				}
 			}
 		}
-		
+
 		// Update node collector
 		v.nodeCollector.UpdateFromPrometheus(nodeName, metrics)
 	}
-	
+
 	// Update local cache
 	v.nodeMetrics = v.nodeCollector.GetAllNodes()
-	
+
 	return nil
 }
 
@@ -411,20 +410,20 @@ func (v *ObservabilityView) fetchJobMetrics(ctx context.Context) error {
 	// Get list of running jobs - in a real implementation, this would come from SLURM
 	// For now, we'll use a placeholder list
 	jobs := v.getJobList(ctx)
-	
+
 	for _, jobID := range jobs {
 		// Build queries for this job
 		queries, err := v.queryBuilder.GetJobQueries(jobID)
 		if err != nil {
 			continue
 		}
-		
+
 		// Execute queries in batch
 		results, err := v.client.BatchQuery(ctx, queries, time.Now())
 		if err != nil {
 			continue
 		}
-		
+
 		// Convert results to TimeSeries
 		metrics := make(map[string]*models.TimeSeries)
 		for queryName, result := range results {
@@ -435,50 +434,66 @@ func (v *ObservabilityView) fetchJobMetrics(ctx context.Context) error {
 				}
 			}
 		}
-		
+
 		// Update job collector
 		v.jobCollector.UpdateFromPrometheus(jobID, metrics)
 	}
-	
+
 	// Update local cache
 	v.jobMetrics = v.jobCollector.GetAllJobs()
-	
+
 	return nil
 }
 
 // convertToTimeSeries converts Prometheus query result to TimeSeries
 func (v *ObservabilityView) convertToTimeSeries(name string, result *prometheus.QueryResult) *models.TimeSeries {
-	if result == nil || result.Data.Result == nil || len(result.Data.Result) == 0 {
+	if result == nil {
 		return nil
 	}
-	
-	// Get first result (we're assuming single-value queries for now)
-	firstResult := result.Data.Result[0]
-	
-	ts := &models.TimeSeries{
-		Name:   name,
-		Labels: firstResult.Metric,
-		Values: []models.MetricValue{},
-		Type:   models.MetricTypeCustom,
-	}
-	
-	// Add the current value
-	if len(firstResult.Value) >= 2 {
-		// Convert timestamp and value
-		timestamp := int64(firstResult.Value[0].(float64))
-		valueStr, ok := firstResult.Value[1].(string)
-		if ok {
-			if value, err := parseFloat(valueStr); err == nil {
-				ts.Values = append(ts.Values, models.MetricValue{
-					Timestamp: time.Unix(timestamp, 0),
-					Value:     value,
-					Labels:    firstResult.Metric,
-				})
-			}
+
+	// Try to get vector data first
+	vector, err := result.GetVector()
+	if err == nil && len(vector) > 0 {
+		// Use first sample
+		sample := vector[0]
+
+		ts := &models.TimeSeries{
+			Name:   name,
+			Labels: sample.Metric,
+			Values: []models.MetricValue{},
+			Type:   models.MetricTypeCustom,
 		}
+
+		// Add the current value
+		ts.Values = append(ts.Values, models.MetricValue{
+			Timestamp: sample.Timestamp,
+			Value:     sample.Value.Value(),
+			Labels:    sample.Metric,
+		})
+
+		return ts
 	}
-	
-	return ts
+
+	// Try scalar as fallback
+	scalarValue, timestamp, err := result.GetScalar()
+	if err == nil {
+		ts := &models.TimeSeries{
+			Name:   name,
+			Labels: map[string]string{},
+			Values: []models.MetricValue{},
+			Type:   models.MetricTypeCustom,
+		}
+
+		ts.Values = append(ts.Values, models.MetricValue{
+			Timestamp: timestamp,
+			Value:     scalarValue,
+			Labels:    map[string]string{},
+		})
+
+		return ts
+	}
+
+	return nil
 }
 
 // parseFloat safely parses a string to float64
@@ -492,7 +507,7 @@ func parseFloat(s string) (float64, error) {
 func (v *ObservabilityView) getNodeList(ctx context.Context) []string {
 	// In a real implementation, this would query SLURM for node list
 	// For now, we'll try to discover nodes from Prometheus
-	
+
 	// Query for all nodes with node_exporter up
 	query := `up{job="node-exporter"}`
 	result, err := v.client.Query(ctx, query, time.Now())
@@ -500,14 +515,17 @@ func (v *ObservabilityView) getNodeList(ctx context.Context) []string {
 		// Return empty list or default nodes
 		return []string{"node001", "node002", "node003", "node004"}
 	}
-	
+
 	nodes := []string{}
-	for _, r := range result.Data.Result {
-		if instance, ok := r.Metric[v.config.Metrics.Node.NodeLabel]; ok {
-			nodes = append(nodes, instance)
+	vector, err := result.GetVector()
+	if err == nil {
+		for _, sample := range vector {
+			if instance, ok := sample.Metric[v.config.Metrics.Node.NodeLabel]; ok {
+				nodes = append(nodes, instance)
+			}
 		}
 	}
-	
+
 	return nodes
 }
 
@@ -522,7 +540,7 @@ func (v *ObservabilityView) getJobList(ctx context.Context) []string {
 func (v *ObservabilityView) updateClusterMetrics() {
 	// Get aggregate metrics from node collector
 	v.clusterMetrics = v.nodeCollector.GetAggregateMetrics()
-	
+
 	// Update gauges
 	if v.clusterMetrics != nil {
 		v.cpuGauge.SetValue(v.clusterMetrics.AverageCPUUsage)
@@ -538,7 +556,7 @@ func (v *ObservabilityView) setupAlertCallbacks() {
 		v.app.QueueUpdateDraw(func() {
 			// Convert engine alert to model alert
 			modelAlert := v.convertToModelAlert(alert)
-			
+
 			// Update alerts list
 			v.mu.Lock()
 			v.alerts = append([]models.Alert{modelAlert}, v.alerts...)
@@ -547,17 +565,17 @@ func (v *ObservabilityView) setupAlertCallbacks() {
 				v.alerts = v.alerts[:50]
 			}
 			v.mu.Unlock()
-			
+
 			// Update alerts panel
 			v.alertsPanel.SetAlerts(v.alerts)
-			
+
 			// Show notification if configured
 			if v.config.Alerts.ShowNotifications {
 				v.showNotification(fmt.Sprintf("[%s] %s", alert.Severity, alert.Message))
 			}
 		})
 	})
-	
+
 	// Set up resolved callback - when alert resolves
 	v.alertEngine.SetResolvedCallback(func(alert alerts.Alert) {
 		v.app.QueueUpdateDraw(func() {
@@ -571,7 +589,7 @@ func (v *ObservabilityView) setupAlertCallbacks() {
 				}
 			}
 			v.mu.Unlock()
-			
+
 			// Update alerts panel
 			v.alertsPanel.SetAlerts(v.alerts)
 		})
@@ -598,14 +616,14 @@ func (v *ObservabilityView) convertToModelAlert(alert alerts.Alert) models.Alert
 func (v *ObservabilityView) updateAlerts() {
 	// Get active alerts from engine
 	activeAlerts := v.alertEngine.GetActiveAlerts()
-	
+
 	// Convert to model alerts
 	v.mu.Lock()
 	newAlerts := make([]models.Alert, 0, len(activeAlerts))
 	for _, alert := range activeAlerts {
 		newAlerts = append(newAlerts, v.convertToModelAlert(alert))
 	}
-	
+
 	// Merge with existing alerts (to preserve resolved alerts)
 	// Keep resolved alerts for some time
 	cutoff := time.Now().Add(-30 * time.Minute)
@@ -624,15 +642,15 @@ func (v *ObservabilityView) updateAlerts() {
 			}
 		}
 	}
-	
+
 	// Sort by timestamp (most recent first)
 	sort.Slice(newAlerts, func(i, j int) bool {
 		return newAlerts[i].Timestamp.After(newAlerts[j].Timestamp)
 	})
-	
+
 	v.alerts = newAlerts
 	v.mu.Unlock()
-	
+
 	v.alertsPanel.SetAlerts(v.alerts)
 }
 
@@ -641,16 +659,16 @@ func (v *ObservabilityView) renderClusterPanel() {
 	if v.clusterMetrics == nil {
 		return
 	}
-	
+
 	// Get node and job summaries
 	nodeSummary := v.nodeCollector.GetNodesSummary()
 	jobSummary := v.jobCollector.GetJobsSummary()
-	
+
 	activeNodes := v.clusterMetrics.ActiveNodes
 	downNodes := nodeSummary["down"] + nodeSummary["drain"]
 	runningJobs := jobSummary["RUNNING"] + jobSummary["R"]
 	pendingJobs := jobSummary["PENDING"] + jobSummary["PD"]
-	
+
 	text := fmt.Sprintf(
 		`[yellow]Total Nodes:[white] %d active, %d down
 [yellow]Total CPUs:[white] %d cores
@@ -666,7 +684,7 @@ func (v *ObservabilityView) renderClusterPanel() {
 		v.clusterMetrics.MemoryUsagePercent,
 		runningJobs, pendingJobs,
 	)
-	
+
 	v.clusterPanel.SetText(text)
 }
 
@@ -676,14 +694,14 @@ func (v *ObservabilityView) renderNodeTable() {
 	for i := v.nodeTable.GetRowCount() - 1; i > 0; i-- {
 		v.nodeTable.RemoveRow(i)
 	}
-	
+
 	row := 1
 	for _, node := range v.nodeMetrics {
 		metrics := &node.Resources
-		
+
 		cpuColor := models.GetColorForUsage(metrics.CPU.Usage)
 		memColor := models.GetColorForUsage(metrics.Memory.Usage)
-		
+
 		// Determine state color
 		stateColor := tcell.ColorGreen
 		state := node.NodeState
@@ -698,7 +716,7 @@ func (v *ObservabilityView) renderNodeTable() {
 		case "alloc", "ALLOC", "ALLOCATED":
 			stateColor = tcell.ColorBlue
 		}
-		
+
 		v.nodeTable.SetCell(row, 0, tview.NewTableCell(node.NodeName))
 		v.nodeTable.SetCell(row, 1, tview.NewTableCell(state).SetTextColor(stateColor))
 		v.nodeTable.SetCell(row, 2, tview.NewTableCell(
@@ -709,14 +727,14 @@ func (v *ObservabilityView) renderNodeTable() {
 			fmt.Sprintf("%.1f", metrics.CPU.Load1m)))
 		v.nodeTable.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf("%d", node.JobCount)))
 		v.nodeTable.SetCell(row, 6, tview.NewTableCell(
-			fmt.Sprintf("↓%s ↑%s", 
+			fmt.Sprintf("↓%s ↑%s",
 				models.FormatValue(metrics.Network.ReceiveBytesPerSec, "bytes/sec"),
 				models.FormatValue(metrics.Network.TransmitBytesPerSec, "bytes/sec"))))
 		v.nodeTable.SetCell(row, 7, tview.NewTableCell(
 			fmt.Sprintf("R:%s W:%s",
 				models.FormatValue(metrics.Disk.ReadBytesPerSec, "bytes/sec"),
 				models.FormatValue(metrics.Disk.WriteBytesPerSec, "bytes/sec"))))
-		
+
 		row++
 	}
 }
@@ -727,16 +745,16 @@ func (v *ObservabilityView) renderJobTable() {
 	for i := v.jobTable.GetRowCount() - 1; i > 0; i-- {
 		v.jobTable.RemoveRow(i)
 	}
-	
+
 	row := 1
 	for _, job := range v.jobMetrics {
 		// Skip non-running jobs
 		if job.State != "RUNNING" && job.State != "R" {
 			continue
 		}
-		
+
 		metrics := &job.Resources
-		
+
 		// Determine efficiency color
 		effColor := tcell.ColorGreen
 		if job.Efficiency.OverallEfficiency < 50 {
@@ -745,13 +763,13 @@ func (v *ObservabilityView) renderJobTable() {
 		if job.Efficiency.OverallEfficiency < 20 {
 			effColor = tcell.ColorRed
 		}
-		
+
 		// Determine state color
 		stateColor := tcell.ColorGreen
 		if job.State == "PENDING" || job.State == "PD" {
 			stateColor = tcell.ColorYellow
 		}
-		
+
 		v.jobTable.SetCell(row, 0, tview.NewTableCell(job.JobID))
 		v.jobTable.SetCell(row, 1, tview.NewTableCell(job.User))
 		v.jobTable.SetCell(row, 2, tview.NewTableCell(
@@ -767,7 +785,7 @@ func (v *ObservabilityView) renderJobTable() {
 			fmt.Sprintf("%.1f%%", job.Efficiency.OverallEfficiency)).SetTextColor(effColor))
 		v.jobTable.SetCell(row, 7, tview.NewTableCell(job.State).
 			SetTextColor(stateColor))
-		
+
 		row++
 	}
 }
@@ -784,27 +802,27 @@ func (v *ObservabilityView) showHelp() {
 Navigation:
   Tab/Shift+Tab : Cycle through panels
   n/N           : Focus node table
-  j/J           : Focus job table  
+  j/J           : Focus job table
   a/A           : Focus alerts panel
   ↑/↓           : Navigate in tables
-  
+
 Actions:
   r/R/Ctrl+R    : Refresh metrics
   Enter         : View details for selected item
   h/H/?         : Show this help
   Esc/Ctrl+C    : Exit view
-  
+
 Display:
   s/S           : Toggle sparklines
   c/C           : Cycle color schemes`
-	
+
 	modal := tview.NewModal().
 		SetText(helpText).
 		AddButtons([]string{"Close"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 			v.app.SetRoot(v.root, true)
 		})
-	
+
 	v.app.SetRoot(modal, true)
 }
 
@@ -879,4 +897,84 @@ func (v *ObservabilityView) HandleEvent(event plugin.ViewEvent) error {
 		}
 	}
 	return nil
+}
+
+// GetHelp returns help text for this view
+func (v *ObservabilityView) GetHelp() string {
+	return `Observability View - Keyboard Shortcuts:
+
+Navigation:
+  Tab/Shift+Tab : Cycle through panels
+  n/N           : Focus node table
+  j/J           : Focus job table
+  a/A           : Focus alerts panel
+  ↑/↓           : Navigate in tables
+
+Actions:
+  r/R/Ctrl+R    : Refresh metrics
+  Enter         : View details for selected item
+  h/H/?         : Show this help
+  Esc/Ctrl+C    : Exit view
+
+Display:
+  s/S           : Toggle sparklines
+  c/C           : Cycle color schemes`
+}
+
+// HandleKey processes keyboard input
+func (v *ObservabilityView) HandleKey(event *tcell.EventKey) bool {
+	// Handle global shortcuts
+	switch event.Key() {
+	case tcell.KeyTab:
+		// Cycle through focusable elements
+		v.cycleFocus(false)
+		return true
+	case tcell.KeyBacktab:
+		// Reverse cycle
+		v.cycleFocus(true)
+		return true
+	case tcell.KeyCtrlR:
+		// Force refresh
+		go v.refresh(context.Background())
+		return true
+	case tcell.KeyEsc, tcell.KeyCtrlC:
+		// Return to previous view
+		return false
+	}
+
+	// Handle specific shortcuts
+	switch event.Rune() {
+	case 'n', 'N':
+		// Focus node table
+		v.app.SetFocus(v.nodeTable)
+		return true
+	case 'j', 'J':
+		// Focus job table
+		v.app.SetFocus(v.jobTable)
+		return true
+	case 'a', 'A':
+		// Focus alerts
+		v.app.SetFocus(v.alertsPanel.GetPrimitive())
+		return true
+	case 'r', 'R':
+		// Refresh data
+		go v.refresh(context.Background())
+		return true
+	case 'h', 'H', '?':
+		// Show help
+		v.showHelp()
+		return true
+	}
+
+	return false
+}
+
+// SetFocus sets focus to this view
+func (v *ObservabilityView) SetFocus(app *tview.Application) {
+	app.SetFocus(v.nodeTable) // Default focus to node table
+}
+
+// Update refreshes the view data
+func (v *ObservabilityView) Update(ctx context.Context) error {
+	return v.refresh(ctx)
 }
