@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"context"
-	
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -11,16 +11,16 @@ import (
 type Plugin interface {
 	// GetInfo returns metadata about the plugin
 	GetInfo() Info
-	
+
 	// Init initializes the plugin with configuration
 	Init(ctx context.Context, config map[string]interface{}) error
-	
+
 	// Start starts the plugin's background processes
 	Start(ctx context.Context) error
-	
+
 	// Stop gracefully stops the plugin
 	Stop(ctx context.Context) error
-	
+
 	// Health returns the current health status of the plugin
 	Health() HealthStatus
 }
@@ -57,10 +57,10 @@ type HealthStatus struct {
 // ViewPlugin represents a plugin that provides custom views
 type ViewPlugin interface {
 	Plugin
-	
+
 	// GetViews returns the views provided by this plugin
 	GetViews() []ViewInfo
-	
+
 	// CreateView creates a specific view instance
 	CreateView(ctx context.Context, viewID string) (View, error)
 }
@@ -79,22 +79,22 @@ type ViewInfo struct {
 type View interface {
 	// GetName returns the display name
 	GetName() string
-	
+
 	// GetID returns the unique identifier
 	GetID() string
-	
+
 	// GetPrimitive returns the tview primitive for rendering
 	GetPrimitive() tview.Primitive
-	
+
 	// Update refreshes the view data
 	Update(ctx context.Context) error
-	
+
 	// HandleKey processes keyboard input
 	HandleKey(event *tcell.EventKey) bool
-	
+
 	// SetFocus sets focus to this view
 	SetFocus(app *tview.Application)
-	
+
 	// GetHelp returns help text for this view
 	GetHelp() string
 }
@@ -102,10 +102,10 @@ type View interface {
 // OverlayPlugin represents a plugin that overlays data on existing views
 type OverlayPlugin interface {
 	Plugin
-	
+
 	// GetOverlays returns the overlays provided by this plugin
 	GetOverlays() []OverlayInfo
-	
+
 	// CreateOverlay creates a specific overlay instance
 	CreateOverlay(ctx context.Context, overlayID string) (Overlay, error)
 }
@@ -123,16 +123,16 @@ type OverlayInfo struct {
 type Overlay interface {
 	// GetID returns the unique identifier
 	GetID() string
-	
+
 	// GetColumns returns additional columns to add
 	GetColumns() []ColumnDefinition
-	
+
 	// GetCellData returns data for a specific cell
 	GetCellData(ctx context.Context, viewID string, rowID interface{}, columnID string) (string, error)
-	
+
 	// GetCellStyle returns styling for a specific cell
 	GetCellStyle(ctx context.Context, viewID string, rowID interface{}, columnID string) CellStyle
-	
+
 	// ShouldRefresh indicates if the overlay needs refresh
 	ShouldRefresh() bool
 }
@@ -155,19 +155,65 @@ type CellStyle struct {
 	Underline  bool   `json:"underline"`
 }
 
+// ColumnPosition defines where to place an overlay column
+type ColumnPosition string
+
+const (
+	ColumnPositionBefore ColumnPosition = "before"
+	ColumnPositionAfter  ColumnPosition = "after"
+	ColumnPositionStart  ColumnPosition = "start"
+	ColumnPositionEnd    ColumnPosition = "end"
+)
+
+// OverlayColumn defines a column added by an overlay (alias for ColumnDefinition)
+type OverlayColumn = ColumnDefinition
+
+// OverlayCellData represents data for an overlay cell
+type OverlayCellData struct {
+	Value string    `json:"value"`
+	Style CellStyle `json:"style"`
+	Raw   interface{} `json:"raw,omitempty"`
+}
+
+// OverlayRowEnhancement represents enhancements to a row
+type OverlayRowEnhancement struct {
+	RowID           string                     `json:"row_id"`
+	CellData        map[string]OverlayCellData `json:"cell_data"`
+	RowStyle        CellStyle                  `json:"row_style,omitempty"`
+	BackgroundColor tcell.Color                `json:"background_color,omitempty"`
+	Bold            bool                       `json:"bold,omitempty"`
+	Tooltip         string                     `json:"tooltip,omitempty"`
+	Interactive     bool                       `json:"interactive,omitempty"`
+}
+
+// OverlayEvent represents an event from an overlay
+type OverlayEvent struct {
+	Type   string                 `json:"type"`
+	Source string                 `json:"source"`
+	Data   map[string]interface{} `json:"data"`
+	RowID  string                 `json:"row_id,omitempty"`
+}
+
+// ViewEvent represents an event from a view
+type ViewEvent struct {
+	Type   string                 `json:"type"`
+	Source string                 `json:"source"`
+	Data   map[string]interface{} `json:"data"`
+}
+
 // DataPlugin represents a plugin that provides data to other plugins
 type DataPlugin interface {
 	Plugin
-	
+
 	// GetDataProviders returns the data providers offered
 	GetDataProviders() []DataProviderInfo
-	
+
 	// Subscribe allows other plugins to subscribe to data updates
 	Subscribe(ctx context.Context, providerID string, callback DataCallback) (SubscriptionID, error)
-	
+
 	// Unsubscribe removes a data subscription
 	Unsubscribe(ctx context.Context, subscriptionID SubscriptionID) error
-	
+
 	// Query performs a one-time data query
 	Query(ctx context.Context, providerID string, params map[string]interface{}) (interface{}, error)
 }
@@ -190,16 +236,16 @@ type SubscriptionID string
 // ConfigurablePlugin represents a plugin that can be configured at runtime
 type ConfigurablePlugin interface {
 	Plugin
-	
+
 	// GetConfig returns the current configuration
 	GetConfig() map[string]interface{}
-	
+
 	// SetConfig updates the configuration
 	SetConfig(config map[string]interface{}) error
-	
+
 	// ValidateConfig validates a configuration without applying it
 	ValidateConfig(config map[string]interface{}) error
-	
+
 	// GetConfigUI returns a UI for configuration (optional)
 	GetConfigUI() tview.Primitive
 }
@@ -207,10 +253,10 @@ type ConfigurablePlugin interface {
 // HookablePlugin represents a plugin that provides hooks for events
 type HookablePlugin interface {
 	Plugin
-	
+
 	// GetHooks returns the hooks provided by this plugin
 	GetHooks() []HookInfo
-	
+
 	// RegisterHook registers a callback for a hook
 	RegisterHook(hookID string, callback HookCallback) error
 }
@@ -230,10 +276,10 @@ type HookCallback func(ctx context.Context, params map[string]interface{}) error
 type LifecycleAware interface {
 	// OnEnable is called when the plugin is enabled
 	OnEnable(ctx context.Context) error
-	
+
 	// OnDisable is called when the plugin is disabled
 	OnDisable(ctx context.Context) error
-	
+
 	// OnConfigChange is called when configuration changes
 	OnConfigChange(ctx context.Context, oldConfig, newConfig map[string]interface{}) error
 }
@@ -248,10 +294,10 @@ type Prioritizable interface {
 type ResourceManager interface {
 	// GetResourceUsage returns current resource usage
 	GetResourceUsage() ResourceUsage
-	
+
 	// GetResourceLimits returns resource limits
 	GetResourceLimits() ResourceLimits
-	
+
 	// SetResourceLimits sets resource limits
 	SetResourceLimits(limits ResourceLimits) error
 }

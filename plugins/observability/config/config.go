@@ -10,16 +10,16 @@ import (
 type Config struct {
 	// Prometheus configuration
 	Prometheus PrometheusConfig `yaml:"prometheus" json:"prometheus"`
-	
+
 	// Display preferences
 	Display DisplayConfig `yaml:"display" json:"display"`
-	
+
 	// Alert configuration
 	Alerts AlertConfig `yaml:"alerts" json:"alerts"`
-	
+
 	// Cache configuration
 	Cache CacheConfig `yaml:"cache" json:"cache"`
-	
+
 	// Metrics configuration
 	Metrics MetricsConfig `yaml:"metrics" json:"metrics"`
 }
@@ -28,16 +28,16 @@ type Config struct {
 type PrometheusConfig struct {
 	// Endpoint is the Prometheus server URL
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
-	
+
 	// Timeout for Prometheus queries
 	Timeout time.Duration `yaml:"timeout" json:"timeout"`
-	
+
 	// Authentication settings
 	Auth AuthConfig `yaml:"auth" json:"auth"`
-	
+
 	// TLS configuration
 	TLS TLSConfig `yaml:"tls" json:"tls"`
-	
+
 	// Retry configuration
 	Retry RetryConfig `yaml:"retry" json:"retry"`
 }
@@ -46,13 +46,13 @@ type PrometheusConfig struct {
 type AuthConfig struct {
 	// Type of authentication: "none", "basic", "bearer"
 	Type string `yaml:"type" json:"type"`
-	
+
 	// Username for basic auth
 	Username string `yaml:"username,omitempty" json:"username,omitempty"`
-	
+
 	// Password for basic auth
 	Password string `yaml:"password,omitempty" json:"password,omitempty"`
-	
+
 	// Token for bearer auth
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
 }
@@ -61,16 +61,16 @@ type AuthConfig struct {
 type TLSConfig struct {
 	// Enable TLS
 	Enabled bool `yaml:"enabled" json:"enabled"`
-	
+
 	// Skip certificate verification (insecure)
 	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
-	
+
 	// CA certificate file path
 	CAFile string `yaml:"caFile,omitempty" json:"caFile,omitempty"`
-	
+
 	// Client certificate file path
 	CertFile string `yaml:"certFile,omitempty" json:"certFile,omitempty"`
-	
+
 	// Client key file path
 	KeyFile string `yaml:"keyFile,omitempty" json:"keyFile,omitempty"`
 }
@@ -79,13 +79,13 @@ type TLSConfig struct {
 type RetryConfig struct {
 	// Maximum number of retries
 	MaxRetries int `yaml:"maxRetries" json:"maxRetries"`
-	
+
 	// Initial retry delay
 	InitialDelay time.Duration `yaml:"initialDelay" json:"initialDelay"`
-	
+
 	// Maximum retry delay
 	MaxDelay time.Duration `yaml:"maxDelay" json:"maxDelay"`
-	
+
 	// Backoff multiplier
 	Multiplier float64 `yaml:"multiplier" json:"multiplier"`
 }
@@ -94,19 +94,19 @@ type RetryConfig struct {
 type DisplayConfig struct {
 	// Refresh interval for metrics
 	RefreshInterval time.Duration `yaml:"refreshInterval" json:"refreshInterval"`
-	
+
 	// Show metric overlays on existing views
 	ShowOverlays bool `yaml:"showOverlays" json:"showOverlays"`
-	
+
 	// Enable sparklines in tables
 	ShowSparklines bool `yaml:"showSparklines" json:"showSparklines"`
-	
+
 	// Number of historical points for sparklines
 	SparklinePoints int `yaml:"sparklinePoints" json:"sparklinePoints"`
-	
+
 	// Color scheme: "default", "colorblind", "monochrome"
 	ColorScheme string `yaml:"colorScheme" json:"colorScheme"`
-	
+
 	// Decimal precision for values
 	DecimalPrecision int `yaml:"decimalPrecision" json:"decimalPrecision"`
 }
@@ -115,19 +115,19 @@ type DisplayConfig struct {
 type AlertConfig struct {
 	// Enable alerting
 	Enabled bool `yaml:"enabled" json:"enabled"`
-	
+
 	// Check interval for alerts
 	CheckInterval time.Duration `yaml:"checkInterval" json:"checkInterval"`
-	
+
 	// Load predefined alert rules
 	LoadPredefinedRules bool `yaml:"loadPredefinedRules" json:"loadPredefinedRules"`
-	
+
 	// Show notifications for new alerts
 	ShowNotifications bool `yaml:"showNotifications" json:"showNotifications"`
-	
+
 	// Default alert rules
 	Rules []AlertRule `yaml:"rules" json:"rules"`
-	
+
 	// Alert history retention
 	HistoryRetention time.Duration `yaml:"historyRetention" json:"historyRetention"`
 }
@@ -136,22 +136,22 @@ type AlertConfig struct {
 type AlertRule struct {
 	// Rule name
 	Name string `yaml:"name" json:"name"`
-	
+
 	// Metric to monitor
 	Metric string `yaml:"metric" json:"metric"`
-	
+
 	// Comparison operator: ">", "<", ">=", "<=", "==", "!="
 	Operator string `yaml:"operator" json:"operator"`
-	
+
 	// Threshold value
 	Threshold float64 `yaml:"threshold" json:"threshold"`
-	
+
 	// Duration before triggering
 	Duration time.Duration `yaml:"duration" json:"duration"`
-	
+
 	// Severity: "info", "warning", "critical"
 	Severity string `yaml:"severity" json:"severity"`
-	
+
 	// Rule enabled
 	Enabled bool `yaml:"enabled" json:"enabled"`
 }
@@ -160,13 +160,13 @@ type AlertRule struct {
 type CacheConfig struct {
 	// Enable caching
 	Enabled bool `yaml:"enabled" json:"enabled"`
-	
+
 	// Default TTL for cached metrics
 	DefaultTTL time.Duration `yaml:"defaultTTL" json:"defaultTTL"`
-	
+
 	// Maximum cache size in entries
 	MaxSize int `yaml:"maxSize" json:"maxSize"`
-	
+
 	// Cleanup interval
 	CleanupInterval time.Duration `yaml:"cleanupInterval" json:"cleanupInterval"`
 }
@@ -175,10 +175,10 @@ type CacheConfig struct {
 type MetricsConfig struct {
 	// Node metrics configuration
 	Node NodeMetricsConfig `yaml:"node" json:"node"`
-	
+
 	// Job metrics configuration
 	Job JobMetricsConfig `yaml:"job" json:"job"`
-	
+
 	// Custom queries
 	CustomQueries map[string]string `yaml:"customQueries" json:"customQueries"`
 }
@@ -187,10 +187,10 @@ type MetricsConfig struct {
 type NodeMetricsConfig struct {
 	// Label used to identify nodes in Prometheus
 	NodeLabel string `yaml:"nodeLabel" json:"nodeLabel"`
-	
+
 	// Metrics to collect
 	EnabledMetrics []string `yaml:"enabledMetrics" json:"enabledMetrics"`
-	
+
 	// Query range for rate calculations
 	RateRange string `yaml:"rateRange" json:"rateRange"`
 }
@@ -199,10 +199,10 @@ type NodeMetricsConfig struct {
 type JobMetricsConfig struct {
 	// Enable job metrics collection
 	Enabled bool `yaml:"enabled" json:"enabled"`
-	
+
 	// cgroup path pattern
 	CgroupPattern string `yaml:"cgroupPattern" json:"cgroupPattern"`
-	
+
 	// Metrics to collect
 	EnabledMetrics []string `yaml:"enabledMetrics" json:"enabledMetrics"`
 }
@@ -294,22 +294,22 @@ func (c *Config) Validate() error {
 	if c.Prometheus.Endpoint == "" {
 		return fmt.Errorf("prometheus endpoint is required")
 	}
-	
+
 	// Parse and validate URL
 	u, err := url.Parse(c.Prometheus.Endpoint)
 	if err != nil {
 		return fmt.Errorf("invalid prometheus endpoint URL: %w", err)
 	}
-	
+
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return fmt.Errorf("prometheus endpoint must use http or https scheme")
 	}
-	
+
 	// Validate timeouts
 	if c.Prometheus.Timeout <= 0 {
 		return fmt.Errorf("prometheus timeout must be positive")
 	}
-	
+
 	// Validate auth configuration
 	switch c.Prometheus.Auth.Type {
 	case "none":
@@ -325,7 +325,7 @@ func (c *Config) Validate() error {
 	default:
 		return fmt.Errorf("invalid auth type: %s", c.Prometheus.Auth.Type)
 	}
-	
+
 	// Validate TLS configuration
 	if c.Prometheus.TLS.Enabled {
 		if c.Prometheus.TLS.CertFile != "" && c.Prometheus.TLS.KeyFile == "" {
@@ -335,7 +335,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("TLS key file requires cert file")
 		}
 	}
-	
+
 	// Validate retry configuration
 	if c.Prometheus.Retry.MaxRetries < 0 {
 		return fmt.Errorf("max retries must be non-negative")
@@ -343,7 +343,7 @@ func (c *Config) Validate() error {
 	if c.Prometheus.Retry.Multiplier <= 0 {
 		return fmt.Errorf("retry multiplier must be positive")
 	}
-	
+
 	// Validate display configuration
 	if c.Display.RefreshInterval <= 0 {
 		return fmt.Errorf("refresh interval must be positive")
@@ -354,7 +354,7 @@ func (c *Config) Validate() error {
 	if c.Display.DecimalPrecision < 0 {
 		return fmt.Errorf("decimal precision must be non-negative")
 	}
-	
+
 	// Validate color scheme
 	validColorSchemes := map[string]bool{
 		"default": true,
@@ -364,13 +364,13 @@ func (c *Config) Validate() error {
 	if !validColorSchemes[c.Display.ColorScheme] {
 		return fmt.Errorf("invalid color scheme: %s", c.Display.ColorScheme)
 	}
-	
+
 	// Validate alert configuration
 	if c.Alerts.Enabled {
 		if c.Alerts.CheckInterval <= 0 {
 			return fmt.Errorf("alert check interval must be positive")
 		}
-		
+
 		// Validate alert rules
 		for i, rule := range c.Alerts.Rules {
 			if rule.Name == "" {
@@ -379,7 +379,7 @@ func (c *Config) Validate() error {
 			if rule.Metric == "" {
 				return fmt.Errorf("alert rule %s: metric is required", rule.Name)
 			}
-			
+
 			// Validate operator
 			validOperators := map[string]bool{
 				">": true, "<": true, ">=": true, "<=": true, "==": true, "!=": true,
@@ -387,7 +387,7 @@ func (c *Config) Validate() error {
 			if !validOperators[rule.Operator] {
 				return fmt.Errorf("alert rule %s: invalid operator %s", rule.Name, rule.Operator)
 			}
-			
+
 			// Validate severity
 			validSeverities := map[string]bool{
 				"info": true, "warning": true, "critical": true,
@@ -395,13 +395,13 @@ func (c *Config) Validate() error {
 			if !validSeverities[rule.Severity] {
 				return fmt.Errorf("alert rule %s: invalid severity %s", rule.Name, rule.Severity)
 			}
-			
+
 			if rule.Duration <= 0 {
 				return fmt.Errorf("alert rule %s: duration must be positive", rule.Name)
 			}
 		}
 	}
-	
+
 	// Validate cache configuration
 	if c.Cache.Enabled {
 		if c.Cache.DefaultTTL <= 0 {
@@ -414,7 +414,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("cache cleanup interval must be positive")
 		}
 	}
-	
+
 	// Validate metrics configuration
 	if c.Metrics.Node.NodeLabel == "" {
 		return fmt.Errorf("node label is required")
@@ -422,7 +422,7 @@ func (c *Config) Validate() error {
 	if c.Metrics.Node.RateRange == "" {
 		return fmt.Errorf("node rate range is required")
 	}
-	
+
 	// Validate rate range format
 	if _, err := time.ParseDuration(c.Metrics.Node.RateRange); err != nil {
 		// Try Prometheus format (e.g., "5m")
@@ -430,18 +430,18 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid rate range format: %s", c.Metrics.Node.RateRange)
 		}
 	}
-	
+
 	if c.Metrics.Job.Enabled && c.Metrics.Job.CgroupPattern == "" {
 		return fmt.Errorf("job cgroup pattern is required when job metrics are enabled")
 	}
-	
+
 	return nil
 }
 
 // MergeWithDefaults merges the configuration with defaults
 func (c *Config) MergeWithDefaults() {
 	def := DefaultConfig()
-	
+
 	// Merge Prometheus config
 	if c.Prometheus.Endpoint == "" {
 		c.Prometheus.Endpoint = def.Prometheus.Endpoint
@@ -464,7 +464,7 @@ func (c *Config) MergeWithDefaults() {
 	if c.Prometheus.Retry.Multiplier == 0 {
 		c.Prometheus.Retry.Multiplier = def.Prometheus.Retry.Multiplier
 	}
-	
+
 	// Merge Display config
 	if c.Display.RefreshInterval == 0 {
 		c.Display.RefreshInterval = def.Display.RefreshInterval
@@ -478,7 +478,7 @@ func (c *Config) MergeWithDefaults() {
 	if c.Display.DecimalPrecision == 0 {
 		c.Display.DecimalPrecision = def.Display.DecimalPrecision
 	}
-	
+
 	// Merge Alert config
 	if c.Alerts.CheckInterval == 0 {
 		c.Alerts.CheckInterval = def.Alerts.CheckInterval
@@ -489,7 +489,7 @@ func (c *Config) MergeWithDefaults() {
 	if len(c.Alerts.Rules) == 0 {
 		c.Alerts.Rules = def.Alerts.Rules
 	}
-	
+
 	// Merge Cache config
 	if c.Cache.DefaultTTL == 0 {
 		c.Cache.DefaultTTL = def.Cache.DefaultTTL
@@ -500,7 +500,7 @@ func (c *Config) MergeWithDefaults() {
 	if c.Cache.CleanupInterval == 0 {
 		c.Cache.CleanupInterval = def.Cache.CleanupInterval
 	}
-	
+
 	// Merge Metrics config
 	if c.Metrics.Node.NodeLabel == "" {
 		c.Metrics.Node.NodeLabel = def.Metrics.Node.NodeLabel

@@ -12,13 +12,13 @@ import (
 // GaugeWidget displays a value as a horizontal gauge/progress bar
 type GaugeWidget struct {
 	*tview.Box
-	
+
 	title    string
 	value    float64
 	min      float64
 	max      float64
 	unit     string
-	
+
 	// Display options
 	showValue     bool
 	showPercentage bool
@@ -37,7 +37,7 @@ func NewGaugeWidget(title string, min, max float64, unit string) *GaugeWidget {
 		showPercentage: true,
 		colorFunc:      defaultColorFunc,
 	}
-	
+
 	g.SetBorder(true).SetTitle(title)
 	return g
 }
@@ -60,32 +60,32 @@ func (g *GaugeWidget) GetPrimitive() tview.Primitive {
 // Draw draws the gauge
 func (g *GaugeWidget) Draw(screen tcell.Screen) {
 	g.Box.DrawForSubclass(screen, g)
-	
+
 	x, y, width, height := g.GetInnerRect()
 	if width <= 0 || height <= 0 {
 		return
 	}
-	
+
 	// Calculate percentage
 	percentage := (g.value - g.min) / (g.max - g.min)
 	if math.IsNaN(percentage) || math.IsInf(percentage, 0) {
 		percentage = 0
 	}
 	percentage = math.Max(0, math.Min(1, percentage))
-	
+
 	// Draw gauge on first line
 	gaugeY := y
 	if height > 1 {
 		// Center vertically if we have space
 		gaugeY = y + (height-1)/2
 	}
-	
+
 	// Calculate filled width
 	filledWidth := int(float64(width) * percentage)
-	
+
 	// Get color based on value
 	color := g.colorFunc(g.value)
-	
+
 	// Draw the gauge
 	for i := 0; i < width; i++ {
 		if i < filledWidth {
@@ -100,7 +100,7 @@ func (g *GaugeWidget) Draw(screen tcell.Screen) {
 			screen.SetContent(x+i, gaugeY, '░', nil, tcell.StyleDefault.Foreground(tcell.ColorGray))
 		}
 	}
-	
+
 	// Draw value text centered on the gauge
 	valueText := g.formatValue()
 	if len(valueText) < width {
@@ -122,16 +122,16 @@ func (g *GaugeWidget) Draw(screen tcell.Screen) {
 // formatValue formats the current value for display
 func (g *GaugeWidget) formatValue() string {
 	parts := []string{}
-	
+
 	if g.showValue {
 		parts = append(parts, fmt.Sprintf("%.1f%s", g.value, g.unit))
 	}
-	
+
 	if g.showPercentage {
 		percentage := (g.value - g.min) / (g.max - g.min) * 100
 		parts = append(parts, fmt.Sprintf("%.1f%%", percentage))
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 

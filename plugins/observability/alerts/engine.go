@@ -17,21 +17,21 @@ type Engine struct {
 	config       *config.AlertConfig
 	client       *prometheus.CachedClient
 	queryBuilder *prometheus.QueryBuilder
-	
+
 	// Alert state
 	activeAlerts map[string]*Alert
 	alertHistory []Alert
 	rules        []Rule
-	
+
 	// Collectors for metrics
 	nodeCollector *models.NodeMetricsCollector
 	jobCollector  *models.JobMetricsCollector
-	
+
 	// Control
 	stopChan     chan struct{}
 	checkTicker  *time.Ticker
 	mu           sync.RWMutex
-	
+
 	// Callbacks
 	onAlert      func(alert Alert)
 	onResolved   func(alert Alert)
@@ -68,7 +68,7 @@ const (
 // NewEngine creates a new alert engine
 func NewEngine(config *config.AlertConfig, client *prometheus.CachedClient) *Engine {
 	qb, _ := prometheus.NewQueryBuilder()
-	
+
 	return &Engine{
 		config:        config,
 		client:        client,
@@ -87,16 +87,16 @@ func (e *Engine) Start(ctx context.Context) error {
 	if !e.config.Enabled {
 		return nil
 	}
-	
+
 	// Load rules from configuration
 	if err := e.loadRules(); err != nil {
 		return fmt.Errorf("failed to load alert rules: %w", err)
 	}
-	
+
 	// Start evaluation loop
 	e.checkTicker = time.NewTicker(e.config.CheckInterval)
 	go e.evaluationLoop(ctx)
-	
+
 	return nil
 }
 
@@ -113,7 +113,7 @@ func (e *Engine) Stop() error {
 func (e *Engine) evaluationLoop(ctx context.Context) {
 	// Initial evaluation
 	e.evaluateAll(ctx)
-	
+
 	for {
 		select {
 		case <-e.checkTicker.C:
@@ -130,28 +130,28 @@ func (e *Engine) evaluationLoop(ctx context.Context) {
 func (e *Engine) evaluateAll(ctx context.Context) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	// Track which alerts are still active
 	stillActive := make(map[string]bool)
-	
+
 	// Evaluate each rule
 	for _, rule := range e.rules {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		alerts := e.evaluateRule(ctx, rule)
 		for _, alert := range alerts {
 			alertID := e.generateAlertID(alert)
 			stillActive[alertID] = true
-			
+
 			// Check if this is a new alert or update existing
 			if existing, exists := e.activeAlerts[alertID]; exists {
 				// Update existing alert
 				existing.LastSeen = time.Now()
 				existing.Duration = existing.LastSeen.Sub(existing.FirstSeen)
 				existing.Value = alert.Value
-				
+
 				// Check if pending alert should transition to firing
 				if existing.State == AlertStatePending {
 					if existing.Duration >= rule.Duration {
@@ -165,18 +165,18 @@ func (e *Engine) evaluateAll(ctx context.Context) {
 				alert.FirstSeen = time.Now()
 				alert.LastSeen = time.Now()
 				alert.State = AlertStatePending
-				
+
 				if rule.Duration == 0 {
 					// No duration requirement, fire immediately
 					alert.State = AlertStateFiring
 					e.fireAlert(alert)
 				}
-				
+
 				e.activeAlerts[alertID] = &alert
 			}
 		}
 	}
-	
+
 	// Check for resolved alerts
 	for id, alert := range e.activeAlerts {
 		if !stillActive[id] {
@@ -184,15 +184,15 @@ func (e *Engine) evaluateAll(ctx context.Context) {
 			alert.State = AlertStateResolved
 			alert.ResolvedAt = time.Now()
 			e.resolveAlert(*alert)
-			
+
 			// Add to history
 			e.addToHistory(*alert)
-			
+
 			// Remove from active alerts
 			delete(e.activeAlerts, id)
 		}
 	}
-	
+
 	// Clean up old history
 	e.cleanupHistory()
 }
@@ -200,28 +200,28 @@ func (e *Engine) evaluateAll(ctx context.Context) {
 // evaluateRule evaluates a single alert rule
 func (e *Engine) evaluateRule(ctx context.Context, rule Rule) []Alert {
 	alerts := []Alert{}
-	
+
 	switch rule.Type {
 	case RuleTypeThreshold:
 		// Simple threshold rule
 		alerts = e.evaluateThresholdRule(ctx, rule)
-		
+
 	case RuleTypeQuery:
 		// Custom PromQL query
 		alerts = e.evaluateQueryRule(ctx, rule)
-		
+
 	case RuleTypeComposite:
 		// Composite rule (multiple conditions)
 		alerts = e.evaluateCompositeRule(ctx, rule)
 	}
-	
+
 	return alerts
 }
 
 // evaluateThresholdRule evaluates a simple threshold rule
 func (e *Engine) evaluateThresholdRule(ctx context.Context, rule Rule) []Alert {
 	alerts := []Alert{}
-	
+
 	// Get current metrics based on rule target
 	switch rule.Target {
 	case "node":
@@ -246,7 +246,7 @@ func (e *Engine) evaluateThresholdRule(ctx context.Context, rule Rule) []Alert {
 				alerts = append(alerts, alert)
 			}
 		}
-		
+
 	case "job":
 		// Evaluate for all jobs
 		jobs := e.jobCollector.GetActiveJobs()
@@ -270,7 +270,7 @@ func (e *Engine) evaluateThresholdRule(ctx context.Context, rule Rule) []Alert {
 				alerts = append(alerts, alert)
 			}
 		}
-		
+
 	case "cluster":
 		// Evaluate cluster-wide metrics
 		value := e.getClusterMetricValue(ctx, rule.Metric)
@@ -290,21 +290,21 @@ func (e *Engine) evaluateThresholdRule(ctx context.Context, rule Rule) []Alert {
 			alerts = append(alerts, alert)
 		}
 	}
-	
+
 	return alerts
 }
 
 // evaluateQueryRule evaluates a custom PromQL query rule
 func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 	alerts := []Alert{}
-	
+
 	// Execute the custom query
 	result, err := e.client.Query(ctx, rule.Query, time.Now())
 	if err != nil {
 		// Log error but don't fail
 		return alerts
 	}
-	
+
 	// Get vector results (most query rules will return vectors)
 	vector, err := result.GetVector()
 	if err != nil {
@@ -314,7 +314,7 @@ func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 			// Neither vector nor scalar, skip
 			return alerts
 		}
-		
+
 		// Process scalar result
 		if e.checkThreshold(scalarValue, rule.Operator, rule.Threshold) {
 			alert := Alert{
@@ -331,11 +331,11 @@ func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 		}
 		return alerts
 	}
-	
+
 	// Process vector results
 	for _, sample := range vector {
 		value := sample.Value.Value()
-		
+
 		if e.checkThreshold(value, rule.Operator, rule.Threshold) {
 			// Build labels from metric labels
 			labels := make(map[string]string)
@@ -343,7 +343,7 @@ func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 				labels[k] = v
 			}
 			labels["metric"] = rule.Metric
-			
+
 			alert := Alert{
 				RuleName:    rule.Name,
 				Severity:    rule.Severity,
@@ -357,7 +357,7 @@ func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 			alerts = append(alerts, alert)
 		}
 	}
-	
+
 	return alerts
 }
 
@@ -370,7 +370,7 @@ func (e *Engine) evaluateCompositeRule(ctx context.Context, rule Rule) []Alert {
 // getNodeMetricValue extracts a metric value from node metrics
 func (e *Engine) getNodeMetricValue(node *models.NodeMetrics, metric string) *float64 {
 	var value float64
-	
+
 	switch metric {
 	case "cpu_usage":
 		value = node.Resources.CPU.Usage
@@ -387,14 +387,14 @@ func (e *Engine) getNodeMetricValue(node *models.NodeMetrics, metric string) *fl
 	default:
 		return nil
 	}
-	
+
 	return &value
 }
 
 // getJobMetricValue extracts a metric value from job metrics
 func (e *Engine) getJobMetricValue(job *models.JobMetrics, metric string) *float64 {
 	var value float64
-	
+
 	switch metric {
 	case "cpu_usage":
 		value = job.Resources.CPU.Usage
@@ -413,7 +413,7 @@ func (e *Engine) getJobMetricValue(job *models.JobMetrics, metric string) *float
 	default:
 		return nil
 	}
-	
+
 	return &value
 }
 
@@ -424,9 +424,9 @@ func (e *Engine) getClusterMetricValue(ctx context.Context, metric string) *floa
 	if agg == nil {
 		return nil
 	}
-	
+
 	var value float64
-	
+
 	switch metric {
 	case "cpu_usage":
 		value = agg.AverageCPUUsage
@@ -439,7 +439,7 @@ func (e *Engine) getClusterMetricValue(ctx context.Context, metric string) *floa
 	default:
 		return nil
 	}
-	
+
 	return &value
 }
 
@@ -469,13 +469,13 @@ func (e *Engine) formatAlertMessage(rule Rule, target string, value float64) str
 		// TODO: Implement template rendering
 		return rule.MessageTemplate
 	}
-	
+
 	// Default message
 	if target != "" {
 		return fmt.Sprintf("%s: %s %s %s %.2f (threshold: %.2f)",
 			target, rule.Metric, rule.Operator, "is", value, rule.Threshold)
 	}
-	
+
 	return fmt.Sprintf("%s %s %.2f (threshold: %.2f)",
 		rule.Metric, rule.Operator, value, rule.Threshold)
 }
@@ -503,7 +503,7 @@ func (e *Engine) resolveAlert(alert Alert) {
 // addToHistory adds an alert to the history
 func (e *Engine) addToHistory(alert Alert) {
 	e.alertHistory = append([]Alert{alert}, e.alertHistory...)
-	
+
 	// Limit history size
 	maxHistory := 1000
 	if len(e.alertHistory) > maxHistory {
@@ -516,16 +516,16 @@ func (e *Engine) cleanupHistory() {
 	if e.config.HistoryRetention == 0 {
 		return
 	}
-	
+
 	cutoff := time.Now().Add(-e.config.HistoryRetention)
 	newHistory := []Alert{}
-	
+
 	for _, alert := range e.alertHistory {
 		if alert.ResolvedAt.After(cutoff) || alert.LastSeen.After(cutoff) {
 			newHistory = append(newHistory, alert)
 		}
 	}
-	
+
 	e.alertHistory = newHistory
 }
 
@@ -533,12 +533,12 @@ func (e *Engine) cleanupHistory() {
 func (e *Engine) GetActiveAlerts() []Alert {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	alerts := make([]Alert, 0, len(e.activeAlerts))
 	for _, alert := range e.activeAlerts {
 		alerts = append(alerts, *alert)
 	}
-	
+
 	return alerts
 }
 
@@ -546,11 +546,11 @@ func (e *Engine) GetActiveAlerts() []Alert {
 func (e *Engine) GetAlertHistory(limit int) []Alert {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > len(e.alertHistory) {
 		limit = len(e.alertHistory)
 	}
-	
+
 	return e.alertHistory[:limit]
 }
 
@@ -574,7 +574,7 @@ func (e *Engine) loadRules() error {
 			}
 		}
 	}
-	
+
 	// Convert config rules to engine rules
 	for _, configRule := range e.config.Rules {
 		rule := Rule{
@@ -589,17 +589,17 @@ func (e *Engine) loadRules() error {
 			Enabled:     configRule.Enabled,
 			Description: fmt.Sprintf("Alert when %s %s %.2f", configRule.Metric, configRule.Operator, configRule.Threshold),
 		}
-		
+
 		// Determine target from metric name
 		if strings.Contains(configRule.Metric, "job_") {
 			rule.Target = "job"
 		} else if strings.Contains(configRule.Metric, "cluster_") {
 			rule.Target = "cluster"
 		}
-		
+
 		e.rules = append(e.rules, rule)
 	}
-	
+
 	return nil
 }
 
@@ -607,7 +607,7 @@ func (e *Engine) loadRules() error {
 func (e *Engine) AddRule(rule Rule) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	e.rules = append(e.rules, rule)
 }
 
@@ -615,7 +615,7 @@ func (e *Engine) AddRule(rule Rule) {
 func (e *Engine) RemoveRule(name string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	newRules := []Rule{}
 	for _, rule := range e.rules {
 		if rule.Name != name {
@@ -629,7 +629,7 @@ func (e *Engine) RemoveRule(name string) {
 func (e *Engine) GetRules() []Rule {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	rules := make([]Rule, len(e.rules))
 	copy(rules, e.rules)
 	return rules

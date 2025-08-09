@@ -12,14 +12,14 @@ import (
 // SparklineWidget displays a time series as a sparkline chart
 type SparklineWidget struct {
 	*tview.Box
-	
+
 	title      string
 	values     []float64
 	maxPoints  int
 	min        float64
 	max        float64
 	autoScale  bool
-	
+
 	// Display options
 	showValue  bool
 	showMinMax bool
@@ -39,7 +39,7 @@ func NewSparklineWidget(title string, maxPoints int) *SparklineWidget {
 		showMinMax: true,
 		colorFunc:  defaultSparklineColorFunc,
 	}
-	
+
 	s.SetBorder(true).SetTitle(title)
 	return s
 }
@@ -47,12 +47,12 @@ func NewSparklineWidget(title string, maxPoints int) *SparklineWidget {
 // AddValue adds a new value to the sparkline
 func (s *SparklineWidget) AddValue(value float64) {
 	s.values = append(s.values, value)
-	
+
 	// Keep only the most recent values
 	if len(s.values) > s.maxPoints {
 		s.values = s.values[len(s.values)-s.maxPoints:]
 	}
-	
+
 	// Update min/max if auto-scaling
 	if s.autoScale && len(s.values) > 0 {
 		s.updateScale()
@@ -66,7 +66,7 @@ func (s *SparklineWidget) SetValues(values []float64) {
 	} else {
 		s.values = values
 	}
-	
+
 	if s.autoScale && len(s.values) > 0 {
 		s.updateScale()
 	}
@@ -94,10 +94,10 @@ func (s *SparklineWidget) updateScale() {
 	if len(s.values) == 0 {
 		return
 	}
-	
+
 	s.min = s.values[0]
 	s.max = s.values[0]
-	
+
 	for _, v := range s.values {
 		if v < s.min {
 			s.min = v
@@ -106,7 +106,7 @@ func (s *SparklineWidget) updateScale() {
 			s.max = v
 		}
 	}
-	
+
 	// Add some padding to the scale
 	range_ := s.max - s.min
 	if range_ < 0.001 {
@@ -123,22 +123,22 @@ func (s *SparklineWidget) updateScale() {
 // Draw draws the sparkline
 func (s *SparklineWidget) Draw(screen tcell.Screen) {
 	s.Box.DrawForSubclass(screen, s)
-	
+
 	x, y, width, height := s.GetInnerRect()
 	if width <= 0 || height <= 0 || len(s.values) == 0 {
 		return
 	}
-	
+
 	// Reserve space for value display
 	chartHeight := height
 	valueY := y + height - 1
 	if s.showValue && height > 1 {
 		chartHeight = height - 1
 	}
-	
+
 	// Draw the sparkline
 	s.drawSparkline(screen, x, y, width, chartHeight)
-	
+
 	// Draw current value and min/max
 	if s.showValue {
 		s.drawValueLine(screen, x, valueY, width)
@@ -150,40 +150,40 @@ func (s *SparklineWidget) drawSparkline(screen tcell.Screen, x, y, width, height
 	if len(s.values) == 0 || height <= 0 {
 		return
 	}
-	
+
 	// Calculate how many values to display
 	valuesToShow := len(s.values)
 	if valuesToShow > width {
 		valuesToShow = width
 	}
-	
+
 	// Start position for values
 	startIdx := len(s.values) - valuesToShow
-	
+
 	// Sparkline characters (from lowest to highest)
 	sparkChars := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-	
+
 	// Calculate scale
 	range_ := s.max - s.min
 	if range_ < 0.001 {
 		range_ = 1 // Avoid division by zero
 	}
-	
+
 	// Draw each point
 	for i := 0; i < valuesToShow; i++ {
 		value := s.values[startIdx+i]
-		
+
 		// Normalize value to 0-1
 		normalized := (value - s.min) / range_
 		normalized = math.Max(0, math.Min(1, normalized))
-		
+
 		// Get color
 		color := s.colorFunc(value)
-		
+
 		if height == 1 {
 			// Single line sparkline
 			charIdx := int(normalized * float64(len(sparkChars)-1))
-			screen.SetContent(x+i, y, sparkChars[charIdx], nil, 
+			screen.SetContent(x+i, y, sparkChars[charIdx], nil,
 				tcell.StyleDefault.Foreground(color))
 		} else {
 			// Multi-line sparkline
@@ -191,7 +191,7 @@ func (s *SparklineWidget) drawSparkline(screen tcell.Screen, x, y, width, height
 			if barHeight == 0 && normalized > 0 {
 				barHeight = 1
 			}
-			
+
 			// Draw vertical bar
 			for j := 0; j < height; j++ {
 				if j < barHeight {
@@ -216,25 +216,25 @@ func (s *SparklineWidget) drawValueLine(screen tcell.Screen, x, y, width int) {
 	if len(s.values) == 0 {
 		return
 	}
-	
+
 	current := s.values[len(s.values)-1]
-	
+
 	parts := []string{}
-	
+
 	// Current value
 	if s.unit != "" {
 		parts = append(parts, fmt.Sprintf("%.1f%s", current, s.unit))
 	} else {
 		parts = append(parts, fmt.Sprintf("%.1f", current))
 	}
-	
+
 	// Min/Max
 	if s.showMinMax {
 		parts = append(parts, fmt.Sprintf("min:%.1f max:%.1f", s.min, s.max))
 	}
-	
+
 	text := strings.Join(parts, " ")
-	
+
 	// Center the text
 	if len(text) < width {
 		startX := x + (width-len(text))/2
@@ -301,7 +301,7 @@ type TimeSeriesSparkline struct {
 // NewTimeSeriesSparkline creates a new time series sparkline
 func NewTimeSeriesSparkline(title string, timeWindow int64) *TimeSeriesSparkline {
 	maxPoints := 60 // Default to 60 points (e.g., 1 minute of per-second data)
-	
+
 	return &TimeSeriesSparkline{
 		SparklineWidget: NewSparklineWidget(title, maxPoints),
 		timestamps:      make([]int64, 0, maxPoints),
@@ -313,24 +313,24 @@ func NewTimeSeriesSparkline(title string, timeWindow int64) *TimeSeriesSparkline
 func (ts *TimeSeriesSparkline) AddTimedValue(value float64, timestamp int64) {
 	ts.timestamps = append(ts.timestamps, timestamp)
 	ts.AddValue(value)
-	
+
 	// Keep timestamps in sync with values
 	if len(ts.timestamps) > ts.maxPoints {
 		ts.timestamps = ts.timestamps[len(ts.timestamps)-ts.maxPoints:]
 	}
-	
+
 	// Remove old values outside time window
 	if ts.timeWindow > 0 && len(ts.timestamps) > 0 {
 		cutoff := timestamp - ts.timeWindow
 		firstValid := 0
-		
+
 		for i, t := range ts.timestamps {
 			if t >= cutoff {
 				firstValid = i
 				break
 			}
 		}
-		
+
 		if firstValid > 0 {
 			ts.timestamps = ts.timestamps[firstValid:]
 			ts.values = ts.values[firstValid:]

@@ -39,39 +39,39 @@ func NewRegistry() *Registry {
 func (r *Registry) Register(plugin Plugin) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	info := plugin.GetInfo()
-	
+
 	// Validate plugin info
 	if err := r.validatePluginInfo(info); err != nil {
 		return fmt.Errorf("invalid plugin info: %w", err)
 	}
-	
+
 	// Check if already registered
 	if _, exists := r.plugins[info.Name]; exists {
 		return fmt.Errorf("plugin %s already registered", info.Name)
 	}
-	
+
 	// Register plugin
 	r.plugins[info.Name] = plugin
-	
+
 	// Store metadata
 	r.metadata[info.Name] = PluginMetadata{
 		RegistrationTime: getCurrentTimestamp(),
 		LoadOrder:        len(r.plugins),
 		Source:           "builtin", // Default, can be overridden
 	}
-	
+
 	// Index capabilities
 	for _, capability := range info.Provides {
 		r.provides[capability] = append(r.provides[capability], info.Name)
 	}
-	
+
 	// Index requirements
 	if len(info.Requires) > 0 {
 		r.requires[info.Name] = info.Requires
 	}
-	
+
 	return nil
 }
 
@@ -79,19 +79,19 @@ func (r *Registry) Register(plugin Plugin) error {
 func (r *Registry) Unregister(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	plugin, exists := r.plugins[name]
 	if !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	info := plugin.GetInfo()
-	
+
 	// Remove from plugins
 	delete(r.plugins, name)
 	delete(r.metadata, name)
 	delete(r.requires, name)
-	
+
 	// Remove from capability index
 	for _, capability := range info.Provides {
 		providers := r.provides[capability]
@@ -105,7 +105,7 @@ func (r *Registry) Unregister(name string) error {
 			delete(r.provides, capability)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -113,12 +113,12 @@ func (r *Registry) Unregister(name string) error {
 func (r *Registry) Get(name string) (Plugin, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	plugin, exists := r.plugins[name]
 	if !exists {
 		return nil, fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	return plugin, nil
 }
 
@@ -126,20 +126,20 @@ func (r *Registry) Get(name string) (Plugin, error) {
 func (r *Registry) GetByCapability(capability string) []Plugin {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	var plugins []Plugin
-	
+
 	providers, exists := r.provides[capability]
 	if !exists {
 		return plugins
 	}
-	
+
 	for _, name := range providers {
 		if plugin, exists := r.plugins[name]; exists {
 			plugins = append(plugins, plugin)
 		}
 	}
-	
+
 	return plugins
 }
 
@@ -147,12 +147,12 @@ func (r *Registry) GetByCapability(capability string) []Plugin {
 func (r *Registry) List() []Plugin {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	plugins := make([]Plugin, 0, len(r.plugins))
 	for _, plugin := range r.plugins {
 		plugins = append(plugins, plugin)
 	}
-	
+
 	// Sort by load order
 	sort.Slice(plugins, func(i, j int) bool {
 		infoI := plugins[i].GetInfo()
@@ -161,7 +161,7 @@ func (r *Registry) List() []Plugin {
 		metaJ := r.metadata[infoJ.Name]
 		return metaI.LoadOrder < metaJ.LoadOrder
 	})
-	
+
 	return plugins
 }
 
@@ -169,17 +169,17 @@ func (r *Registry) List() []Plugin {
 func (r *Registry) GetDependencyOrder() ([]string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	// Build dependency graph
 	graph := make(map[string][]string)
 	inDegree := make(map[string]int)
-	
+
 	// Initialize graph
 	for name := range r.plugins {
 		graph[name] = []string{}
 		inDegree[name] = 0
 	}
-	
+
 	// Build edges
 	for name, deps := range r.requires {
 		for _, dep := range deps {
@@ -190,36 +190,36 @@ func (r *Registry) GetDependencyOrder() ([]string, error) {
 			inDegree[name]++
 		}
 	}
-	
+
 	// Topological sort using Kahn's algorithm
 	var result []string
 	queue := []string{}
-	
+
 	// Find all nodes with no incoming edges
 	for name, degree := range inDegree {
 		if degree == 0 {
 			queue = append(queue, name)
 		}
 	}
-	
+
 	// Sort initial queue by priority if plugins implement Prioritizable
 	sort.Slice(queue, func(i, j int) bool {
 		return r.comparePriority(queue[i], queue[j])
 	})
-	
+
 	// Process queue
 	for len(queue) > 0 {
 		// Dequeue
 		current := queue[0]
 		queue = queue[1:]
 		result = append(result, current)
-		
+
 		// Process neighbors
 		neighbors := graph[current]
 		sort.Slice(neighbors, func(i, j int) bool {
 			return r.comparePriority(neighbors[i], neighbors[j])
 		})
-		
+
 		for _, neighbor := range neighbors {
 			inDegree[neighbor]--
 			if inDegree[neighbor] == 0 {
@@ -227,12 +227,12 @@ func (r *Registry) GetDependencyOrder() ([]string, error) {
 			}
 		}
 	}
-	
+
 	// Check for cycles
 	if len(result) != len(r.plugins) {
 		return nil, fmt.Errorf("circular dependency detected in plugins")
 	}
-	
+
 	return result, nil
 }
 
@@ -240,12 +240,12 @@ func (r *Registry) GetDependencyOrder() ([]string, error) {
 func (r *Registry) GetMetadata(name string) (PluginMetadata, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	metadata, exists := r.metadata[name]
 	if !exists {
 		return PluginMetadata{}, fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	return metadata, nil
 }
 
@@ -253,11 +253,11 @@ func (r *Registry) GetMetadata(name string) (PluginMetadata, error) {
 func (r *Registry) SetMetadata(name string, metadata PluginMetadata) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if _, exists := r.plugins[name]; !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	r.metadata[name] = metadata
 	return nil
 }
@@ -266,7 +266,7 @@ func (r *Registry) SetMetadata(name string, metadata PluginMetadata) error {
 func (r *Registry) ValidateDependencies() error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	for name, deps := range r.requires {
 		for _, dep := range deps {
 			if _, exists := r.plugins[dep]; !exists {
@@ -274,7 +274,7 @@ func (r *Registry) ValidateDependencies() error {
 			}
 		}
 	}
-	
+
 	// Check for circular dependencies
 	_, err := r.GetDependencyOrder()
 	return err
@@ -284,12 +284,12 @@ func (r *Registry) ValidateDependencies() error {
 func (r *Registry) GetCapabilities() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	capabilities := make([]string, 0, len(r.provides))
 	for capability := range r.provides {
 		capabilities = append(capabilities, capability)
 	}
-	
+
 	sort.Strings(capabilities)
 	return capabilities
 }
@@ -299,21 +299,21 @@ func (r *Registry) validatePluginInfo(info Info) error {
 	if info.Name == "" {
 		return fmt.Errorf("plugin name is required")
 	}
-	
+
 	if info.Version == "" {
 		return fmt.Errorf("plugin version is required")
 	}
-	
+
 	if info.Description == "" {
 		return fmt.Errorf("plugin description is required")
 	}
-	
+
 	// Validate configuration schema
 	for fieldName, field := range info.ConfigSchema {
 		if field.Type == "" {
 			return fmt.Errorf("config field %s has no type", fieldName)
 		}
-		
+
 		validTypes := []string{"string", "int", "bool", "float", "array", "object"}
 		validType := false
 		for _, t := range validTypes {
@@ -326,7 +326,7 @@ func (r *Registry) validatePluginInfo(info Info) error {
 			return fmt.Errorf("config field %s has invalid type %s", fieldName, field.Type)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -334,18 +334,18 @@ func (r *Registry) validatePluginInfo(info Info) error {
 func (r *Registry) comparePriority(a, b string) bool {
 	pluginA, _ := r.plugins[a]
 	pluginB, _ := r.plugins[b]
-	
+
 	priorityA := 0
 	priorityB := 0
-	
+
 	if p, ok := pluginA.(Prioritizable); ok {
 		priorityA = p.GetPriority()
 	}
-	
+
 	if p, ok := pluginB.(Prioritizable); ok {
 		priorityB = p.GetPriority()
 	}
-	
+
 	return priorityA < priorityB
 }
 

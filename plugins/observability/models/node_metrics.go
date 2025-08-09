@@ -133,7 +133,7 @@ func (nmc *NodeMetricsCollector) UpdateNodeState(nodeName, state string, jobCoun
 		}
 		nmc.nodes[nodeName] = node
 	}
-	
+
 	node.NodeState = state
 	node.JobCount = jobCount
 }
@@ -142,11 +142,11 @@ func (nmc *NodeMetricsCollector) UpdateNodeState(nodeName, state string, jobCoun
 func (nmc *NodeMetricsCollector) MapSLURMToPrometheus(slurmName string) string {
 	// This is a simple implementation - in reality, this might need
 	// more complex mapping based on your infrastructure
-	
+
 	// Common patterns:
 	// 1. SLURM uses short names, Prometheus uses FQDNs
 	// 2. Different naming conventions
-	
+
 	// For now, return as-is but this should be configurable
 	return slurmName
 }
@@ -154,7 +154,7 @@ func (nmc *NodeMetricsCollector) MapSLURMToPrometheus(slurmName string) string {
 // GetNodesSummary returns a summary of all nodes by state
 func (nmc *NodeMetricsCollector) GetNodesSummary() map[string]int {
 	summary := make(map[string]int)
-	
+
 	for _, node := range nmc.nodes {
 		state := node.NodeState
 		if state == "" {
@@ -162,7 +162,7 @@ func (nmc *NodeMetricsCollector) GetNodesSummary() map[string]int {
 		}
 		summary[state]++
 	}
-	
+
 	return summary
 }
 
@@ -171,35 +171,35 @@ func (nmc *NodeMetricsCollector) GetAggregateMetrics() *AggregateNodeMetrics {
 	agg := &AggregateNodeMetrics{
 		Timestamp: time.Now(),
 	}
-	
+
 	nodeCount := 0
-	
+
 	for _, node := range nmc.nodes {
 		if node.NodeState == "down" || node.NodeState == "drain" {
 			continue
 		}
-		
+
 		nodeCount++
-		
+
 		// Sum up resources
 		agg.TotalCPUCores += node.Resources.CPU.Cores
 		agg.TotalMemory += node.Resources.Memory.Total
 		agg.UsedMemory += node.Resources.Memory.Used
-		
+
 		// Track utilization
 		agg.TotalCPUUsage += node.Resources.CPU.Usage
 		agg.TotalLoadAverage += node.Resources.CPU.Load1m
-		
+
 		// Sum I/O
 		agg.TotalDiskRead += node.Resources.Disk.ReadBytesPerSec
 		agg.TotalDiskWrite += node.Resources.Disk.WriteBytesPerSec
 		agg.TotalNetworkRx += node.Resources.Network.ReceiveBytesPerSec
 		agg.TotalNetworkTx += node.Resources.Network.TransmitBytesPerSec
-		
+
 		// Count jobs
 		agg.TotalJobs += node.JobCount
 	}
-	
+
 	// Calculate averages
 	if nodeCount > 0 {
 		agg.ActiveNodes = nodeCount
@@ -207,7 +207,7 @@ func (nmc *NodeMetricsCollector) GetAggregateMetrics() *AggregateNodeMetrics {
 		agg.AverageLoadPerCore = agg.TotalLoadAverage / float64(agg.TotalCPUCores)
 		agg.MemoryUsagePercent = float64(agg.UsedMemory) / float64(agg.TotalMemory) * 100
 	}
-	
+
 	return agg
 }
 
@@ -233,30 +233,30 @@ type AggregateNodeMetrics struct {
 // FormatNodeMetrics formats node metrics for display
 func FormatNodeMetrics(node *NodeMetrics) string {
 	var parts []string
-	
+
 	parts = append(parts, fmt.Sprintf("Node: %s", node.NodeName))
 	parts = append(parts, fmt.Sprintf("State: %s", node.NodeState))
 	parts = append(parts, fmt.Sprintf("Jobs: %d", node.JobCount))
-	
+
 	if node.Resources.CPU.Usage > 0 {
-		parts = append(parts, fmt.Sprintf("CPU: %.1f%% (%d cores)", 
+		parts = append(parts, fmt.Sprintf("CPU: %.1f%% (%d cores)",
 			node.Resources.CPU.Usage, node.Resources.CPU.Cores))
 	}
-	
+
 	if node.Resources.Memory.Total > 0 {
 		parts = append(parts, fmt.Sprintf("Memory: %s / %s (%.1f%%)",
 			FormatValue(float64(node.Resources.Memory.Used), "bytes"),
 			FormatValue(float64(node.Resources.Memory.Total), "bytes"),
 			node.Resources.Memory.Usage))
 	}
-	
+
 	if node.Resources.CPU.Load1m > 0 {
 		parts = append(parts, fmt.Sprintf("Load: %.2f, %.2f, %.2f",
 			node.Resources.CPU.Load1m,
 			node.Resources.CPU.Load5m,
 			node.Resources.CPU.Load15m))
 	}
-	
+
 	return strings.Join(parts, " | ")
 }
 
@@ -265,7 +265,7 @@ func (n *NodeMetrics) GetHealthStatus() string {
 	if n.NodeState == "down" || n.NodeState == "drain" {
 		return "unhealthy"
 	}
-	
+
 	// Check various thresholds
 	if n.Resources.CPU.Usage > 95 {
 		return "critical"
@@ -279,6 +279,6 @@ func (n *NodeMetrics) GetHealthStatus() string {
 	if n.Resources.CPU.Usage > 80 || n.Resources.Memory.Usage > 80 {
 		return "warning"
 	}
-	
+
 	return "healthy"
 }

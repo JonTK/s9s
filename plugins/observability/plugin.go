@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/rivo/tview"
-	
+
 	"github.com/jontk/s9s/internal/plugin"
+	"github.com/jontk/s9s/plugins/observability/config"
 	"github.com/jontk/s9s/plugins/observability/overlays"
 	"github.com/jontk/s9s/plugins/observability/prometheus"
 	"github.com/jontk/s9s/plugins/observability/views"
@@ -14,7 +15,7 @@ import (
 
 // ObservabilityPlugin implements the observability plugin
 type ObservabilityPlugin struct {
-	config       *Config
+	config       *config.Config
 	client       *prometheus.Client
 	cachedClient *prometheus.CachedClient
 	app          *tview.Application
@@ -25,7 +26,7 @@ type ObservabilityPlugin struct {
 // New creates a new observability plugin instance
 func New() *ObservabilityPlugin {
 	return &ObservabilityPlugin{
-		config: DefaultConfig(),
+		config: config.DefaultConfig(),
 	}
 }
 
@@ -37,7 +38,6 @@ func (p *ObservabilityPlugin) GetInfo() plugin.Info {
 		Description: "Prometheus integration for real-time metrics monitoring",
 		Author:      "s9s team",
 		License:     "MIT",
-		Type:        "view,overlay,data",
 		Requires:    []string{},
 		Provides:    []string{"metrics", "alerts", "observability-view"},
 		ConfigSchema: map[string]plugin.ConfigField{
@@ -81,57 +81,57 @@ func (p *ObservabilityPlugin) Init(ctx context.Context, config map[string]interf
 	// TODO: Parse configuration from map into Config struct
 	// For now, merge with defaults
 	p.config.MergeWithDefaults()
-	
+
 	// Validate configuration
 	if err := p.config.Validate(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
-	
+
 	// Create Prometheus client
-	clientConfig := prometheus.Config{
+	clientConfig := prometheus.ClientConfig{
 		Endpoint: p.config.Prometheus.Endpoint,
 		Timeout:  p.config.Prometheus.Timeout,
 		// TODO: Add auth configuration
 	}
-	
+
 	client, err := prometheus.NewClient(clientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Prometheus client: %w", err)
 	}
 	p.client = client
-	
+
 	// Create cached client
 	p.cachedClient = prometheus.NewCachedClient(
 		client,
 		p.config.Cache.DefaultTTL,
 		p.config.Cache.MaxSize,
 	)
-	
+
 	return nil
 }
 
 // Start starts the plugin
 func (p *ObservabilityPlugin) Start(ctx context.Context) error {
 	p.running = true
-	
+
 	// Test Prometheus connection
-	if err := p.client.Health(ctx); err != nil {
+	if err := p.client.TestConnection(ctx); err != nil {
 		return fmt.Errorf("Prometheus health check failed: %w", err)
 	}
-	
+
 	return nil
 }
 
 // Stop stops the plugin
 func (p *ObservabilityPlugin) Stop(ctx context.Context) error {
 	p.running = false
-	
+
 	if p.view != nil {
 		if err := p.view.Stop(ctx); err != nil {
 			return fmt.Errorf("failed to stop view: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -144,12 +144,12 @@ func (p *ObservabilityPlugin) Health() plugin.HealthStatus {
 			Message: "Plugin is not running",
 		}
 	}
-	
+
 	// Check Prometheus connectivity
 	ctx, cancel := context.WithTimeout(context.Background(), p.config.Prometheus.Timeout)
 	defer cancel()
-	
-	if err := p.client.Health(ctx); err != nil {
+
+	if err := p.client.TestConnection(ctx); err != nil {
 		return plugin.HealthStatus{
 			Healthy: false,
 			Status:  "unhealthy",
@@ -160,7 +160,7 @@ func (p *ObservabilityPlugin) Health() plugin.HealthStatus {
 			},
 		}
 	}
-	
+
 	return plugin.HealthStatus{
 		Healthy: true,
 		Status:  "healthy",
@@ -194,17 +194,17 @@ func (p *ObservabilityPlugin) CreateView(ctx context.Context, viewID string) (pl
 	if viewID != "observability" {
 		return nil, fmt.Errorf("unknown view: %s", viewID)
 	}
-	
+
 	// Get the tview app from context
 	app, ok := ctx.Value("app").(*tview.Application)
 	if !ok {
 		return nil, fmt.Errorf("tview application not found in context")
 	}
 	p.app = app
-	
+
 	// Create the observability view
 	p.view = views.NewObservabilityView(app, p.cachedClient, p.config)
-	
+
 	return p.view, nil
 }
 
@@ -215,7 +215,7 @@ func (p *ObservabilityPlugin) GetOverlays() []plugin.OverlayInfo {
 	if !p.config.Display.ShowOverlays {
 		return []plugin.OverlayInfo{}
 	}
-	
+
 	return []plugin.OverlayInfo{
 		{
 			ID:          "jobs-metrics",
@@ -256,27 +256,25 @@ func (p *ObservabilityPlugin) CreateOverlay(ctx context.Context, overlayID strin
 
 // DataPlugin interface implementation
 
-// GetDataSources returns the data sources provided by this plugin
-func (p *ObservabilityPlugin) GetDataSources() []plugin.DataSourceInfo {
-	return []plugin.DataSourceInfo{
+// GetDataProviders returns the data providers offered
+func (p *ObservabilityPlugin) GetDataProviders() []plugin.DataProviderInfo {
+	return []plugin.DataProviderInfo{
 		{
 			ID:          "prometheus-metrics",
 			Name:        "Prometheus Metrics",
 			Description: "Real-time metrics from Prometheus",
-			Type:        "metrics",
 		},
 		{
 			ID:          "alerts",
 			Name:        "Active Alerts",
 			Description: "Active monitoring alerts",
-			Type:        "alerts",
 		},
 	}
 }
 
-// QueryData queries data from a data source
-func (p *ObservabilityPlugin) QueryData(ctx context.Context, sourceID string, query plugin.DataQuery) (interface{}, error) {
-	switch sourceID {
+// Query performs a one-time data query
+func (p *ObservabilityPlugin) Query(ctx context.Context, providerID string, params map[string]interface{}) (interface{}, error) {
+	switch providerID {
 	case "prometheus-metrics":
 		// TODO: Implement metrics query
 		return nil, fmt.Errorf("metrics query not yet implemented")
@@ -284,14 +282,20 @@ func (p *ObservabilityPlugin) QueryData(ctx context.Context, sourceID string, qu
 		// TODO: Implement alerts query
 		return nil, fmt.Errorf("alerts query not yet implemented")
 	default:
-		return nil, fmt.Errorf("unknown data source: %s", sourceID)
+		return nil, fmt.Errorf("unknown data provider: %s", providerID)
 	}
 }
 
-// SubscribeData subscribes to data updates
-func (p *ObservabilityPlugin) SubscribeData(ctx context.Context, sourceID string, query plugin.DataQuery) (<-chan plugin.DataUpdate, error) {
+// Subscribe allows other plugins to subscribe to data updates
+func (p *ObservabilityPlugin) Subscribe(ctx context.Context, providerID string, callback plugin.DataCallback) (plugin.SubscriptionID, error) {
 	// TODO: Implement data subscription
-	return nil, fmt.Errorf("data subscription not yet implemented")
+	return "", fmt.Errorf("data subscription not yet implemented")
+}
+
+// Unsubscribe removes a data subscription
+func (p *ObservabilityPlugin) Unsubscribe(ctx context.Context, subscriptionID plugin.SubscriptionID) error {
+	// TODO: Implement unsubscribe
+	return fmt.Errorf("unsubscribe not yet implemented")
 }
 
 // ConfigurablePlugin interface implementation

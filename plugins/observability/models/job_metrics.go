@@ -160,7 +160,7 @@ func (jmc *JobMetricsCollector) calculateEfficiency(job *JobMetrics) EfficiencyM
 		actualCores := job.Resources.CPU.Usage / 100.0
 		eff.CPUEfficiency = (actualCores / float64(job.AllocatedCPUs)) * 100
 		eff.CPUWasted = float64(job.AllocatedCPUs) - actualCores
-		
+
 		// Cap efficiency at 100%
 		if eff.CPUEfficiency > 100 {
 			eff.CPUEfficiency = 100
@@ -174,7 +174,7 @@ func (jmc *JobMetricsCollector) calculateEfficiency(job *JobMetrics) EfficiencyM
 		if job.Resources.Memory.Used < job.AllocatedMem {
 			eff.MemWasted = job.AllocatedMem - job.Resources.Memory.Used
 		}
-		
+
 		// Cap efficiency at 100%
 		if eff.MemEfficiency > 100 {
 			eff.MemEfficiency = 100
@@ -222,20 +222,20 @@ func (jmc *JobMetricsCollector) RemoveJob(jobID string) {
 // GetInefficiientJobs returns jobs with low resource efficiency
 func (jmc *JobMetricsCollector) GetInefficiientJobs(threshold float64) []*JobMetrics {
 	var inefficient []*JobMetrics
-	
+
 	for _, job := range jmc.jobs {
 		if job.State == "RUNNING" && job.Efficiency.OverallEfficiency < threshold {
 			inefficient = append(inefficient, job)
 		}
 	}
-	
+
 	return inefficient
 }
 
 // GetJobsSummary returns a summary of jobs by state
 func (jmc *JobMetricsCollector) GetJobsSummary() map[string]int {
 	summary := make(map[string]int)
-	
+
 	for _, job := range jmc.jobs {
 		state := job.State
 		if state == "" {
@@ -243,7 +243,7 @@ func (jmc *JobMetricsCollector) GetJobsSummary() map[string]int {
 		}
 		summary[state]++
 	}
-	
+
 	return summary
 }
 
@@ -252,38 +252,38 @@ func (jmc *JobMetricsCollector) GetAggregateMetrics() *AggregateJobMetrics {
 	agg := &AggregateJobMetrics{
 		Timestamp: time.Now(),
 	}
-	
+
 	runningJobs := 0
-	
+
 	for _, job := range jmc.jobs {
 		if job.State != "RUNNING" && job.State != "R" {
 			continue
 		}
-		
+
 		runningJobs++
-		
+
 		// Sum allocations
 		agg.TotalAllocatedCPUs += job.AllocatedCPUs
 		agg.TotalAllocatedMem += job.AllocatedMem
-		
+
 		// Sum actual usage
 		actualCores := job.Resources.CPU.Usage / 100.0
 		agg.TotalUsedCPUs += actualCores
 		agg.TotalUsedMem += job.Resources.Memory.Used
-		
+
 		// Sum wasted resources
 		agg.TotalWastedCPUs += job.Efficiency.CPUWasted
 		agg.TotalWastedMem += job.Efficiency.MemWasted
-		
+
 		// Track efficiency
 		agg.TotalEfficiencyScore += job.Efficiency.OverallEfficiency
 	}
-	
+
 	// Calculate averages
 	if runningJobs > 0 {
 		agg.RunningJobs = runningJobs
 		agg.AverageEfficiency = agg.TotalEfficiencyScore / float64(runningJobs)
-		
+
 		if agg.TotalAllocatedCPUs > 0 {
 			agg.CPUUtilization = (agg.TotalUsedCPUs / float64(agg.TotalAllocatedCPUs)) * 100
 		}
@@ -291,7 +291,7 @@ func (jmc *JobMetricsCollector) GetAggregateMetrics() *AggregateJobMetrics {
 			agg.MemUtilization = (float64(agg.TotalUsedMem) / float64(agg.TotalAllocatedMem)) * 100
 		}
 	}
-	
+
 	return agg
 }
 
@@ -314,33 +314,33 @@ type AggregateJobMetrics struct {
 // FormatJobMetrics formats job metrics for display
 func FormatJobMetrics(job *JobMetrics) string {
 	var parts []string
-	
+
 	parts = append(parts, fmt.Sprintf("Job: %s", job.JobID))
 	if job.JobName != "" {
 		parts = append(parts, fmt.Sprintf("Name: %s", job.JobName))
 	}
 	parts = append(parts, fmt.Sprintf("User: %s", job.User))
 	parts = append(parts, fmt.Sprintf("State: %s", job.State))
-	
+
 	if job.AllocatedCPUs > 0 {
 		parts = append(parts, fmt.Sprintf("CPUs: %.1f/%d (%.1f%% eff)",
 			job.Resources.CPU.Usage/100.0,
 			job.AllocatedCPUs,
 			job.Efficiency.CPUEfficiency))
 	}
-	
+
 	if job.AllocatedMem > 0 {
 		parts = append(parts, fmt.Sprintf("Memory: %s/%s (%.1f%% eff)",
 			FormatValue(float64(job.Resources.Memory.Used), "bytes"),
 			FormatValue(float64(job.AllocatedMem), "bytes"),
 			job.Efficiency.MemEfficiency))
 	}
-	
+
 	if job.Efficiency.OverallEfficiency > 0 {
 		parts = append(parts, fmt.Sprintf("Overall Efficiency: %.1f%%",
 			job.Efficiency.OverallEfficiency))
 	}
-	
+
 	return strings.Join(parts, " | ")
 }
 

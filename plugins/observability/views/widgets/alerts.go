@@ -26,12 +26,12 @@ func NewAlertsWidget() *AlertsWidget {
 		maxAlerts:   10,
 		showTime:    true,
 	}
-	
+
 	w.SetDynamicColors(true).
 		SetBorder(true).
 		SetTitle(" Active Alerts ").
 		SetTitleAlign(tview.AlignLeft)
-	
+
 	w.updateDisplay()
 	return w
 }
@@ -45,12 +45,12 @@ func (w *AlertsWidget) SetAlerts(alerts []models.Alert) {
 // AddAlert adds a new alert
 func (w *AlertsWidget) AddAlert(alert models.Alert) {
 	w.alerts = append(w.alerts, alert)
-	
+
 	// Keep only the most recent alerts
 	if len(w.alerts) > w.maxAlerts {
 		w.alerts = w.alerts[len(w.alerts)-w.maxAlerts:]
 	}
-	
+
 	w.updateDisplay()
 }
 
@@ -68,37 +68,37 @@ func (w *AlertsWidget) GetPrimitive() tview.Primitive {
 // updateDisplay refreshes the alert display
 func (w *AlertsWidget) updateDisplay() {
 	w.Clear()
-	
+
 	if len(w.alerts) == 0 {
 		w.SetText("[green]No active alerts")
 		return
 	}
-	
+
 	// Display alerts
 	text := ""
 	for i, alert := range w.alerts {
 		if i > 0 {
 			text += "\n"
 		}
-		
+
 		// Format alert
 		icon := w.getSeverityIcon(alert.Severity)
 		color := w.getSeverityColor(alert.Severity)
-		
+
 		timeStr := ""
 		if w.showTime {
 			timeStr = fmt.Sprintf(" [%s]", w.formatTime(alert.Timestamp))
 		}
-		
+
 		text += fmt.Sprintf("[%s]%s %s[white]%s - %s",
 			color, icon, alert.Name, timeStr, alert.Message)
-		
+
 		// Add resolution hint if available
 		if alert.Resolution != "" {
 			text += fmt.Sprintf("\n    [gray]→ %s", alert.Resolution)
 		}
 	}
-	
+
 	w.SetText(text)
 }
 
@@ -134,7 +134,7 @@ func (w *AlertsWidget) getSeverityColor(severity string) string {
 func (w *AlertsWidget) formatTime(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
-	
+
 	if diff < time.Minute {
 		return fmt.Sprintf("%ds ago", int(diff.Seconds()))
 	} else if diff < time.Hour {
@@ -142,7 +142,7 @@ func (w *AlertsWidget) formatTime(t time.Time) string {
 	} else if diff < 24*time.Hour {
 		return fmt.Sprintf("%dh ago", int(diff.Hours()))
 	}
-	
+
 	return t.Format("Jan 2 15:04")
 }
 
@@ -158,10 +158,10 @@ func NewAlertSummaryWidget() *AlertSummaryWidget {
 		TextView: tview.NewTextView(),
 		counts:   make(map[string]int),
 	}
-	
+
 	w.SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter)
-	
+
 	w.updateDisplay()
 	return w
 }
@@ -169,11 +169,11 @@ func NewAlertSummaryWidget() *AlertSummaryWidget {
 // UpdateCounts updates the alert counts
 func (w *AlertSummaryWidget) UpdateCounts(alerts []models.Alert) {
 	w.counts = make(map[string]int)
-	
+
 	for _, alert := range alerts {
 		w.counts[alert.Severity]++
 	}
-	
+
 	w.updateDisplay()
 }
 
@@ -182,9 +182,9 @@ func (w *AlertSummaryWidget) updateDisplay() {
 	critical := w.counts["critical"]
 	warning := w.counts["warning"]
 	info := w.counts["info"]
-	
+
 	text := ""
-	
+
 	if critical > 0 {
 		text += fmt.Sprintf("[red]⚠️  %d critical ", critical)
 	}
@@ -200,11 +200,11 @@ func (w *AlertSummaryWidget) updateDisplay() {
 		}
 		text += fmt.Sprintf("[blue]ℹ️  %d info ", info)
 	}
-	
+
 	if text == "" {
 		text = "[green]✓ No alerts"
 	}
-	
+
 	w.SetText(text)
 }
 
@@ -224,12 +224,12 @@ func NewAlertHistoryWidget() *AlertHistoryWidget {
 		maxHistory:  100,
 		selectedRow: -1,
 	}
-	
+
 	w.Table.SetBorder(true)
 	w.Table.SetTitle(" Alert History ")
 	w.Table.SetSelectable(true, false)
 	w.Table.SetFixed(1, 0)
-	
+
 	// Set up headers
 	headers := []string{"Time", "Severity", "Alert", "Message", "Status"}
 	for i, header := range headers {
@@ -239,22 +239,22 @@ func NewAlertHistoryWidget() *AlertHistoryWidget {
 			SetSelectable(false)
 		w.SetCell(0, i, cell)
 	}
-	
+
 	w.SetSelectionChangedFunc(func(row, col int) {
 		w.selectedRow = row - 1 // Adjust for header
 	})
-	
+
 	return w
 }
 
 // AddToHistory adds an alert to the history
 func (w *AlertHistoryWidget) AddToHistory(alert models.Alert) {
 	w.history = append([]models.Alert{alert}, w.history...)
-	
+
 	if len(w.history) > w.maxHistory {
 		w.history = w.history[:w.maxHistory]
 	}
-	
+
 	w.updateDisplay()
 }
 
@@ -264,15 +264,15 @@ func (w *AlertHistoryWidget) updateDisplay() {
 	for i := w.GetRowCount() - 1; i > 0; i-- {
 		w.RemoveRow(i)
 	}
-	
+
 	// Add history rows
 	for i, alert := range w.history {
 		row := i + 1
-		
+
 		// Time
 		w.SetCell(row, 0, tview.NewTableCell(
 			alert.Timestamp.Format("15:04:05")))
-		
+
 		// Severity with color
 		severityCell := tview.NewTableCell(alert.Severity)
 		switch alert.Severity {
@@ -284,17 +284,17 @@ func (w *AlertHistoryWidget) updateDisplay() {
 			severityCell.SetTextColor(tcell.ColorBlue)
 		}
 		w.SetCell(row, 1, severityCell)
-		
+
 		// Alert name
 		w.SetCell(row, 2, tview.NewTableCell(alert.Name))
-		
+
 		// Message (truncated if needed)
 		message := alert.Message
 		if len(message) > 50 {
 			message = message[:47] + "..."
 		}
 		w.SetCell(row, 3, tview.NewTableCell(message))
-		
+
 		// Status
 		status := "Active"
 		if alert.Resolved {
