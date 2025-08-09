@@ -11,8 +11,10 @@ import (
 
 	"github.com/jontk/s9s/internal/plugin"
 	"github.com/jontk/s9s/plugins/observability/config"
+	"github.com/jontk/s9s/plugins/observability/historical"
 	"github.com/jontk/s9s/plugins/observability/overlays"
 	"github.com/jontk/s9s/plugins/observability/prometheus"
+	"github.com/jontk/s9s/plugins/observability/subscription"
 	"github.com/jontk/s9s/plugins/observability/views"
 )
 
@@ -22,6 +24,11 @@ type ObservabilityPlugin struct {
 	client        *prometheus.Client
 	cachedClient  *prometheus.CachedClient
 	overlayMgr    *overlays.OverlayManager
+	subscriptionMgr *subscription.SubscriptionManager
+	notificationMgr *subscription.NotificationManager
+	persistence     *subscription.SubscriptionPersistence
+	historicalCollector *historical.HistoricalDataCollector
+	historicalAnalyzer  *historical.HistoricalAnalyzer
 	app           *tview.Application
 	view          *views.ObservabilityView
 	running       bool
@@ -133,6 +140,47 @@ func (p *ObservabilityPlugin) Init(ctx context.Context, config map[string]interf
 		p.config.Display.RefreshInterval,
 	)
 
+	// Create subscription manager
+	p.subscriptionMgr = subscription.NewSubscriptionManager(p.cachedClient)
+
+	// Create notification manager
+	p.notificationMgr = subscription.NewNotificationManager(1000)
+
+	// Create persistence manager
+	persistenceConfig := subscription.PersistenceConfig{
+		DataDir:      "./data/observability",
+		AutoSave:     true,
+		SaveInterval: 5 * time.Minute,
+	}
+
+	var err error
+	p.persistence, err = subscription.NewSubscriptionPersistence(persistenceConfig, p.subscriptionMgr)
+	if err != nil {
+		return fmt.Errorf("failed to create subscription persistence: %w", err)
+	}
+
+	// Load persisted subscriptions
+	if err := p.persistence.LoadSubscriptions(); err != nil {
+		// Log error but don't fail initialization
+	}
+
+	// Create historical data collector
+	historicalConfig := historical.CollectorConfig{
+		DataDir:         "./data/historical",
+		Retention:       30 * 24 * time.Hour, // 30 days
+		CollectInterval: 5 * time.Minute,
+		MaxDataPoints:   10000,
+		Queries:         historical.DefaultCollectorConfig().Queries,
+	}
+
+	p.historicalCollector, err = historical.NewHistoricalDataCollector(p.cachedClient, historicalConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create historical data collector: %w", err)
+	}
+
+	// Create historical analyzer
+	p.historicalAnalyzer = historical.NewHistoricalAnalyzer(p.historicalCollector)
+
 	return nil
 }
 
@@ -150,12 +198,42 @@ func (p *ObservabilityPlugin) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to start overlay manager: %w", err)
 	}
 
+	// Start subscription manager
+	if err := p.subscriptionMgr.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start subscription manager: %w", err)
+	}
+
+	// Start historical data collector
+	if err := p.historicalCollector.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start historical data collector: %w", err)
+	}
+
 	return nil
 }
 
 // Stop stops the plugin
 func (p *ObservabilityPlugin) Stop(ctx context.Context) error {
 	p.running = false
+
+	// Stop historical data collector
+	if p.historicalCollector != nil {
+		if err := p.historicalCollector.Stop(); err != nil {
+			// Log error but don't fail the stop operation
+		}
+	}
+
+	// Stop subscription manager
+	if p.subscriptionMgr != nil {
+		if err := p.subscriptionMgr.Stop(); err != nil {
+			// Log error but don't fail the stop operation
+		}
+	}
+
+	// Stop persistence (save final state)
+	if p.persistence != nil {
+		p.persistence.SaveSubscriptions()
+		p.persistence.Stop()
+	}
 
 	// Stop overlay manager
 	if p.overlayMgr != nil {
@@ -204,9 +282,12 @@ func (p *ObservabilityPlugin) Health() plugin.HealthStatus {
 		Status:  "healthy",
 		Message: "Plugin is running and connected to Prometheus",
 		Details: map[string]interface{}{
-			"endpoint":     p.config.Prometheus.Endpoint,
-			"cache_stats":  p.cachedClient.CacheStats(),
-			"view_active":  p.view != nil,
+			"endpoint":           p.config.Prometheus.Endpoint,
+			"cache_stats":        p.cachedClient.CacheStats(),
+			"view_active":        p.view != nil,
+			"subscription_stats": p.subscriptionMgr.GetStats(),
+			"notification_stats": p.notificationMgr.GetStats(),
+			"historical_stats":   p.historicalCollector.GetCollectorStats(),
 		},
 	}
 }
@@ -334,18 +415,50 @@ func (p *ObservabilityPlugin) GetDataProviders() []plugin.DataProviderInfo {
 			Name:        "Active Alerts",
 			Description: "Active monitoring alerts",
 		},
+		{
+			ID:          "historical-data",
+			Name:        "Historical Data",
+			Description: "Historical metric data with time series analysis",
+		},
+		{
+			ID:          "trend-analysis",
+			Name:        "Trend Analysis",
+			Description: "Statistical trend analysis of historical data",
+		},
+		{
+			ID:          "anomaly-detection",
+			Name:        "Anomaly Detection",
+			Description: "Automated anomaly detection in metric data",
+		},
+		{
+			ID:          "seasonal-analysis",
+			Name:        "Seasonal Analysis",
+			Description: "Seasonal pattern analysis for metric data",
+		},
 	}
 }
 
 // Query performs a one-time data query
 func (p *ObservabilityPlugin) Query(ctx context.Context, providerID string, params map[string]interface{}) (interface{}, error) {
 	switch providerID {
-	case "prometheus-metrics":
-		// TODO: Implement metrics query
-		return nil, fmt.Errorf("metrics query not yet implemented")
-	case "alerts":
-		// TODO: Implement alerts query
-		return nil, fmt.Errorf("alerts query not yet implemented")
+	case "prometheus-metrics", "alerts", "node-metrics", "job-metrics":
+		if p.subscriptionMgr == nil {
+			return nil, fmt.Errorf("subscription manager not initialized")
+		}
+		return p.subscriptionMgr.GetData(ctx, providerID, params)
+	
+	case "historical-data":
+		return p.queryHistoricalData(params)
+	
+	case "trend-analysis":
+		return p.queryTrendAnalysis(params)
+	
+	case "anomaly-detection":
+		return p.queryAnomalyDetection(params)
+	
+	case "seasonal-analysis":
+		return p.querySeasonalAnalysis(params)
+	
 	default:
 		return nil, fmt.Errorf("unknown data provider: %s", providerID)
 	}
@@ -353,14 +466,50 @@ func (p *ObservabilityPlugin) Query(ctx context.Context, providerID string, para
 
 // Subscribe allows other plugins to subscribe to data updates
 func (p *ObservabilityPlugin) Subscribe(ctx context.Context, providerID string, callback plugin.DataCallback) (plugin.SubscriptionID, error) {
-	// TODO: Implement data subscription
-	return "", fmt.Errorf("data subscription not yet implemented")
+	if p.subscriptionMgr == nil {
+		return "", fmt.Errorf("subscription manager not initialized")
+	}
+
+	// Default parameters for subscription
+	params := map[string]interface{}{
+		"update_interval": p.config.Display.RefreshInterval.String(),
+	}
+
+	// Create enhanced callback with notifications
+	enhancedCallback := subscription.NewEnhancedSubscriptionCallback(
+		callback,
+		"", // Will be set after subscription is created
+		providerID,
+		p.notificationMgr,
+	)
+
+	subscriptionID, err := p.subscriptionMgr.Subscribe(providerID, params, enhancedCallback.Call)
+	if err != nil {
+		return "", fmt.Errorf("failed to create subscription: %w", err)
+	}
+
+	// Update the enhanced callback with the subscription ID
+	enhancedCallback.subscriptionID = string(subscriptionID)
+
+	return subscriptionID, nil
 }
 
 // Unsubscribe removes a data subscription
 func (p *ObservabilityPlugin) Unsubscribe(ctx context.Context, subscriptionID plugin.SubscriptionID) error {
-	// TODO: Implement unsubscribe
-	return fmt.Errorf("unsubscribe not yet implemented")
+	if p.subscriptionMgr == nil {
+		return fmt.Errorf("subscription manager not initialized")
+	}
+
+	if err := p.subscriptionMgr.Unsubscribe(subscriptionID); err != nil {
+		return fmt.Errorf("failed to unsubscribe: %w", err)
+	}
+
+	// Remove from persistence
+	if p.persistence != nil {
+		p.persistence.DeleteSubscription(string(subscriptionID))
+	}
+
+	return nil
 }
 
 // ConfigurablePlugin interface implementation
@@ -682,4 +831,128 @@ func (p *ObservabilityPlugin) parseConfig(configMap map[string]interface{}) erro
 	}
 
 	return nil
+}
+
+// Historical data query methods
+
+// queryHistoricalData handles historical data queries
+func (p *ObservabilityPlugin) queryHistoricalData(params map[string]interface{}) (interface{}, error) {
+	if p.historicalCollector == nil {
+		return nil, fmt.Errorf("historical collector not initialized")
+	}
+
+	metricName, ok := params["metric_name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("metric_name parameter is required")
+	}
+
+	// Parse time range parameters
+	duration, err := p.parseDurationParam(params, "duration", 24*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("invalid duration parameter: %w", err)
+	}
+
+	end := time.Now()
+	start := end.Add(-duration)
+
+	// Override with explicit start/end if provided
+	if startStr, ok := params["start"].(string); ok {
+		if parsedStart, err := time.Parse(time.RFC3339, startStr); err == nil {
+			start = parsedStart
+		}
+	}
+
+	if endStr, ok := params["end"].(string); ok {
+		if parsedEnd, err := time.Parse(time.RFC3339, endStr); err == nil {
+			end = parsedEnd
+		}
+	}
+
+	return p.historicalCollector.GetHistoricalData(metricName, start, end)
+}
+
+// queryTrendAnalysis handles trend analysis queries
+func (p *ObservabilityPlugin) queryTrendAnalysis(params map[string]interface{}) (interface{}, error) {
+	if p.historicalAnalyzer == nil {
+		return nil, fmt.Errorf("historical analyzer not initialized")
+	}
+
+	metricName, ok := params["metric_name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("metric_name parameter is required")
+	}
+
+	duration, err := p.parseDurationParam(params, "duration", 24*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("invalid duration parameter: %w", err)
+	}
+
+	return p.historicalAnalyzer.AnalyzeTrend(metricName, duration)
+}
+
+// queryAnomalyDetection handles anomaly detection queries
+func (p *ObservabilityPlugin) queryAnomalyDetection(params map[string]interface{}) (interface{}, error) {
+	if p.historicalAnalyzer == nil {
+		return nil, fmt.Errorf("historical analyzer not initialized")
+	}
+
+	metricName, ok := params["metric_name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("metric_name parameter is required")
+	}
+
+	duration, err := p.parseDurationParam(params, "duration", 24*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("invalid duration parameter: %w", err)
+	}
+
+	// Parse sensitivity parameter
+	sensitivity := 2.0 // Default
+	if s, ok := params["sensitivity"].(float64); ok {
+		sensitivity = s
+	} else if s, ok := params["sensitivity"].(string); ok {
+		if parsed, err := strconv.ParseFloat(s, 64); err == nil {
+			sensitivity = parsed
+		}
+	}
+
+	return p.historicalAnalyzer.DetectAnomalies(metricName, duration, sensitivity)
+}
+
+// querySeasonalAnalysis handles seasonal analysis queries
+func (p *ObservabilityPlugin) querySeasonalAnalysis(params map[string]interface{}) (interface{}, error) {
+	if p.historicalAnalyzer == nil {
+		return nil, fmt.Errorf("historical analyzer not initialized")
+	}
+
+	metricName, ok := params["metric_name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("metric_name parameter is required")
+	}
+
+	duration, err := p.parseDurationParam(params, "duration", 7*24*time.Hour) // Default to 1 week
+	if err != nil {
+		return nil, fmt.Errorf("invalid duration parameter: %w", err)
+	}
+
+	return p.historicalAnalyzer.AnalyzeSeasonality(metricName, duration)
+}
+
+// parseDurationParam parses a duration parameter from the params map
+func (p *ObservabilityPlugin) parseDurationParam(params map[string]interface{}, key string, defaultValue time.Duration) (time.Duration, error) {
+	if val, ok := params[key]; ok {
+		switch v := val.(type) {
+		case string:
+			return time.ParseDuration(v)
+		case time.Duration:
+			return v, nil
+		case int:
+			return time.Duration(v) * time.Second, nil
+		case int64:
+			return time.Duration(v) * time.Second, nil
+		case float64:
+			return time.Duration(v) * time.Second, nil
+		}
+	}
+	return defaultValue, nil
 }
