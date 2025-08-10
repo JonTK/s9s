@@ -5,18 +5,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	
+	"github.com/jontk/s9s/plugins/observability/api"
+	"github.com/jontk/s9s/plugins/observability/security"
 )
 
 // Parser handles configuration parsing from generic maps
 type Parser struct {
-	configMap map[string]interface{}
+	data map[string]interface{}
 }
 
 // NewParser creates a new configuration parser
-func NewParser(configMap map[string]interface{}) *Parser {
-	return &Parser{
-		configMap: configMap,
-	}
+func NewParser(data map[string]interface{}) *Parser {
+	return &Parser{data: data}
 }
 
 // ParseConfig parses configuration from map into Config struct
@@ -46,6 +47,16 @@ func (p *Parser) ParseConfig() (*Config, error) {
 	// Parse Metrics configuration
 	if err := p.parseMetricsConfig(&config.Metrics); err != nil {
 		return nil, fmt.Errorf("failed to parse metrics config: %w", err)
+	}
+	
+	// Parse Security configuration
+	if err := p.parseSecurityConfig(&config.Security); err != nil {
+		return nil, fmt.Errorf("failed to parse security config: %w", err)
+	}
+	
+	// Parse External API configuration
+	if err := p.parseExternalAPIConfig(&config.ExternalAPI); err != nil {
+		return nil, fmt.Errorf("failed to parse external API config: %w", err)
 	}
 	
 	return config, nil
@@ -103,21 +114,28 @@ func (p *Parser) parsePrometheusConfig(config *PrometheusConfig) error {
 		}
 	}
 
-	if val, ok := p.getValue("prometheus.tls.caFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.CAFile = str
+	// Parse retry configuration
+	if val, ok := p.getValue("prometheus.retry.maxRetries"); ok {
+		if i, err := p.parseInt(val); err == nil {
+			config.Retry.MaxRetries = i
 		}
 	}
 
-	if val, ok := p.getValue("prometheus.tls.certFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.CertFile = str
+	if val, ok := p.getValue("prometheus.retry.initialDelay"); ok {
+		if duration, err := p.parseDuration(val); err == nil {
+			config.Retry.InitialDelay = duration
 		}
 	}
 
-	if val, ok := p.getValue("prometheus.tls.keyFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.KeyFile = str
+	if val, ok := p.getValue("prometheus.retry.maxDelay"); ok {
+		if duration, err := p.parseDuration(val); err == nil {
+			config.Retry.MaxDelay = duration
+		}
+	}
+
+	if val, ok := p.getValue("prometheus.retry.multiplier"); ok {
+		if f, err := p.parseFloat(val); err == nil {
+			config.Retry.Multiplier = f
 		}
 	}
 
@@ -179,15 +197,15 @@ func (p *Parser) parseAlertsConfig(config *AlertConfig) error {
 		}
 	}
 
-	if val, ok := p.getValue("alerts.loadPredefinedRules"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.LoadPredefinedRules = b
-		}
-	}
-
 	if val, ok := p.getValue("alerts.showNotifications"); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowNotifications = b
+		}
+	}
+
+	if val, ok := p.getValue("alerts.historyRetention"); ok {
+		if duration, err := p.parseDuration(val); err == nil {
+			config.HistoryRetention = duration
 		}
 	}
 
@@ -249,63 +267,160 @@ func (p *Parser) parseMetricsConfig(config *MetricsConfig) error {
 		}
 	}
 
-	// Parse array configurations
-	if val, ok := p.getValue("metrics.node.enabledMetrics"); ok {
-		if metrics, err := p.parseStringArray(val); err == nil {
-			config.Node.EnabledMetrics = metrics
+	return nil
+}
+
+// parseSecurityConfig parses Security-specific configuration
+func (p *Parser) parseSecurityConfig(config *SecurityConfig) error {
+	// Parse secrets configuration
+	if val, ok := p.getValue("security.secrets.storageDir"); ok {
+		if str, ok := val.(string); ok {
+			config.Secrets.StorageDir = str
 		}
 	}
-
-	if val, ok := p.getValue("metrics.job.enabledMetrics"); ok {
-		if metrics, err := p.parseStringArray(val); err == nil {
-			config.Job.EnabledMetrics = metrics
+	
+	if val, ok := p.getValue("security.secrets.encryptAtRest"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.Secrets.EncryptAtRest = b
 		}
 	}
+	
+	if val, ok := p.getValue("security.secrets.masterKeySource"); ok {
+		if str, ok := val.(string); ok {
+			config.Secrets.MasterKeySource = security.SecretSource(str)
+		}
+	}
+	
+	if val, ok := p.getValue("security.secrets.masterKeyEnv"); ok {
+		if str, ok := val.(string); ok {
+			config.Secrets.MasterKeyEnv = str
+		}
+	}
+	
+	// Parse API security configuration
+	if val, ok := p.getValue("security.api.enableAuth"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.API.EnableAuth = b
+		}
+	}
+	
+	// Parse rate limit configuration
+	if val, ok := p.getValue("security.api.rateLimit.requestsPerMinute"); ok {
+		if i, err := p.parseInt(val); err == nil {
+			config.API.RateLimit.RequestsPerMinute = i
+		}
+	}
+	
+	if val, ok := p.getValue("security.api.rateLimit.enableGlobalLimit"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.API.RateLimit.EnableGlobalLimit = b
+		}
+	}
+	
+	if val, ok := p.getValue("security.api.rateLimit.globalRequestsPerMinute"); ok {
+		if i, err := p.parseInt(val); err == nil {
+			config.API.RateLimit.GlobalRequestsPerMinute = i
+		}
+	}
+	
+	// Parse validation configuration
+	if val, ok := p.getValue("security.api.validation.enabled"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.API.Validation.Enabled = b
+		}
+	}
+	
+	if val, ok := p.getValue("security.api.validation.maxQueryLength"); ok {
+		if i, err := p.parseInt(val); err == nil {
+			config.API.Validation.MaxQueryLength = i
+		}
+	}
+	
+	// Parse audit configuration
+	if val, ok := p.getValue("security.api.audit.enabled"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.API.Audit.Enabled = b
+		}
+	}
+	
+	if val, ok := p.getValue("security.api.audit.logFile"); ok {
+		if str, ok := val.(string); ok {
+			config.API.Audit.LogFile = str
+		}
+	}
+	
+	return nil
+}
 
+// parseExternalAPIConfig parses ExternalAPI-specific configuration
+func (p *Parser) parseExternalAPIConfig(config *api.Config) error {
+	if val, ok := p.getValue("externalAPI.enabled"); ok {
+		if b, err := p.parseBool(val); err == nil {
+			config.Enabled = b
+		}
+	}
+	
+	if val, ok := p.getValue("externalAPI.port"); ok {
+		if i, err := p.parseInt(val); err == nil {
+			config.Port = i
+		}
+	}
+	
 	return nil
 }
 
 // Helper methods
 
-// getValue gets a nested value using dot notation
+// getValue retrieves a value from the configuration map using dot notation
 func (p *Parser) getValue(key string) (interface{}, bool) {
-	if val, exists := p.configMap[key]; exists {
-		return val, true
+	parts := strings.Split(key, ".")
+	current := p.data
+	
+	for i, part := range parts {
+		if i == len(parts)-1 {
+			val, ok := current[part]
+			return val, ok
+		}
+		
+		next, ok := current[part].(map[string]interface{})
+		if !ok {
+			// Try map[interface{}]interface{} (common with YAML)
+			if nextAlt, ok := current[part].(map[interface{}]interface{}); ok {
+				next = make(map[string]interface{})
+				for k, v := range nextAlt {
+					if str, ok := k.(string); ok {
+						next[str] = v
+					}
+				}
+			} else {
+				return nil, false
+			}
+		}
+		current = next
 	}
+	
 	return nil, false
 }
 
-// parseDuration parses duration values from various types
-func (p *Parser) parseDuration(val interface{}) (time.Duration, error) {
-	switch v := val.(type) {
-	case string:
-		return time.ParseDuration(v)
-	case time.Duration:
-		return v, nil
-	case int:
-		return time.Duration(v) * time.Second, nil
-	case int64:
-		return time.Duration(v) * time.Second, nil
-	case float64:
-		return time.Duration(v) * time.Second, nil
-	default:
-		return 0, fmt.Errorf("invalid duration type: %T", val)
-	}
-}
-
-// parseBool parses boolean values from various types
+// parseBool parses various boolean representations
 func (p *Parser) parseBool(val interface{}) (bool, error) {
 	switch v := val.(type) {
 	case bool:
 		return v, nil
 	case string:
 		return strconv.ParseBool(v)
+	case int:
+		return v != 0, nil
+	case int64:
+		return v != 0, nil
+	case float64:
+		return v != 0, nil
 	default:
-		return false, fmt.Errorf("invalid boolean type: %T", val)
+		return false, fmt.Errorf("cannot parse %T as bool", val)
 	}
 }
 
-// parseInt parses integer values from various types
+// parseInt parses various integer representations
 func (p *Parser) parseInt(val interface{}) (int, error) {
 	switch v := val.(type) {
 	case int:
@@ -317,31 +432,42 @@ func (p *Parser) parseInt(val interface{}) (int, error) {
 	case string:
 		return strconv.Atoi(v)
 	default:
-		return 0, fmt.Errorf("invalid integer type: %T", val)
+		return 0, fmt.Errorf("cannot parse %T as int", val)
 	}
 }
 
-// parseStringArray parses string arrays from various types
-func (p *Parser) parseStringArray(val interface{}) ([]string, error) {
+// parseFloat parses various float representations
+func (p *Parser) parseFloat(val interface{}) (float64, error) {
 	switch v := val.(type) {
-	case []interface{}:
-		result := make([]string, 0, len(v))
-		for _, item := range v {
-			if str, ok := item.(string); ok {
-				result = append(result, str)
-			}
-		}
-		return result, nil
-	case []string:
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case string:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return 0, fmt.Errorf("cannot parse %T as float", val)
+	}
+}
+
+// parseDuration parses various duration representations
+func (p *Parser) parseDuration(val interface{}) (time.Duration, error) {
+	switch v := val.(type) {
+	case time.Duration:
 		return v, nil
 	case string:
-		// Support comma-separated string format
-		parts := strings.Split(v, ",")
-		for i, part := range parts {
-			parts[i] = strings.TrimSpace(part)
-		}
-		return parts, nil
+		return time.ParseDuration(v)
+	case int:
+		return time.Duration(v) * time.Second, nil
+	case int64:
+		return time.Duration(v) * time.Second, nil
+	case float64:
+		return time.Duration(v * float64(time.Second)), nil
 	default:
-		return nil, fmt.Errorf("invalid string array type: %T", val)
+		return 0, fmt.Errorf("cannot parse %T as duration", val)
 	}
 }

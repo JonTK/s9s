@@ -156,9 +156,11 @@ func (p *ObservabilityPlugin) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to start historical data collector: %w", err)
 	}
 
-	// Start external API if enabled
-	if err := p.components.ExternalAPI.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start external API: %w", err)
+	// Start external API if enabled and initialized
+	if p.components.ExternalAPI != nil {
+		if err := p.components.ExternalAPI.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start external API: %w", err)
+		}
 	}
 
 	return nil
