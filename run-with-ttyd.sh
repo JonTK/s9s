@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/run/current-system/sw/bin/bash
 
 # Run s9s with ttyd (web terminal)
 # Usage: ./run-with-ttyd.sh [ttyd options]
