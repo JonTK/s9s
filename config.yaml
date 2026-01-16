@@ -1,0 +1,162 @@
+# S9S Configuration with Observability Plugin
+# For testing the observability plugin integration
+
+# Refresh rate for automatic updates
+refreshRate: 2s
+
+# Maximum retries for API calls
+maxRetries: 3
+
+# Current context (cluster) to use
+currentContext: rocky9
+
+# Cluster contexts
+contexts:
+  - name: rocky9
+    cluster:
+      endpoint: "http://rocky9.ar.jontk.com:6820"
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI2NTQxMzkzNzQsImlhdCI6MTc1NDEzOTM3NCwic3VuIjoicm9vdCJ9.tMWJNf4eJDsZ8BpTNv44BBArDWZpMlX24wu2UNvD2iI"
+      apiVersion: v0.0.43
+      insecure: false
+      timeout: 30s
+    readOnly: false
+
+# UI settings
+ui:
+  skin: default
+  logoless: false
+  crumbsless: false
+  statusless: false
+  headless: false
+  noIcons: false
+  enableMouse: true
+
+# View-specific settings
+views:
+  jobs:
+    columns: [id, name, user, state, time, nodes, priority]
+    showOnlyActive: true
+    defaultSort: time
+    maxJobs: 1000
+    
+  nodes:
+    groupBy: partition
+    showUtilization: true
+    maxNodes: 500
+    
+  partitions:
+    showQueueDepth: true
+    showWaitTime: true
+
+# Feature flags
+features:
+  streaming: true
+  pulseye: true
+  xray: false
+
+# Plugin configuration
+plugins:
+  - name: observability
+    enabled: true
+    path: ~/.s9s/plugins/observability.so  # Compiled plugin
+    config:
+      prometheus:
+        endpoint: "http://rocky9.ar.jontk.com:9090"
+        timeout: 30s
+        auth:
+          type: "none"
+        tls:
+          enabled: false
+        retry:
+          maxRetries: 3
+          initialDelay: 1s
+          maxDelay: 10s
+          multiplier: 2.0
+      
+      display:
+        refreshInterval: 30s
+        showOverlays: true
+        showSparklines: true
+        sparklinePoints: 20
+        colorScheme: "default"
+        decimalPrecision: 1
+      
+      alerts:
+        enabled: true
+        checkInterval: 1m
+        loadPredefinedRules: true
+        showNotifications: true
+        historyRetention: 24h
+      
+      cache:
+        enabled: true
+        defaultTTL: 30s
+        maxSize: 1000
+        cleanupInterval: 5m
+      
+      metrics:
+        node:
+          nodeLabel: "instance"
+          enabledMetrics:
+            - "cpu"
+            - "memory"
+            - "load"
+            - "disk"
+            - "network"
+            - "filesystem"
+          rateRange: "5m"
+        job:
+          enabled: true
+          cgroupPattern: "/slurm/uid_.*/job_%s"
+          enabledMetrics:
+            - "cpu"
+            - "memory"
+            - "throttle"
+      
+      externalAPI:
+        enabled: true
+        port: 8091
+      
+      security:
+        secrets:
+          storageDir: "~/.s9s/observability/secrets"
+          encryptAtRest: true
+          masterKeySource: "environment"
+          masterKeyEnv: "S9S_OBSERVABILITY_KEY"
+          enableRotation: true
+          rotationInterval: 24h
+          requireEncryption: true
+          allowInlineSecrets: false
+        api:
+          enableAuth: false
+          rateLimit:
+            enabled: true
+            requestsPerMinute: 1000
+            burstCapacity: 20
+            globalRequestsPerMinute: 5000
+            enableGlobalLimit: true
+            cleanupInterval: 5m
+          validation:
+            enabled: true
+            maxQueryLength: 2048
+            maxTimeRange: 168h
+            allowedMetricPatterns:
+              - ".*"
+            blockedMetricPatterns:
+              - ".*secret.*"
+              - ".*password.*"
+            maxTimeSeries: 10000
+            enableComplexityValidation: true
+            maxComplexityScore: 100
+          audit:
+            enabled: true
+            logFile: "~/.s9s/observability/audit.log"
+            logLevel: "info"
+            maxFileSizeMB: 100
+            maxFiles: 5
+            includeBodies: false
+            sensitiveOnly: false
+            logHeaders:
+              - "User-Agent"
+              - "X-Forwarded-For"
+              - "X-Real-IP"
