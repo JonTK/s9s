@@ -278,7 +278,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	// Create a test handler
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}
 
 	// Wrap with rate limiting middleware

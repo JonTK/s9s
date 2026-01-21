@@ -117,7 +117,7 @@ func NewPartitionsView(client dao.SlurmClient) *PartitionsView {
 
 // Init initializes the partitions view
 func (v *PartitionsView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -240,7 +240,7 @@ func (v *PartitionsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 			v.showWaitTimeAnalytics()
 			return nil
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case '/':
 			v.app.SetFocus(v.filterInput)
@@ -495,7 +495,10 @@ func (v *PartitionsView) calculateQueueInfo(partitionName string) (*dao.QueueInf
 	return info, nil
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*PartitionsView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *PartitionsView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -530,6 +533,7 @@ func (v *PartitionsView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *PartitionsView) scheduleRefresh() {
@@ -753,7 +757,7 @@ func (v *PartitionsView) showPartitionAnalytics() {
 			if event.Rune() == 'R' || event.Rune() == 'r' {
 				// Refresh and update the display
 				go func() {
-					v.Refresh()
+					_ = v.Refresh()
 					// Update the analytics display
 					newAnalytics := v.formatPartitionAnalytics(partition)
 					textView.SetText(newAnalytics)
@@ -777,7 +781,7 @@ func (v *PartitionsView) formatPartitionAnalytics(partition *dao.Partition) stri
 
 	// Basic information
 	stateColor := dao.GetPartitionStateColor(partition.State)
-	analytics.WriteString(fmt.Sprintf("[teal]Basic Information:[white]\n"))
+	analytics.WriteString("[teal]Basic Information:[white]\n")
 	analytics.WriteString(fmt.Sprintf("[yellow]  State:[white] [%s]%s[white]\n", stateColor, partition.State))
 	analytics.WriteString(fmt.Sprintf("[yellow]  Total Nodes:[white] %d\n", partition.TotalNodes))
 	analytics.WriteString(fmt.Sprintf("[yellow]  Total CPUs:[white] %d\n", partition.TotalCPUs))
@@ -903,7 +907,7 @@ func (v *PartitionsView) showWaitTimeAnalytics() {
 			if event.Rune() == 'R' || event.Rune() == 'r' {
 				// Refresh and update the display
 				go func() {
-					v.Refresh()
+					_ = v.Refresh()
 					// Update the analytics display
 					newAnalytics := v.formatWaitTimeAnalytics()
 					textView.SetText(newAnalytics)
@@ -984,13 +988,13 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 		pending := fmt.Sprintf("%7d", info.PendingJobs)
 		running := fmt.Sprintf("%7d", info.RunningJobs)
 
-		avgWait := "-"
-		maxWait := "-"
+		var avgWait string
 		if info.AverageWait > 0 {
 			avgWait = fmt.Sprintf("%10s", FormatTimeDuration(info.AverageWait))
 		} else {
 			avgWait = fmt.Sprintf("%10s", "-")
 		}
+		var maxWait string
 		if info.LongestWait > 0 {
 			maxWait = fmt.Sprintf("%10s", FormatTimeDuration(info.LongestWait))
 		} else {
@@ -1138,7 +1142,7 @@ func (v *PartitionsView) focusOnPartition(partitionName string) {
 	for i, partition := range v.partitions {
 		if partition.Name == partitionName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Status bar update removed since individual view status bars are no longer used
 			return
 		}

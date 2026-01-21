@@ -1,7 +1,6 @@
 package streaming
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -122,7 +121,7 @@ func (sm *StreamManager) StopStream(jobID, outputType string) error {
 
 	// Remove file watcher if local
 	if !stream.IsRemote {
-		sm.fileWatcher.Remove(stream.FilePath)
+		_ = sm.fileWatcher.Remove(stream.FilePath)
 	}
 
 	// Publish stream stop event
@@ -213,7 +212,7 @@ func (sm *StreamManager) Close() error {
 
 	// Close file watcher
 	if sm.fileWatcher != nil {
-		sm.fileWatcher.Close()
+		_ = sm.fileWatcher.Close()
 	}
 
 	// Clear event bus
@@ -263,7 +262,10 @@ func (sm *StreamManager) startRemoteFileWatching(stream *JobStream) error {
 	return fmt.Errorf("remote file streaming not yet implemented - SSH connection interface needs updating")
 }
 
-// remoteFileTailer handles SSH-based file tailing
+/*
+TODO(lint): Review unused code - func (*StreamManager).remoteFileTailer is unused
+
+remoteFileTailer handles SSH-based file tailing
 func (sm *StreamManager) remoteFileTailer(stream *JobStream, sshConn interface{}) {
 	defer func() {
 		stream.mu.Lock()
@@ -276,8 +278,12 @@ func (sm *StreamManager) remoteFileTailer(stream *JobStream, sshConn interface{}
 	sm.emitError(stream, fmt.Errorf("SSH session creation not implemented"))
 	return
 }
+*/
 
-// streamRemoteOutput processes output from remote tail command
+/*
+TODO(lint): Review unused code - func (*StreamManager).streamRemoteOutput is unused
+
+streamRemoteOutput processes output from remote tail command
 func (sm *StreamManager) streamRemoteOutput(stream *JobStream, reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	var buffer strings.Builder
@@ -311,6 +317,7 @@ func (sm *StreamManager) streamRemoteOutput(stream *JobStream, reader io.Reader)
 		sm.emitNewContent(stream, content, stream.LastOffset+int64(len(content)))
 	}
 }
+*/
 
 // watchFileEvents processes fsnotify events
 func (sm *StreamManager) watchFileEvents() {
@@ -380,7 +387,7 @@ func (sm *StreamManager) readFileFromOffset(filePath string, offset int64) (stri
 	if err != nil {
 		return "", offset, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Seek to offset
 	currentOffset, err := file.Seek(offset, 0)

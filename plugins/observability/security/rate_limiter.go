@@ -16,7 +16,8 @@ type RateLimiter struct {
 	clients      map[string]*ClientLimiter
 	globalLimit  int           // Global requests per minute
 	cleanupTimer *time.Ticker
-	ctx          *interface{} // For future cancellation support
+	// TODO(lint): Review unused code - field ctx is unused
+	// ctx          *interface{} // For future cancellation support
 }
 
 // ClientLimiter tracks rate limiting for a specific client
@@ -302,7 +303,7 @@ func writeRateLimitError(w http.ResponseWriter) {
 		"code":   "RATE_LIMIT_EXCEEDED",
 	}
 	
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // addRateLimitHeaders adds rate limiting information to response headers

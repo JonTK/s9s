@@ -29,14 +29,14 @@ func NewFilterManager(configPath string) *FilterManager {
 	}
 
 	// Load saved presets
-	fm.loadPresets()
+	_ = fm.loadPresets()
 
 	// Add common presets if none exist
 	if len(fm.presets) == 0 {
 		for _, preset := range GetCommonPresets() {
 			fm.presets[preset.ID] = preset
 		}
-		fm.savePresets()
+		_ = fm.savePresets()
 	}
 
 	return fm
@@ -211,7 +211,7 @@ func (fm *FilterManager) SavePreset(name, description, category string) (*Filter
 	}
 
 	fm.presets[preset.ID] = preset
-	fm.savePresets()
+	_ = fm.savePresets()
 
 	return preset, nil
 }
@@ -252,7 +252,7 @@ func (fm *FilterManager) LoadPreset(presetID string) error {
 	// Update preset usage
 	preset.LastUsed = time.Now()
 	preset.UseCount++
-	fm.savePresets()
+	_ = fm.savePresets()
 
 	return nil
 }

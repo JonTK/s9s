@@ -16,21 +16,22 @@ import (
 // SSHTerminal represents an SSH terminal session
 type SSHTerminal struct {
 	*tview.TextView
-	nodeID       string
-	hostname     string
-	username     string
-	sessionID    string
-	cmd          *exec.Cmd
-	stdin        io.WriteCloser
-	stdout       io.ReadCloser
-	stderr       io.ReadCloser
-	isActive     bool
-	mu           sync.RWMutex
-	onClose      func()
-	buffer       []string
+	nodeID        string
+	hostname      string
+	username      string
+	// TODO(lint): Review unused code - field sessionID is unused
+	// sessionID     string
+	cmd           *exec.Cmd
+	stdin         io.WriteCloser
+	stdout        io.ReadCloser
+	stderr        io.ReadCloser
+	isActive      bool
+	mu            sync.RWMutex
+	onClose       func()
+	buffer        []string
 	maxBufferSize int
-	lastActivity time.Time
-	connectedAt  time.Time
+	lastActivity  time.Time
+	connectedAt   time.Time
 }
 
 // NewSSHTerminal creates a new SSH terminal
@@ -149,7 +150,7 @@ func buildSSHArgs(config *SSHConfig, hostname, username string) []string {
 
 // readOutput reads output from stdout/stderr
 func (t *SSHTerminal) readOutput(reader io.ReadCloser, isError bool) {
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -208,10 +209,10 @@ func (t *SSHTerminal) appendLine(line string) {
 		text += l + "\n"
 	}
 
-	t.TextView.SetText(text)
+	t.SetText(text)
 
 	// Auto-scroll to bottom
-	t.TextView.ScrollToEnd()
+	t.ScrollToEnd()
 }
 
 // SendCommand sends a command to the terminal
@@ -253,18 +254,18 @@ func (t *SSHTerminal) Close() error {
 
 	// Close stdin to signal end of input
 	if t.stdin != nil {
-		t.stdin.Close()
+		_ = t.stdin.Close()
 	}
 
 	// Try to terminate the process gracefully
 	if t.cmd != nil && t.cmd.Process != nil {
-		t.cmd.Process.Signal(os.Interrupt)
+		_ = t.cmd.Process.Signal(os.Interrupt)
 
 		// Give it a moment to exit gracefully
 		time.Sleep(100 * time.Millisecond)
 
 		// Force kill if still running
-		t.cmd.Process.Kill()
+		_ = t.cmd.Process.Kill()
 	}
 
 	return nil
@@ -331,36 +332,36 @@ func (t *SSHTerminal) SetInputCapture(app *tview.Application) {
 		switch event.Key() {
 		case tcell.KeyCtrlC:
 			// Send Ctrl+C to terminal
-			t.SendCommand("\x03")
+			_ = t.SendCommand("\x03")
 			return nil
 		case tcell.KeyCtrlD:
 			// Send Ctrl+D to terminal
-			t.SendCommand("\x04")
+			_ = t.SendCommand("\x04")
 			return nil
 		case tcell.KeyCtrlZ:
 			// Send Ctrl+Z to terminal
-			t.SendCommand("\x1a")
+			_ = t.SendCommand("\x1a")
 			return nil
 		case tcell.KeyEscape:
 			// Let escape pass through for vim, etc
-			t.SendCommand("\x1b")
+			_ = t.SendCommand("\x1b")
 			return nil
 		case tcell.KeyEnter:
 			// Send Enter
-			t.SendCommand("")
+			_ = t.SendCommand("")
 			return nil
 		case tcell.KeyBackspace, tcell.KeyBackspace2:
 			// Send backspace
-			t.SendCommand("\x08")
+			_ = t.SendCommand("\x08")
 			return nil
 		case tcell.KeyTab:
 			// Send tab for completion
-			t.SendCommand("\t")
+			_ = t.SendCommand("\t")
 			return nil
 		default:
 			// Send regular characters
 			if event.Rune() != 0 {
-				t.SendCommand(string(event.Rune()))
+				_ = t.SendCommand(string(event.Rune()))
 			}
 		}
 

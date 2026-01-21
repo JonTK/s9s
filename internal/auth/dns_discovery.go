@@ -19,7 +19,8 @@ type DNSEndpointDiscoverer struct {
 	balancer  LoadBalancer
 	resolver  *net.Resolver
 	cache     *dnsCache
-	mutex     sync.RWMutex
+	// TODO(lint): Review unused code - field mutex is unused
+	// mutex     sync.RWMutex
 }
 
 // dnsCache caches DNS resolution results
@@ -311,7 +312,7 @@ func (d *DNSEndpointDiscoverer) HealthCheck(ctx context.Context, endpoint Endpoi
 	if err != nil {
 		return fmt.Errorf("health check request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check response status
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {

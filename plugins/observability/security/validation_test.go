@@ -254,7 +254,7 @@ func TestValidationMiddleware(t *testing.T) {
 	// Create test handler
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}
 
 	// Wrap with validation middleware
@@ -314,7 +314,7 @@ func TestValidationMiddlewareDisabled(t *testing.T) {
 	// Create test handler
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}
 
 	// Wrap with validation middleware

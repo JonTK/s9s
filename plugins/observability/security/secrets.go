@@ -49,16 +49,16 @@ const (
 
 // Secret represents a secret with metadata
 type Secret struct {
-	Name        string            `json:"name"`
-	Type        SecretType        `json:"type"`
-	Value       string            `json:"-"` // Never serialize the actual value
-	Source      SecretSource      `json:"source"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	ExpiresAt   *time.Time        `json:"expires_at,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	Encrypted   bool              `json:"encrypted"`
-	Rotatable   bool              `json:"rotatable"`
+	Name      string            `json:"name"`
+	Type      SecretType        `json:"type"`
+	Value     string            `json:"-"` // Never serialize the actual value
+	Source    SecretSource      `json:"source"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Encrypted bool              `json:"encrypted"`
+	Rotatable bool              `json:"rotatable"`
 }
 
 // SecretConfig represents configuration for secret management
@@ -66,30 +66,30 @@ type SecretConfig struct {
 	// Storage configuration
 	StorageDir    string `json:"storage_dir" yaml:"storageDir"`
 	EncryptAtRest bool   `json:"encrypt_at_rest" yaml:"encryptAtRest"`
-	
+
 	// Master key configuration
 	MasterKeySource SecretSource `json:"master_key_source" yaml:"masterKeySource"`
 	MasterKeyPath   string       `json:"master_key_path,omitempty" yaml:"masterKeyPath,omitempty"`
 	MasterKeyEnv    string       `json:"master_key_env,omitempty" yaml:"masterKeyEnv,omitempty"`
-	
+
 	// Rotation configuration
 	EnableRotation   bool          `json:"enable_rotation" yaml:"enableRotation"`
 	RotationInterval time.Duration `json:"rotation_interval" yaml:"rotationInterval"`
-	
+
 	// Security settings
-	RequireEncryption bool `json:"require_encryption" yaml:"requireEncryption"`
+	RequireEncryption  bool `json:"require_encryption" yaml:"requireEncryption"`
 	AllowInlineSecrets bool `json:"allow_inline_secrets" yaml:"allowInlineSecrets"`
 }
 
 // SecretsManager manages secrets with encryption and rotation capabilities
 type SecretsManager struct {
-	config     SecretConfig
-	secrets    map[string]*Secret
-	masterKey  []byte
-	mutex      sync.RWMutex
-	ctx        context.Context
-	cancel     context.CancelFunc
-	
+	config    SecretConfig
+	secrets   map[string]*Secret
+	masterKey []byte
+	mutex     sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+
 	// Audit and monitoring
 	accessLog []SecretAccess
 	auditMu   sync.Mutex
@@ -117,17 +117,17 @@ func NewSecretsManager(ctx context.Context, config SecretConfig) (*SecretsManage
 	if config.StorageDir == "" {
 		config.StorageDir = "./data/secrets"
 	}
-	
+
 	if config.MasterKeyEnv == "" {
 		config.MasterKeyEnv = "OBSERVABILITY_MASTER_KEY"
 	}
-	
+
 	if config.RotationInterval == 0 {
 		config.RotationInterval = 24 * time.Hour // Default rotation every 24 hours
 	}
-	
+
 	managerCtx, cancel := context.WithCancel(ctx)
-	
+
 	sm := &SecretsManager{
 		config:    config,
 		secrets:   make(map[string]*Secret),
@@ -135,30 +135,30 @@ func NewSecretsManager(ctx context.Context, config SecretConfig) (*SecretsManage
 		ctx:       managerCtx,
 		cancel:    cancel,
 	}
-	
+
 	// Initialize master key
 	if err := sm.initializeMasterKey(); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to initialize master key: %w", err)
 	}
-	
+
 	// Create storage directory if it doesn't exist
 	if err := os.MkdirAll(config.StorageDir, 0700); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create storage directory: %w", err)
 	}
-	
+
 	// Load existing secrets
 	if err := sm.loadSecrets(); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to load existing secrets: %w", err)
 	}
-	
+
 	// Start rotation routine if enabled
 	if config.EnableRotation {
 		go sm.rotationRoutine()
 	}
-	
+
 	return sm, nil
 }
 
@@ -174,7 +174,7 @@ func (sm *SecretsManager) initializeMasterKey() error {
 				return fmt.Errorf("failed to generate master key: %w", err)
 			}
 			sm.masterKey = masterKey
-			
+
 			// Optionally save to environment hint file (not the actual key!)
 			sm.saveKeyDerivationHint()
 		} else {
@@ -185,33 +185,33 @@ func (sm *SecretsManager) initializeMasterKey() error {
 			}
 			sm.masterKey = keyBytes
 		}
-		
+
 	case SecretSourceFile:
 		if sm.config.MasterKeyPath == "" {
 			return errors.New("master key path is required when using file source")
 		}
-		
+
 		keyData, err := os.ReadFile(sm.config.MasterKeyPath)
 		if err != nil {
 			return fmt.Errorf("failed to read master key file: %w", err)
 		}
-		
+
 		// Try to decode as base64, fallback to raw bytes
 		if decodedKey, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(keyData))); err == nil {
 			sm.masterKey = decodedKey
 		} else {
 			sm.masterKey = keyData
 		}
-		
+
 	default:
 		return fmt.Errorf("unsupported master key source: %s", sm.config.MasterKeySource)
 	}
-	
+
 	// Validate key length
 	if len(sm.masterKey) < 16 {
 		return errors.New("master key must be at least 16 bytes long")
 	}
-	
+
 	return nil
 }
 
@@ -224,7 +224,7 @@ func (sm *SecretsManager) saveKeyDerivationHint() {
 		"created_at": time.Now().Format(time.RFC3339),
 		"key_hash":   hex.EncodeToString(sha256.New().Sum(sm.masterKey)[:8]), // First 8 bytes of hash for verification
 	}
-	
+
 	// This is just a hint file, not containing sensitive data
 	_ = sm.saveJSON(hintPath, hint)
 }
@@ -234,24 +234,24 @@ func (sm *SecretsManager) StoreSecret(name string, secretType SecretType, value 
 	if name == "" {
 		return errors.New("secret name cannot be empty")
 	}
-	
+
 	if value == "" {
 		return errors.New("secret value cannot be empty")
 	}
-	
+
 	// Validate secret based on type
 	if err := sm.validateSecret(secretType, value); err != nil {
 		return fmt.Errorf("secret validation failed: %w", err)
 	}
-	
+
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
-	
+
 	// Check if inline secrets are allowed
 	if source == SecretSourceInline && !sm.config.AllowInlineSecrets {
 		return errors.New("inline secrets are not allowed by configuration")
 	}
-	
+
 	secret := &Secret{
 		Name:      name,
 		Type:      secretType,
@@ -263,24 +263,24 @@ func (sm *SecretsManager) StoreSecret(name string, secretType SecretType, value 
 		Encrypted: sm.config.EncryptAtRest || sm.config.RequireEncryption,
 		Rotatable: sm.isRotatable(secretType),
 	}
-	
+
 	// Set expiration for rotatable secrets
 	if secret.Rotatable && sm.config.EnableRotation {
 		expiresAt := time.Now().Add(sm.config.RotationInterval)
 		secret.ExpiresAt = &expiresAt
 	}
-	
+
 	sm.secrets[name] = secret
-	
+
 	// Persist to storage
 	if err := sm.saveSecret(secret); err != nil {
 		delete(sm.secrets, name)
 		return fmt.Errorf("failed to save secret: %w", err)
 	}
-	
+
 	// Audit log
 	sm.logAccess(name, "store", true, "")
-	
+
 	return nil
 }
 
@@ -289,26 +289,26 @@ func (sm *SecretsManager) RetrieveSecret(name string) (*Secret, error) {
 	if name == "" {
 		return nil, errors.New("secret name cannot be empty")
 	}
-	
+
 	sm.mutex.RLock()
 	defer sm.mutex.RUnlock()
-	
+
 	secret, exists := sm.secrets[name]
 	if !exists {
 		sm.logAccess(name, "retrieve", false, "secret not found")
 		return nil, fmt.Errorf("secret '%s' not found", name)
 	}
-	
+
 	// Check expiration
 	if secret.ExpiresAt != nil && time.Now().After(*secret.ExpiresAt) {
 		sm.logAccess(name, "retrieve", false, "secret expired")
 		return nil, fmt.Errorf("secret '%s' has expired", name)
 	}
-	
+
 	// Return a copy to prevent modification
 	secretCopy := *secret
 	sm.logAccess(name, "retrieve", true, "")
-	
+
 	return &secretCopy, nil
 }
 
@@ -326,19 +326,19 @@ func (sm *SecretsManager) DeleteSecret(name string) error {
 	if name == "" {
 		return errors.New("secret name cannot be empty")
 	}
-	
+
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
-	
+
 	secret, exists := sm.secrets[name]
 	if !exists {
 		sm.logAccess(name, "delete", false, "secret not found")
 		return fmt.Errorf("secret '%s' not found", name)
 	}
-	
+
 	// Remove from memory
 	delete(sm.secrets, name)
-	
+
 	// Remove from storage
 	secretPath := filepath.Join(sm.config.StorageDir, name+".secret")
 	if err := os.Remove(secretPath); err != nil && !os.IsNotExist(err) {
@@ -346,7 +346,7 @@ func (sm *SecretsManager) DeleteSecret(name string) error {
 		sm.secrets[name] = secret
 		return fmt.Errorf("failed to remove secret file: %w", err)
 	}
-	
+
 	sm.logAccess(name, "delete", true, "")
 	return nil
 }
@@ -355,7 +355,7 @@ func (sm *SecretsManager) DeleteSecret(name string) error {
 func (sm *SecretsManager) ListSecrets() []SecretReference {
 	sm.mutex.RLock()
 	defer sm.mutex.RUnlock()
-	
+
 	refs := make([]SecretReference, 0, len(sm.secrets))
 	for _, secret := range sm.secrets {
 		refs = append(refs, SecretReference{
@@ -364,7 +364,7 @@ func (sm *SecretsManager) ListSecrets() []SecretReference {
 			Source: secret.Source,
 		})
 	}
-	
+
 	return refs
 }
 
@@ -372,30 +372,30 @@ func (sm *SecretsManager) ListSecrets() []SecretReference {
 func (sm *SecretsManager) RotateSecret(name string, newValue string) error {
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
-	
+
 	secret, exists := sm.secrets[name]
 	if !exists {
 		return fmt.Errorf("secret '%s' not found", name)
 	}
-	
+
 	if !secret.Rotatable {
 		return fmt.Errorf("secret '%s' is not rotatable", name)
 	}
-	
+
 	// Update secret
 	secret.Value = newValue
 	secret.UpdatedAt = time.Now()
-	
+
 	if sm.config.EnableRotation {
 		expiresAt := time.Now().Add(sm.config.RotationInterval)
 		secret.ExpiresAt = &expiresAt
 	}
-	
+
 	// Persist to storage
 	if err := sm.saveSecret(secret); err != nil {
 		return fmt.Errorf("failed to save rotated secret: %w", err)
 	}
-	
+
 	sm.logAccess(name, "rotate", true, "")
 	return nil
 }
@@ -407,7 +407,7 @@ func (sm *SecretsManager) validateSecret(secretType SecretType, value string) er
 		if len(value) < 8 {
 			return errors.New("API tokens must be at least 8 characters long")
 		}
-		
+
 	case SecretTypeBasicAuth:
 		parts := strings.SplitN(value, ":", 2)
 		if len(parts) != 2 {
@@ -416,7 +416,7 @@ func (sm *SecretsManager) validateSecret(secretType SecretType, value string) er
 		if len(parts[0]) == 0 || len(parts[1]) == 0 {
 			return errors.New("username and password cannot be empty")
 		}
-		
+
 	case SecretTypeEncryptionKey:
 		decoded, err := base64.StdEncoding.DecodeString(value)
 		if err != nil {
@@ -426,7 +426,7 @@ func (sm *SecretsManager) validateSecret(secretType SecretType, value string) er
 			return errors.New("encryption key must be at least 128 bits (16 bytes)")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -449,35 +449,35 @@ func (sm *SecretsManager) encryptValue(plaintext string) (string, error) {
 	if !sm.config.EncryptAtRest && !sm.config.RequireEncryption {
 		return plaintext, nil
 	}
-	
+
 	// Derive key using PBKDF2
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("failed to generate salt: %w", err)
 	}
-	
+
 	key := pbkdf2.Key(sm.masterKey, salt, 4096, 32, sha256.New)
-	
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cipher: %w", err)
 	}
-	
+
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", fmt.Errorf("failed to create GCM: %w", err)
 	}
-	
+
 	nonce := make([]byte, aesGCM.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", fmt.Errorf("failed to generate nonce: %w", err)
 	}
-	
+
 	ciphertext := aesGCM.Seal(nonce, nonce, []byte(plaintext), nil)
-	
+
 	// Prepend salt to ciphertext
 	encrypted := append(salt, ciphertext...)
-	
+
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
@@ -486,45 +486,45 @@ func (sm *SecretsManager) decryptValue(encryptedValue string) (string, error) {
 	if !sm.config.EncryptAtRest && !sm.config.RequireEncryption {
 		return encryptedValue, nil
 	}
-	
+
 	encrypted, err := base64.StdEncoding.DecodeString(encryptedValue)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode encrypted value: %w", err)
 	}
-	
+
 	if len(encrypted) < 16 {
 		return "", errors.New("encrypted value too short")
 	}
-	
+
 	// Extract salt and ciphertext
 	salt := encrypted[:16]
 	ciphertext := encrypted[16:]
-	
+
 	// Derive key using same parameters
 	key := pbkdf2.Key(sm.masterKey, salt, 4096, 32, sha256.New)
-	
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cipher: %w", err)
 	}
-	
+
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", fmt.Errorf("failed to create GCM: %w", err)
 	}
-	
+
 	if len(ciphertext) < aesGCM.NonceSize() {
 		return "", errors.New("ciphertext too short")
 	}
-	
+
 	nonce := ciphertext[:aesGCM.NonceSize()]
 	ciphertext = ciphertext[aesGCM.NonceSize():]
-	
+
 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt: %w", err)
 	}
-	
+
 	return string(plaintext), nil
 }
 
@@ -532,22 +532,22 @@ func (sm *SecretsManager) decryptValue(encryptedValue string) (string, error) {
 
 // StorageSecret represents a secret for storage (with value included)
 type StorageSecret struct {
-	Name        string            `json:"name"`
-	Type        SecretType        `json:"type"`
-	Value       string            `json:"value"` // Include value for storage
-	Source      SecretSource      `json:"source"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	ExpiresAt   *time.Time        `json:"expires_at,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	Encrypted   bool              `json:"encrypted"`
-	Rotatable   bool              `json:"rotatable"`
+	Name      string            `json:"name"`
+	Type      SecretType        `json:"type"`
+	Value     string            `json:"value"` // Include value for storage
+	Source    SecretSource      `json:"source"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Encrypted bool              `json:"encrypted"`
+	Rotatable bool              `json:"rotatable"`
 }
 
 // saveSecret saves a secret to storage
 func (sm *SecretsManager) saveSecret(secret *Secret) error {
 	secretPath := filepath.Join(sm.config.StorageDir, secret.Name+".secret")
-	
+
 	// Prepare secret for storage
 	storageSecret := StorageSecret{
 		Name:      secret.Name,
@@ -561,7 +561,7 @@ func (sm *SecretsManager) saveSecret(secret *Secret) error {
 		Rotatable: secret.Rotatable,
 		Value:     secret.Value, // Will be encrypted below if needed
 	}
-	
+
 	// Encrypt value if required
 	if secret.Encrypted {
 		encryptedValue, err := sm.encryptValue(secret.Value)
@@ -570,7 +570,7 @@ func (sm *SecretsManager) saveSecret(secret *Secret) error {
 		}
 		storageSecret.Value = encryptedValue
 	}
-	
+
 	return sm.saveJSON(secretPath, storageSecret)
 }
 
@@ -579,39 +579,28 @@ func (sm *SecretsManager) loadSecrets() error {
 	if _, err := os.Stat(sm.config.StorageDir); os.IsNotExist(err) {
 		return nil // No secrets directory yet
 	}
-	
+
 	entries, err := os.ReadDir(sm.config.StorageDir)
 	if err != nil {
 		return fmt.Errorf("failed to read secrets directory: %w", err)
 	}
-	
+
 	for _, entry := range entries {
 		if !strings.HasSuffix(entry.Name(), ".secret") {
 			continue
 		}
-		
+
 		secretPath := filepath.Join(sm.config.StorageDir, entry.Name())
 		var storageSecret StorageSecret
-		
+
 		if err := sm.loadJSON(secretPath, &storageSecret); err != nil {
 			// Log error but continue loading other secrets
 			continue
 		}
-		
+
 		// Convert to runtime Secret struct
-		secret := Secret{
-			Name:      storageSecret.Name,
-			Type:      storageSecret.Type,
-			Value:     storageSecret.Value,
-			Source:    storageSecret.Source,
-			CreatedAt: storageSecret.CreatedAt,
-			UpdatedAt: storageSecret.UpdatedAt,
-			ExpiresAt: storageSecret.ExpiresAt,
-			Metadata:  storageSecret.Metadata,
-			Encrypted: storageSecret.Encrypted,
-			Rotatable: storageSecret.Rotatable,
-		}
-		
+		secret := Secret(storageSecret)
+
 		// Decrypt value if encrypted
 		if secret.Encrypted {
 			decryptedValue, err := sm.decryptValue(secret.Value)
@@ -621,10 +610,10 @@ func (sm *SecretsManager) loadSecrets() error {
 			}
 			secret.Value = decryptedValue
 		}
-		
+
 		sm.secrets[secret.Name] = &secret
 	}
-	
+
 	return nil
 }
 
@@ -634,8 +623,8 @@ func (sm *SecretsManager) saveJSON(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	
+	defer func() { _ = file.Close() }()
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(data)
@@ -646,8 +635,8 @@ func (sm *SecretsManager) loadJSON(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	
+	defer func() { _ = file.Close() }()
+
 	decoder := json.NewDecoder(file)
 	return decoder.Decode(data)
 }
@@ -656,7 +645,7 @@ func (sm *SecretsManager) loadJSON(path string, data interface{}) error {
 func (sm *SecretsManager) logAccess(secretName, operation string, success bool, errorMsg string) {
 	sm.auditMu.Lock()
 	defer sm.auditMu.Unlock()
-	
+
 	access := SecretAccess{
 		SecretName: secretName,
 		Operation:  operation,
@@ -664,9 +653,9 @@ func (sm *SecretsManager) logAccess(secretName, operation string, success bool, 
 		Timestamp:  time.Now(),
 		Error:      errorMsg,
 	}
-	
+
 	sm.accessLog = append(sm.accessLog, access)
-	
+
 	// Keep only last 1000 entries
 	if len(sm.accessLog) > 1000 {
 		sm.accessLog = sm.accessLog[len(sm.accessLog)-1000:]
@@ -677,7 +666,7 @@ func (sm *SecretsManager) logAccess(secretName, operation string, success bool, 
 func (sm *SecretsManager) GetAuditLog() []SecretAccess {
 	sm.auditMu.Lock()
 	defer sm.auditMu.Unlock()
-	
+
 	// Return a copy
 	logCopy := make([]SecretAccess, len(sm.accessLog))
 	copy(logCopy, sm.accessLog)
@@ -688,7 +677,7 @@ func (sm *SecretsManager) GetAuditLog() []SecretAccess {
 func (sm *SecretsManager) rotationRoutine() {
 	ticker := time.NewTicker(1 * time.Hour) // Check every hour
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -703,14 +692,14 @@ func (sm *SecretsManager) rotationRoutine() {
 func (sm *SecretsManager) checkAndRotateSecrets() {
 	sm.mutex.RLock()
 	expiredSecrets := make([]*Secret, 0)
-	
+
 	for _, secret := range sm.secrets {
 		if secret.ExpiresAt != nil && time.Now().After(*secret.ExpiresAt) && secret.Rotatable {
 			expiredSecrets = append(expiredSecrets, secret)
 		}
 	}
 	sm.mutex.RUnlock()
-	
+
 	// Rotate expired secrets (this would typically involve external systems)
 	for _, secret := range expiredSecrets {
 		sm.logAccess(secret.Name, "auto_rotation_needed", true, "secret expired and needs rotation")
@@ -730,22 +719,21 @@ func (sm *SecretsManager) Stop() error {
 func (sm *SecretsManager) Health() map[string]interface{} {
 	sm.mutex.RLock()
 	defer sm.mutex.RUnlock()
-	
+
 	totalSecrets := len(sm.secrets)
 	expiredSecrets := 0
-	
+
 	for _, secret := range sm.secrets {
 		if secret.ExpiresAt != nil && time.Now().After(*secret.ExpiresAt) {
 			expiredSecrets++
 		}
 	}
-	
+
 	return map[string]interface{}{
-		"total_secrets":    totalSecrets,
-		"expired_secrets":  expiredSecrets,
+		"total_secrets":      totalSecrets,
+		"expired_secrets":    expiredSecrets,
 		"encryption_enabled": sm.config.EncryptAtRest,
-		"rotation_enabled": sm.config.EnableRotation,
-		"storage_directory": sm.config.StorageDir,
+		"rotation_enabled":   sm.config.EnableRotation,
+		"storage_directory":  sm.config.StorageDir,
 	}
 }
-

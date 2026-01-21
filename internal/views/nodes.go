@@ -136,7 +136,7 @@ func NewNodesView(client dao.SlurmClient) *NodesView {
 
 // Init initializes the nodes view
 func (v *NodesView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -254,7 +254,7 @@ func (v *NodesView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 			v.resumeSelectedNode()
 			return nil
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case 's', 'S':
 			v.sshToNode()
@@ -378,7 +378,7 @@ func (v *NodesView) formatNodeRow(node *dao.Node) []string {
 	// CPU usage bar - dual view showing allocation vs actual load
 	// For CPU: allocated CPUs vs actual CPU load (if available)
 	cpuActualUsed := node.CPUsAllocated // Default to allocated if no load data
-	if node.CPULoad >= 0 { // CPULoad can be 0 (valid idle state)
+	if node.CPULoad >= 0 {              // CPULoad can be 0 (valid idle state)
 		// CPULoad is the 1-minute load average
 		// Load average represents the number of processes waiting for CPU time
 		// Convert load average to equivalent "CPU cores being used"
@@ -439,7 +439,10 @@ func (v *NodesView) formatNodeRow(node *dao.Node) []string {
 	}
 }
 
-// createUsageBar creates a visual usage bar
+/*
+TODO(lint): Review unused code - func (*NodesView).createUsageBar is unused
+
+createUsageBar creates a visual usage bar
 func (v *NodesView) createUsageBar(used, total int) string {
 	if total == 0 {
 		return "[gray]········[white]"
@@ -478,6 +481,7 @@ func (v *NodesView) createUsageBar(used, total int) string {
 
 	return bar.String()
 }
+*/
 
 // createDualUsageBar creates a dual-view bar showing allocation and actual usage
 // allocated: amount allocated by SLURM
@@ -523,7 +527,10 @@ func (v *NodesView) createDualUsageBar(allocated, used, total int) string {
 	return bar.String()
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*NodesView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *NodesView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -581,6 +588,7 @@ func (v *NodesView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *NodesView) scheduleRefresh() {
@@ -691,7 +699,7 @@ func (v *NodesView) performDrainNode(nodeName, reason string) {
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
 
 // resumeSelectedNode resumes the selected node
@@ -732,8 +740,8 @@ func (v *NodesView) resumeSelectedNode() {
 	debug.Logger.Printf("resumeSelectedNode() - clean state: %s, reason: '%s'", cleanState, node.Reason)
 
 	isDrained := strings.Contains(cleanState, dao.NodeStateDrain) ||
-				 strings.Contains(cleanState, dao.NodeStateDraining) ||
-				 (node.Reason != "" && node.Reason != "Not responding")
+		strings.Contains(cleanState, dao.NodeStateDraining) ||
+		(node.Reason != "" && node.Reason != "Not responding")
 	if !isDrained {
 		// Show informative error message
 		if v.pages != nil {
@@ -797,7 +805,7 @@ func (v *NodesView) performResumeNode(nodeName string) {
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
 
 // showNodeDetails shows detailed information for the selected node
@@ -873,14 +881,14 @@ func (v *NodesView) formatNodeDetails(node *dao.Node) string {
 	details.WriteString(fmt.Sprintf("[yellow]  Total CPUs:[white] %d\n", node.CPUsTotal))
 	details.WriteString(fmt.Sprintf("[yellow]  Allocated CPUs:[white] %d\n", node.CPUsAllocated))
 	details.WriteString(fmt.Sprintf("[yellow]  Idle CPUs:[white] %d\n", node.CPUsIdle))
-	
+
 	// Show allocation percentage
 	cpuAllocPercent := 0.0
 	if node.CPUsTotal > 0 {
 		cpuAllocPercent = float64(node.CPUsAllocated) * 100.0 / float64(node.CPUsTotal)
 	}
 	details.WriteString(fmt.Sprintf("[yellow]  CPU Allocation:[white] %.1f%% (SLURM allocated)\n", cpuAllocPercent))
-	
+
 	// Show actual CPU load if available
 	if node.CPULoad >= 0 {
 		details.WriteString(fmt.Sprintf("[yellow]  CPU Load:[white] %.2f (1-minute load average)\n", node.CPULoad))
@@ -897,14 +905,14 @@ func (v *NodesView) formatNodeDetails(node *dao.Node) string {
 	details.WriteString("\n[teal]Memory Information:[white]\n")
 	details.WriteString(fmt.Sprintf("[yellow]  Total Memory:[white] %s\n", FormatMemory(node.MemoryTotal)))
 	details.WriteString(fmt.Sprintf("[yellow]  Allocated Memory:[white] %s", FormatMemory(node.MemoryAllocated)))
-	
+
 	// Show allocation percentage
 	memAllocPercent := 0.0
 	if node.MemoryTotal > 0 {
 		memAllocPercent = float64(node.MemoryAllocated) * 100.0 / float64(node.MemoryTotal)
 	}
 	details.WriteString(fmt.Sprintf(" (%.1f%% allocated by SLURM)\n", memAllocPercent))
-	
+
 	// Show actual memory usage
 	memActualUsed := node.MemoryTotal - node.MemoryFree
 	if memActualUsed < 0 {
@@ -916,7 +924,7 @@ func (v *NodesView) formatNodeDetails(node *dao.Node) string {
 	}
 	details.WriteString(fmt.Sprintf("[yellow]  Used Memory:[white] %s (%.1f%% actual usage)\n", FormatMemory(memActualUsed), memUsagePercent))
 	details.WriteString(fmt.Sprintf("[yellow]  Free Memory:[white] %s\n", FormatMemory(node.MemoryFree)))
-	
+
 	// Show efficiency (how much of allocated memory is actually used)
 	if node.MemoryAllocated > 0 {
 		efficiency := float64(memActualUsed) * 100.0 / float64(node.MemoryAllocated)
@@ -1206,7 +1214,7 @@ func (v *NodesView) toggleStateFilter(state string) {
 		}
 	}
 
-	go v.Refresh()
+	go func() { _ = v.Refresh() }()
 }
 
 // promptPartitionFilter prompts for partition filter
@@ -1219,7 +1227,7 @@ func (v *NodesView) promptPartitionFilter() {
 	input.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
 			v.partFilter = input.GetText()
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 		}
 		v.app.SetRoot(v.container, true)
 	})
@@ -1501,7 +1509,7 @@ func (v *NodesView) focusOnNode(nodeName string) {
 	for i, node := range v.nodes {
 		if node.Name == nodeName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Status bar update removed since individual view status bars are no longer used
 			return
 		}

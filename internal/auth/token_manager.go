@@ -102,7 +102,7 @@ func (tm *TokenManager) SetToken(clusterName string, token *Token) error {
 	if tm.useKeyring {
 		if err := tm.saveToKeyring(clusterName, token); err != nil {
 			// Log error but don't fail if keyring storage fails
-			fmt.Fprintf(os.Stderr, "Failed to save token to keyring: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to save token to keyring: %v\n", err)
 		}
 	}
 
@@ -120,7 +120,7 @@ func (tm *TokenManager) RemoveToken(clusterName string) error {
 
 	// Remove from keyring if enabled
 	if tm.useKeyring {
-		keyring.Delete(KeyringService, clusterName)
+		_ = keyring.Delete(KeyringService, clusterName)
 	}
 
 	// Remove from file cache
@@ -201,7 +201,7 @@ func (tm *TokenManager) saveToFile(clusterName string, token *Token) error {
 	// Load existing cache
 	cache := make(map[string]*Token)
 	if data, err := os.ReadFile(cachePath); err == nil {
-		json.Unmarshal(data, &cache)
+		_ = json.Unmarshal(data, &cache)
 	}
 
 	// Update cache
@@ -223,7 +223,7 @@ func (tm *TokenManager) removeFromFile(clusterName string) error {
 	// Load existing cache
 	cache := make(map[string]*Token)
 	if data, err := os.ReadFile(cachePath); err == nil {
-		json.Unmarshal(data, &cache)
+		_ = json.Unmarshal(data, &cache)
 	}
 
 	// Remove from cache

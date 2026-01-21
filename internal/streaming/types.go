@@ -61,7 +61,8 @@ type JobStream struct {
 	Subscribers   []chan<- StreamEvent // Event subscribers
 	FileWatcher   *FileWatcher         // Individual file watcher
 	LastUpdate    time.Time            // Last update timestamp
-	mu            sync.RWMutex         // Stream-specific mutex
+	// TODO(lint): Review unused code - field mu is unused
+	// mu            sync.RWMutex         // Stream-specific mutex
 }
 
 // SlurmConfig contains SLURM-specific configuration for streaming
@@ -113,7 +114,8 @@ type FileWatcher struct {
 	IsRemote    bool
 	NodeID      string
 	LastOffset  int64
-	mu          sync.RWMutex
+	// TODO(lint): Review unused code - field mu is unused
+	// mu          sync.RWMutex
 }
 
 // Default configuration values

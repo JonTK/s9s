@@ -192,6 +192,6 @@ func BenchmarkExportPerformance(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		exporter.ExportPerformanceReport(profiler, optimizer, FormatJSON, filepath.Join(tempDir, "bench.json"))
+		_, _ = exporter.ExportPerformanceReport(profiler, optimizer, FormatJSON, filepath.Join(tempDir, "bench.json"))
 	}
 }

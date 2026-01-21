@@ -306,7 +306,7 @@ func (m *Manager) UpdatePluginConfig(name string, config map[string]interface{})
 		if lifecycle, ok := plugin.(LifecycleAware); ok {
 			if err := lifecycle.OnConfigChange(m.ctx, oldConfig, config); err != nil {
 				// Rollback on error
-				configurable.SetConfig(oldConfig)
+				_ = configurable.SetConfig(oldConfig)
 				return fmt.Errorf("configuration change failed: %w", err)
 			}
 		}

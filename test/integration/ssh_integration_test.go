@@ -191,7 +191,7 @@ func testPersistenceIntegration(t *testing.T, testHost, testUser string) {
 	// Create temporary data directory
 	tempDataDir, err := os.MkdirTemp("", "ssh_test_data_*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDataDir)
+	defer func() { _ = os.RemoveAll(tempDataDir) }()
 
 	hostname := parseHostname(testHost)
 
@@ -408,16 +408,16 @@ CMD ["/usr/sbin/sshd", "-D"]
 	containerID := strings.TrimSpace(string(output))
 
 	// Set up SSH client to use the generated key
-	os.Setenv("SSH_TEST_KEY", privateKeyPath)
+	_ = os.Setenv("SSH_TEST_KEY", privateKeyPath)
 
 	return containerID, nil
 }
 
 func cleanupSSHContainer(t *testing.T, containerID string) {
 	// Stop and remove container
-	exec.Command("docker", "stop", containerID).Run()
-	exec.Command("docker", "rm", containerID).Run()
+	_ = exec.Command("docker", "stop", containerID).Run()
+	_ = exec.Command("docker", "rm", containerID).Run()
 	
 	// Remove test image
-	exec.Command("docker", "rmi", "ssh-test-server").Run()
+	_ = exec.Command("docker", "rmi", "ssh-test-server").Run()
 }

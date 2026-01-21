@@ -57,20 +57,22 @@ type MultiPaneManager struct {
 	paneOrder      []string
 	activePane     string
 	layout         PaneLayout
-	splitRatio     []int // Ratios for splits
+	// TODO(lint): Review unused code - field splitRatio is unused
+	// splitRatio     []int // Ratios for splits
 	maxPanes       int
 	showTabs       bool
 	tabBar         *tview.TextView
 	statusBar      *tview.TextView
-	
+
 	// Navigation
 	navMode        bool
-	navIndex       int
-	
+	// TODO(lint): Review unused code - field navIndex is unused
+	// navIndex       int
+
 	// Callbacks
 	onPaneSwitch   func(oldPane, newPane string)
 	onLayoutChange func(PaneLayout)
-	
+
 	// Keyboard shortcuts
 	shortcuts      map[tcell.Key]func()
 	charShortcuts  map[rune]func()
@@ -127,7 +129,7 @@ func (mpm *MultiPaneManager) setupKeyboardShortcuts() {
 	// Function key shortcuts
 	mpm.shortcuts[tcell.KeyTab] = mpm.NextPane
 	mpm.shortcuts[tcell.KeyBacktab] = mpm.PreviousPane
-	mpm.shortcuts[tcell.KeyCtrlT] = func() { mpm.NewPane("terminal", "Terminal", PaneTypeTerminal, nil) }
+	mpm.shortcuts[tcell.KeyCtrlT] = func() { _ = mpm.NewPane("terminal", "Terminal", PaneTypeTerminal, nil) }
 	mpm.shortcuts[tcell.KeyCtrlW] = mpm.CloseActivePane
 	mpm.shortcuts[tcell.KeyCtrlN] = mpm.ToggleNavMode
 	mpm.shortcuts[tcell.KeyF2] = mpm.RenameActivePane
@@ -442,7 +444,7 @@ func (mpm *MultiPaneManager) CloseActivePane() {
 	mpm.mu.RUnlock()
 	
 	if activePane != "" {
-		mpm.RemovePane(activePane)
+		_ = mpm.RemovePane(activePane)
 	}
 }
 
@@ -754,7 +756,7 @@ func (mpm *MultiPaneManager) Close() {
 	// Close all panes
 	for id := range mpm.panes {
 		if pane := mpm.panes[id]; pane != nil && pane.OnClose != nil {
-			pane.OnClose(id)
+			_ = pane.OnClose(id)
 		}
 	}
 	

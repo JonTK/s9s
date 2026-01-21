@@ -143,13 +143,13 @@ func BenchmarkTerminalPane(b *testing.B) {
 				"user",
 				sessionManager,
 			)
-			tp.Close()
+			_ = tp.Close()
 		}
 	})
 	
 	b.Run("GetCommandHistory", func(b *testing.B) {
 		tp := components.NewTerminalPane("bench-history", "localhost", "user", sessionManager)
-		defer tp.Close()
+		defer func() { _ = tp.Close() }()
 		
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -159,7 +159,7 @@ func BenchmarkTerminalPane(b *testing.B) {
 	
 	b.Run("InputProcessing", func(b *testing.B) {
 		tp := components.NewTerminalPane("bench-input", "localhost", "user", sessionManager)
-		defer tp.Close()
+		defer func() { _ = tp.Close() }()
 		
 		// Since we can't directly test input processing, we'll benchmark
 		// terminal pane operations

@@ -333,7 +333,7 @@ func (v *BatchOperationsView) performBatchOperation(operation BatchOperation, pa
 	}
 
 	// Fallback to original implementation
-	v.performBatchOperationInternal(operation, parameter)
+	_ = v.performBatchOperationInternal(operation, parameter)
 }
 
 // performBatchOperationInternal performs the actual batch operation
@@ -539,7 +539,10 @@ func (v *BatchOperationsView) confirmExportOperation(format export.ExportFormat)
 	v.pages.AddPage("export-confirm", modal, true, true)
 }
 
-// exportJobOutput exports output for a single job (legacy method)
+/*
+TODO(lint): Review unused code - func (*BatchOperationsView).exportJobOutput is unused
+
+exportJobOutput exports output for a single job (legacy method)
 func (v *BatchOperationsView) exportJobOutput(jobID, formatStr string) error {
 	_ = export.ExportFormat(formatStr)
 
@@ -578,6 +581,7 @@ func (v *BatchOperationsView) exportJobOutput(jobID, formatStr string) error {
 	_, err := v.exporter.ExportJobOutput(exportData.JobID, exportData.JobName, exportData.OutputType, exportData.Content)
 	return err
 }
+*/
 
 // exportJobOutputStreaming exports output for a single job with memory optimization
 func (v *BatchOperationsView) exportJobOutputStreaming(jobID, formatStr string) error {
@@ -623,7 +627,10 @@ func (v *BatchOperationsView) exportJobOutputStreaming(jobID, formatStr string) 
 	return err
 }
 
-// generateJobOutputContent generates sample job output content
+/*
+TODO(lint): Review unused code - func (*BatchOperationsView).generateJobOutputContent is unused
+
+generateJobOutputContent generates sample job output content
 func (v *BatchOperationsView) generateJobOutputContent(jobID string) string {
 	return fmt.Sprintf(`Job Output for Job ID: %s
 ----------------------
@@ -650,6 +657,7 @@ CPU efficiency: 94.5%%
 
 Exit code: 0`, jobID)
 }
+*/
 
 // generateJobOutputContentOptimized generates minimal job output content to reduce memory usage
 func (v *BatchOperationsView) generateJobOutputContentOptimized(jobID string) string {

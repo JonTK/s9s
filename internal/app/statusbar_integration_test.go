@@ -19,7 +19,7 @@ func TestStatusBarHintsAfterViewSwitching(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
-	defer app.Stop()
+	defer func() { _ = app.Stop() }()
 
 	// Switch to jobs view
 	err = app.viewMgr.SetCurrentView("jobs")
@@ -53,7 +53,7 @@ func TestStatusBarHintsAfterViewSwitching(t *testing.T) {
 	app.updateCurrentView()
 
 	// Verify hints are still displayed (no message should be present)
-	text := app.statusBar.TextView.GetText(false)
+	text := app.statusBar.GetText(false)
 
 	// The text should contain the hints, not be empty
 	if text == "" {
@@ -80,7 +80,7 @@ func TestStatusBarHintsAfterRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
-	defer app.Stop()
+	defer func() { _ = app.Stop() }()
 
 	// Switch to jobs view
 	err = app.viewMgr.SetCurrentView("jobs")
@@ -97,7 +97,7 @@ func TestStatusBarHintsAfterRefresh(t *testing.T) {
 
 	// The refresh doesn't show a message in RefreshCurrentView(),
 	// so hints should still be visible
-	text := app.statusBar.TextView.GetText(false)
+	text := app.statusBar.GetText(false)
 	if text == "" {
 		t.Error("Status bar is empty after refresh - hints should be displayed")
 	}
@@ -117,7 +117,7 @@ func TestStatusBarHintsWithTemporaryMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
-	defer app.Stop()
+	defer func() { _ = app.Stop() }()
 
 	// Switch to jobs view
 	err = app.viewMgr.SetCurrentView("jobs")
@@ -130,7 +130,7 @@ func TestStatusBarHintsWithTemporaryMessage(t *testing.T) {
 	app.statusBar.Success("Test message")
 
 	// Should show the message, not hints
-	text := app.statusBar.TextView.GetText(false)
+	text := app.statusBar.GetText(false)
 	if !contains(text, "Test message") {
 		t.Errorf("Expected success message to be displayed, got: %s", text)
 	}
@@ -139,7 +139,7 @@ func TestStatusBarHintsWithTemporaryMessage(t *testing.T) {
 	app.statusBar.ClearMessage()
 
 	// Should show hints again
-	text = app.statusBar.TextView.GetText(false)
+	text = app.statusBar.GetText(false)
 	if text == "" {
 		t.Error("Status bar is empty after clearing message - hints should be restored")
 	}
@@ -149,11 +149,11 @@ func TestStatusBarHintsWithTemporaryMessage(t *testing.T) {
 
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) &&
-		   (s == substr ||
-		    (len(s) > len(substr) &&
-		     (s[:len(substr)] == substr ||
-		      s[len(s)-len(substr):] == substr ||
-		      containsSubstring(s, substr))))
+		(s == substr ||
+			(len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					containsSubstring(s, substr))))
 }
 
 func containsSubstring(s, substr string) bool {

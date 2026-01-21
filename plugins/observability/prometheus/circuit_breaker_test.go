@@ -135,7 +135,7 @@ func TestCircuitBreakerHalfOpenState(t *testing.T) {
 
 	// Trigger circuit opening
 	for i := 0; i < 2; i++ {
-		cbClient.TestConnection(ctx)
+		_ = cbClient.TestConnection(ctx)
 	}
 
 	// Circuit should be open
@@ -188,7 +188,7 @@ func TestCircuitBreakerCounts(t *testing.T) {
 
 	// Make a failing request
 	mockClient.shouldFail = true
-	cbClient.TestConnection(ctx)
+	_ = cbClient.TestConnection(ctx)
 
 	counts = cbClient.GetCounts()
 	if counts.Requests != 4 {
@@ -272,7 +272,7 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 
 	// Fail enough times to open the circuit
 	for i := 0; i < 5; i++ {
-		cbClient.TestConnection(ctx)
+		_ = cbClient.TestConnection(ctx)
 	}
 
 	if cbClient.GetState() != CircuitOpen {

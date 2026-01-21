@@ -172,39 +172,43 @@ func (m *MockClient) populateSampleData() {
 			Partitions: []string{"compute"},
 			CPUsTotal:  32,
 			CPUsAllocated: func() int {
-				if state == dao.NodeStateAllocated {
+				switch state {
+				case dao.NodeStateAllocated:
 					return 32
-				} else if state == dao.NodeStateMixed {
+				case dao.NodeStateMixed:
 					return 16
-				} else {
+				default:
 					return 0
 				}
 			}(),
 			CPUsIdle: func() int {
-				if state == dao.NodeStateIdle {
+				switch state {
+				case dao.NodeStateIdle:
 					return 32
-				} else if state == dao.NodeStateMixed {
+				case dao.NodeStateMixed:
 					return 16
-				} else {
+				default:
 					return 0
 				}
 			}(),
 			MemoryTotal: 128 * 1024, // 128GB
 			MemoryAllocated: func() int64 {
-				if state == dao.NodeStateAllocated {
+				switch state {
+				case dao.NodeStateAllocated:
 					return 128 * 1024
-				} else if state == dao.NodeStateMixed {
+				case dao.NodeStateMixed:
 					return 64 * 1024
-				} else {
+				default:
 					return 0
 				}
 			}(),
 			MemoryFree: func() int64 {
-				if state == dao.NodeStateIdle {
+				switch state {
+				case dao.NodeStateIdle:
 					return 128 * 1024
-				} else if state == dao.NodeStateMixed {
+				case dao.NodeStateMixed:
 					return 64 * 1024
-				} else {
+				default:
 					return 0
 				}
 			}(),
@@ -266,12 +270,13 @@ func (m *MockClient) populateSampleData() {
 			Command:    "python simulate.py",
 		}
 
-		if state == dao.JobStateRunning {
+		switch state {
+		case dao.JobStateRunning:
 			startTime := job.SubmitTime.Add(time.Duration(rand.Intn(60)) * time.Minute)
 			job.StartTime = &startTime
 			job.TimeUsed = fmt.Sprintf("%d:%02d:%02d", rand.Intn(2), rand.Intn(60), rand.Intn(60))
 			job.NodeList = fmt.Sprintf("node[%03d-%03d]", rand.Intn(90)+1, rand.Intn(90)+10)
-		} else if state == dao.JobStateCompleted || state == dao.JobStateFailed {
+		case dao.JobStateCompleted, dao.JobStateFailed:
 			startTime := job.SubmitTime.Add(time.Duration(rand.Intn(60)) * time.Minute)
 			endTime := startTime.Add(time.Duration(rand.Intn(120)) * time.Minute)
 			job.StartTime = &startTime

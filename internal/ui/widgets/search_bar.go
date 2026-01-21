@@ -131,7 +131,7 @@ func (sb *SearchBar) buildUI() {
 			return lastChar >= '0' && lastChar <= '9'
 		}, func(text string) {
 			var lines int
-			fmt.Sscanf(text, "%d", &lines)
+			_, _ = fmt.Sscanf(text, "%d", &lines)
 			sb.options.ContextLines = lines
 		})
 	

@@ -25,14 +25,14 @@ func TestNewSecretsManager(t *testing.T) {
 	}
 	
 	// Set test master key
-	os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=") // base64 encoded 32-byte key
-	defer os.Unsetenv("TEST_MASTER_KEY")
+	_ = os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=") // base64 encoded 32-byte key
+	defer func() { _ = os.Unsetenv("TEST_MASTER_KEY") }()
 	
 	sm, err := NewSecretsManager(ctx, config)
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	if sm == nil {
 		t.Fatal("Expected secrets manager instance, got nil")
@@ -62,14 +62,14 @@ func TestStoreAndRetrieveSecret(t *testing.T) {
 		AllowInlineSecrets: true,
 	}
 	
-	os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
-	defer os.Unsetenv("TEST_MASTER_KEY")
+	_ = os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
+	defer func() { _ = os.Unsetenv("TEST_MASTER_KEY") }()
 	
 	sm, err := NewSecretsManager(ctx, config)
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store a secret
 	err = sm.StoreSecret("test-token", SecretTypeAPIToken, "super-secret-api-key-12345", SecretSourceInline, map[string]string{
@@ -126,7 +126,7 @@ func TestGetSecretValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store a secret
 	err = sm.StoreSecret("test-token", SecretTypeAPIToken, "my-secret-value", SecretSourceInline, nil)
@@ -160,7 +160,7 @@ func TestDeleteSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store a secret
 	err = sm.StoreSecret("temp-secret", SecretTypeAPIToken, "temporary-value", SecretSourceInline, nil)
@@ -208,7 +208,7 @@ func TestListSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store multiple secrets
 	secrets := map[string]struct {
@@ -272,7 +272,7 @@ func TestSecretRotation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store a rotatable secret
 	err = sm.StoreSecret("rotatable-token", SecretTypeAPIToken, "original-value", SecretSourceInline, nil)
@@ -328,14 +328,14 @@ func TestSecretEncryption(t *testing.T) {
 		AllowInlineSecrets: true,
 	}
 	
-	os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
-	defer os.Unsetenv("TEST_MASTER_KEY")
+	_ = os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
+	defer func() { _ = os.Unsetenv("TEST_MASTER_KEY") }()
 	
 	sm, err := NewSecretsManager(ctx, config)
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	originalValue := "super-secret-value-to-encrypt"
 	
@@ -387,7 +387,7 @@ func TestSecretValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Test API token validation
 	testCases := []struct {
@@ -440,7 +440,7 @@ func TestSecretExpiration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store a secret that will expire quickly
 	err = sm.StoreSecret("expiring-secret", SecretTypeAPIToken, "will-expire-soon", SecretSourceInline, nil)
@@ -483,13 +483,13 @@ func TestAuditLogging(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Perform various operations
-	sm.StoreSecret("audit-test", SecretTypeAPIToken, "test-value", SecretSourceInline, nil)
-	sm.RetrieveSecret("audit-test")
-	sm.RetrieveSecret("non-existent") // This should fail
-	sm.DeleteSecret("audit-test")
+	_ = sm.StoreSecret("audit-test", SecretTypeAPIToken, "test-value", SecretSourceInline, nil)
+	_, _ = sm.RetrieveSecret("audit-test")
+	_, _ = sm.RetrieveSecret("non-existent") // This should fail
+	_ = sm.DeleteSecret("audit-test")
 	
 	// Check audit log
 	auditLog := sm.GetAuditLog()
@@ -545,20 +545,20 @@ func TestSecretsManagerHealth(t *testing.T) {
 		AllowInlineSecrets: true,
 	}
 	
-	os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
-	defer os.Unsetenv("TEST_MASTER_KEY")
+	_ = os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
+	defer func() { _ = os.Unsetenv("TEST_MASTER_KEY") }()
 	
 	sm, err := NewSecretsManager(ctx, config)
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Store some secrets, including an expired one
-	sm.StoreSecret("active-secret", SecretTypeAPIToken, "active-value", SecretSourceInline, nil)
+	_ = sm.StoreSecret("active-secret", SecretTypeAPIToken, "active-value", SecretSourceInline, nil)
 	
 	// Create an expired secret by manipulating the expiration time
-	sm.StoreSecret("expired-secret", SecretTypeAPIToken, "expired-value", SecretSourceInline, nil)
+	_ = sm.StoreSecret("expired-secret", SecretTypeAPIToken, "expired-value", SecretSourceInline, nil)
 	sm.mutex.Lock()
 	if secret, exists := sm.secrets["expired-secret"]; exists {
 		pastTime := time.Now().Add(-2 * time.Hour)
@@ -610,7 +610,7 @@ func TestInlineSecretsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secrets manager: %v", err)
 	}
-	defer sm.Stop()
+	defer func() { _ = sm.Stop() }()
 	
 	// Try to store inline secret - should fail
 	err = sm.StoreSecret("inline-secret", SecretTypeAPIToken, "inline-value", SecretSourceInline, nil)
@@ -642,8 +642,8 @@ func TestPersistenceAndReload(t *testing.T) {
 		AllowInlineSecrets: true,
 	}
 	
-	os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
-	defer os.Unsetenv("TEST_MASTER_KEY")
+	_ = os.Setenv("TEST_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTEyMzQ1Njc4OTBhYmNkZWY=")
+	defer func() { _ = os.Unsetenv("TEST_MASTER_KEY") }()
 	
 	// Create first manager and store secrets
 	sm1, err := NewSecretsManager(ctx, config)
@@ -658,14 +658,14 @@ func TestPersistenceAndReload(t *testing.T) {
 		t.Fatalf("Failed to store secret: %v", err)
 	}
 	
-	sm1.Stop()
+	_ = sm1.Stop()
 	
 	// Create second manager with same config - should reload secrets
 	sm2, err := NewSecretsManager(ctx, config)
 	if err != nil {
 		t.Fatalf("Failed to create second secrets manager: %v", err)
 	}
-	defer sm2.Stop()
+	defer func() { _ = sm2.Stop() }()
 	
 	// Check what secrets are available
 	refs := sm2.ListSecrets()

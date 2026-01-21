@@ -261,12 +261,12 @@ func (o *JobsOverlay) backgroundRefresh(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Initial refresh
-	o.refreshMetrics(ctx)
+	_ = o.refreshMetrics(ctx)
 
 	for {
 		select {
 		case <-ticker.C:
-			o.refreshMetrics(ctx)
+			_ = o.refreshMetrics(ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -323,7 +323,10 @@ func (o *JobsOverlay) refreshMetrics(ctx context.Context) error {
 	return nil
 }
 
-// getColorString converts a tcell color to a string
+/*
+TODO(lint): Review unused code - func getColorString is unused
+
+getColorString converts a tcell color to a string
 func getColorString(color tcell.Color) string {
 	switch color {
 	case tcell.ColorRed:
@@ -342,6 +345,7 @@ func getColorString(color tcell.Color) string {
 		return "white"
 	}
 }
+*/
 
 // getActiveJobIDs returns list of active job IDs
 func (o *JobsOverlay) getActiveJobIDs() []string {
@@ -424,9 +428,13 @@ func convertToTimeSeries(name string, result *prometheus.QueryResult) *models.Ti
 	return nil
 }
 
-// parseFloat safely parses a string to float64
+/*
+TODO(lint): Review unused code - func parseFloat is unused
+
+parseFloat safely parses a string to float64
 func parseFloat(s string) (float64, error) {
 	var f float64
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
 }
+*/

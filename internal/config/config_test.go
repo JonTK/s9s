@@ -14,8 +14,8 @@ func TestLoadDefaults(t *testing.T) {
 	t.Skip("Skipping environment-dependent test")
 
 	// Clear environment variables
-	os.Unsetenv("SLURM_REST_URL")
-	os.Unsetenv("SLURM_JWT")
+	_ = os.Unsetenv("SLURM_REST_URL")
+	_ = os.Unsetenv("SLURM_JWT")
 
 	cfg, err := Load()
 	require.NoError(t, err)
