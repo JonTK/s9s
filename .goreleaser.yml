@@ -1,0 +1,188 @@
+# GoReleaser configuration for s9s
+# See https://goreleaser.com for documentation
+
+version: 2
+
+# Project metadata
+project_name: s9s
+
+# Before hooks
+before:
+  hooks:
+    # Ensure dependencies are up to date
+    - go mod tidy
+    # Run tests
+    - go test ./...
+
+# Build configuration
+builds:
+  - id: s9s
+    main: ./cmd/s9s
+    binary: s9s
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      # Windows ARM builds are not well supported
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/jontk/s9s/internal/version.Version={{.Version}}
+      - -X github.com/jontk/s9s/internal/version.Commit={{.Commit}}
+      - -X github.com/jontk/s9s/internal/version.Date={{.Date}}
+      - -X github.com/jontk/s9s/internal/version.BuiltBy=goreleaser
+
+# Archive configuration
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    formats:
+      - tar.gz
+      - zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - docs/**/*
+
+# Checksum configuration
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+# Snapshot configuration (for development builds)
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# Changelog configuration
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Performance Improvements"
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "Security Updates"
+      regexp: '^.*?sec(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: "Other Changes"
+      order: 999
+
+# GitHub release configuration
+release:
+  github:
+    owner: jontk
+    name: s9s
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{ .Tag }} ({{ .Date }})
+
+    Welcome to this new release of s9s - SLURM Terminal UI!
+
+    ### Installation
+
+    Download the appropriate binary for your platform below.
+
+    #### Linux
+    ```bash
+    # Download
+    curl -LO https://github.com/jontk/s9s/releases/download/{{ .Tag }}/s9s_{{ .Version }}_Linux_x86_64.tar.gz
+
+    # Extract
+    tar -xzf s9s_{{ .Version }}_Linux_x86_64.tar.gz
+
+    # Move to PATH
+    sudo mv s9s /usr/local/bin/
+
+    # Verify
+    s9s version
+    ```
+
+    #### macOS
+    ```bash
+    # Download (Apple Silicon)
+    curl -LO https://github.com/jontk/s9s/releases/download/{{ .Tag }}/s9s_{{ .Version }}_Darwin_arm64.tar.gz
+
+    # Download (Intel)
+    curl -LO https://github.com/jontk/s9s/releases/download/{{ .Tag }}/s9s_{{ .Version }}_Darwin_x86_64.tar.gz
+
+    # Extract
+    tar -xzf s9s_{{ .Version }}_Darwin_*.tar.gz
+
+    # Move to PATH
+    sudo mv s9s /usr/local/bin/
+
+    # Verify
+    s9s version
+    ```
+
+    #### Windows
+    Download the .zip file and extract `s9s.exe` to a directory in your PATH.
+
+  footer: |
+    ## Getting Started
+
+    ```bash
+    # Run the setup wizard
+    s9s setup
+
+    # Or use mock mode for testing
+    S9S_ENABLE_MOCK=dev s9s --mock
+
+    # View help
+    s9s --help
+    ```
+
+    ## Full Changelog
+
+    See [CHANGELOG.md](https://github.com/jontk/s9s/blob/main/CHANGELOG.md) for the complete changelog.
+
+    **Full Changelog**: https://github.com/jontk/s9s/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# Homebrew tap (optional - can enable later)
+# brews:
+#   - repository:
+#       owner: jontk
+#       name: homebrew-tap
+#     description: "Terminal UI for SLURM cluster management"
+#     homepage: "https://github.com/jontk/s9s"
+#     license: "Apache-2.0"
+#     install: |
+#       bin.install "s9s"
+#     test: |
+#       system "#{bin}/s9s", "version"

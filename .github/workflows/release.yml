@@ -4,262 +4,92 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to release'
-        required: true
-        default: 'v0.1.0'
 
 env:
   GO_VERSION: '1.24'
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
-  build:
+  goreleaser:
+    name: Release with GoReleaser
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-        exclude:
-          - goos: windows
-            goarch: arm64
-    
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        submodules: recursive
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GO_VERSION }}
-    
-    - name: Get version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Build
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 0
-      run: |
-        VERSION=${{ steps.version.outputs.VERSION }}
-        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        COMMIT_SHA=$(git rev-parse --short HEAD)
-        
-        BINARY_NAME="s9s"
-        if [ "$GOOS" = "windows" ]; then
-          BINARY_NAME="${BINARY_NAME}.exe"
-        fi
-        
-        # Build with version info
-        go build -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.CommitSHA=${COMMIT_SHA}" \
-          -o "${BINARY_NAME}" ./cmd/s9s
-        
-        # Create archive with README and LICENSE
-        ARCHIVE_NAME="s9s-${VERSION#v}-${GOOS}-${GOARCH}"
-        if [ "$GOOS" = "windows" ]; then
-          zip "${ARCHIVE_NAME}.zip" "${BINARY_NAME}" README.md LICENSE
-        else
-          tar -czf "${ARCHIVE_NAME}.tar.gz" "${BINARY_NAME}" README.md LICENSE
-        fi
-        
-        # Generate checksums
-        if [ "$GOOS" = "windows" ]; then
-          sha256sum "${ARCHIVE_NAME}.zip" > "${ARCHIVE_NAME}.zip.sha256"
-        else
-          sha256sum "${ARCHIVE_NAME}.tar.gz" > "${ARCHIVE_NAME}.tar.gz.sha256"
-        fi
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: |
-          s9s-*
-          *.sha256
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        submodules: recursive
-    
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: binaries-*
-        path: ./artifacts
-        merge-multiple: true
-    
-    - name: Get version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Generate changelog
-      id: changelog
-      run: |
-        VERSION=${{ steps.version.outputs.VERSION }}
-        
-        # Get previous tag for changelog
-        PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-        
-        echo "## Release ${VERSION}" > CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        
-        if [ -n "$PREV_TAG" ]; then
-          echo "### Changes since ${PREV_TAG}" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          git log --oneline --no-decorate ${PREV_TAG}..HEAD | sed 's/^/- /' >> CHANGELOG.md
-        else
-          echo "### Features" >> CHANGELOG.md
-          echo "- Initial release of s9s - SLURM TUI Client" >> CHANGELOG.md
-          echo "- Interactive terminal interface for SLURM cluster management" >> CHANGELOG.md
-          echo "- Real-time job monitoring and node status" >> CHANGELOG.md
-          echo "- Export functionality (CSV, JSON, Markdown, HTML)" >> CHANGELOG.md
-          echo "- Plugin system for extensibility" >> CHANGELOG.md
-          echo "- Performance analysis and monitoring" >> CHANGELOG.md
-          echo "- Real-time job log streaming" >> CHANGELOG.md
-        fi
-        
-        echo "" >> CHANGELOG.md
-        echo "### Installation" >> CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        echo "#### Quick Install (Linux/macOS)" >> CHANGELOG.md
-        echo '```bash' >> CHANGELOG.md
-        echo 'curl -sSL https://github.com/jontk/s9s/raw/main/scripts/install.sh | bash' >> CHANGELOG.md
-        echo '```' >> CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        echo "#### Manual Installation" >> CHANGELOG.md
-        echo "1. Download the appropriate binary for your platform below" >> CHANGELOG.md
-        echo "2. Extract the archive" >> CHANGELOG.md
-        echo "3. Move the binary to a directory in your PATH" >> CHANGELOG.md
-        echo "4. Make it executable: \`chmod +x s9s\`" >> CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        echo "### Binaries" >> CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        ls -la artifacts/s9s-* | awk '{print "- **" $9 "** (" $5 " bytes)"}'
-        echo "" >> CHANGELOG.md
-        echo "### Verification" >> CHANGELOG.md
-        echo "" >> CHANGELOG.md
-        echo "SHA256 checksums are provided for all binaries. Verify your download:" >> CHANGELOG.md
-        echo '```bash' >> CHANGELOG.md
-        echo 'sha256sum -c <downloaded-file>.sha256' >> CHANGELOG.md
-        echo '```' >> CHANGELOG.md
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ steps.version.outputs.VERSION }}
-        name: s9s ${{ steps.version.outputs.VERSION }}
-        body_path: CHANGELOG.md
-        draft: false
-        prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
-        files: |
-          artifacts/s9s-*
-        generate_release_notes: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
-  # Test the release binaries
-  test-release:
-    needs: release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        arch: [amd64]
-        include:
-          - os: ubuntu-latest
-            goos: linux
-          - os: macos-latest
-            goos: darwin
-    
-    steps:
-    - name: Get version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Download and test binary
-      run: |
-        VERSION=${{ steps.version.outputs.VERSION }}
-        BINARY_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/s9s-${VERSION#v}-${{ matrix.goos }}-${{ matrix.arch }}.tar.gz"
-        
-        echo "Downloading from: $BINARY_URL"
-        curl -L -o s9s.tar.gz "$BINARY_URL"
-        tar -xzf s9s.tar.gz
-        chmod +x s9s
-        
-        # Test binary
-        ./s9s --version || echo "Version command not available yet"
-        ./s9s --help | head -10
+      - name: Run unit tests
+        run: make test-unit
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/*
+          retention-days: 90
 
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: release
-    if: github.event_name != 'workflow_dispatch' || contains(github.event.inputs.tag, 'v')
+    needs: goreleaser
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: jontk/s9s
-        tags: |
-          type=ref,event=tag
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: jontk/s9s
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
