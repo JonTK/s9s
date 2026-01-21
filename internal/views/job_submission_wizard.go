@@ -68,7 +68,7 @@ func (w *JobSubmissionWizard) showTemplateSelection() {
 		template := w.templates[name]
 		if template != nil {
 			list.AddItem(
-				fmt.Sprintf("%s", name),
+				name,
 				template.Description,
 				rune('1'+i),
 				func() {
@@ -572,7 +572,7 @@ func generateJobScript(job *dao.JobSubmission) string {
 	}
 
 	if job.EmailNotify && job.Email != "" {
-		script.WriteString(fmt.Sprintf("[green]#SBATCH --mail-type=[white]ALL\n"))
+		script.WriteString("[green]#SBATCH --mail-type=[white]ALL\n")
 		script.WriteString(fmt.Sprintf("[green]#SBATCH --mail-user=[white]%s\n", job.Email))
 	}
 

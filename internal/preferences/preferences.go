@@ -14,7 +14,7 @@ import (
 
 // UserPreferences represents all user-configurable preferences
 type UserPreferences struct {
-	mu               sync.RWMutex
+	mu               *sync.RWMutex
 	configPath       string
 	General          GeneralPrefs          `json:"general"`
 	Display          DisplayPrefs          `json:"display"`
@@ -148,6 +148,7 @@ type WidgetPrefs struct {
 // NewUserPreferences creates a new preferences manager
 func NewUserPreferences(configPath string) (*UserPreferences, error) {
 	up := &UserPreferences{
+		mu:           &sync.RWMutex{},
 		configPath:   configPath,
 		KeyBindings:  make(map[string]string),
 		ViewSettings: make(map[string]ViewPrefs),
@@ -354,7 +355,7 @@ func (up *UserPreferences) Save() error {
 
 	// Rename to actual file
 	if err := os.Rename(tempFile, up.configPath); err != nil {
-		os.Remove(tempFile)
+		_ = os.Remove(tempFile)
 		return fmt.Errorf("failed to save preferences: %w", err)
 	}
 
@@ -367,8 +368,19 @@ func (up *UserPreferences) Get() UserPreferences {
 	up.mu.RLock()
 	defer up.mu.RUnlock()
 
-	// Return a copy
-	prefs := *up
+	// Return a copy without the mutex
+	prefs := UserPreferences{
+		configPath:    up.configPath,
+		General:       up.General,
+		Display:       up.Display,
+		Colors:        up.Colors,
+		Filters:       up.Filters,
+		JobSubmission: up.JobSubmission,
+		Alerts:        up.Alerts,
+		Performance:   up.Performance,
+		Layouts:       up.Layouts,
+		lastSaved:     up.lastSaved,
+	}
 
 	// Deep copy maps
 	prefs.KeyBindings = make(map[string]string)
@@ -381,6 +393,7 @@ func (up *UserPreferences) Get() UserPreferences {
 		prefs.ViewSettings[k] = v
 	}
 
+	// Note: mu is nil in the returned copy (safe because it's a pointer)
 	return prefs
 }
 
@@ -389,8 +402,28 @@ func (up *UserPreferences) Update(update func(*UserPreferences) error) error {
 	up.mu.Lock()
 	defer up.mu.Unlock()
 
-	// Create a copy for validation
-	temp := *up
+	// Create a copy for validation (mutex will be nil but that's ok for temp)
+	temp := UserPreferences{
+		configPath:    up.configPath,
+		General:       up.General,
+		Display:       up.Display,
+		Colors:        up.Colors,
+		Filters:       up.Filters,
+		JobSubmission: up.JobSubmission,
+		Alerts:        up.Alerts,
+		Performance:   up.Performance,
+		Layouts:       up.Layouts,
+		lastSaved:     up.lastSaved,
+	}
+	// Deep copy maps
+	temp.KeyBindings = make(map[string]string)
+	for k, v := range up.KeyBindings {
+		temp.KeyBindings[k] = v
+	}
+	temp.ViewSettings = make(map[string]ViewPrefs)
+	for k, v := range up.ViewSettings {
+		temp.ViewSettings[k] = v
+	}
 
 	// Apply updates
 	if err := update(&temp); err != nil {
@@ -402,8 +435,19 @@ func (up *UserPreferences) Update(update func(*UserPreferences) error) error {
 		return err
 	}
 
-	// Apply validated changes
-	*up = temp
+	// Apply validated changes (excluding mutex and callbacks)
+	up.configPath = temp.configPath
+	up.General = temp.General
+	up.Display = temp.Display
+	up.Colors = temp.Colors
+	up.KeyBindings = temp.KeyBindings
+	up.ViewSettings = temp.ViewSettings
+	up.Filters = temp.Filters
+	up.JobSubmission = temp.JobSubmission
+	up.Alerts = temp.Alerts
+	up.Performance = temp.Performance
+	up.Layouts = temp.Layouts
+	up.lastSaved = temp.lastSaved
 
 	// Notify listeners
 	for _, fn := range up.onChange {
@@ -602,7 +646,7 @@ func (up *UserPreferences) saveWithoutLock() error {
 
 	// Rename to actual file
 	if err := os.Rename(tempFile, up.configPath); err != nil {
-		os.Remove(tempFile)
+		_ = os.Remove(tempFile)
 		return fmt.Errorf("failed to save preferences: %w", err)
 	}
 

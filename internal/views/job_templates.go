@@ -31,7 +31,7 @@ func NewJobTemplateManager() *JobTemplateManager {
 	templatesDir := filepath.Join(homeDir, ".s9s", "templates")
 
 	// Create templates directory if it doesn't exist
-	os.MkdirAll(templatesDir, 0755)
+	_ = os.MkdirAll(templatesDir, 0755)
 
 	manager := &JobTemplateManager{
 		templatesDir: templatesDir,
@@ -92,7 +92,10 @@ func (m *JobTemplateManager) saveTemplate(template JobTemplate) error {
 	return os.WriteFile(templatePath, data, 0644)
 }
 
-// deleteTemplate deletes a template from disk
+/*
+TODO(lint): Review unused code - func (*JobTemplateManager).deleteTemplate is unused
+
+deleteTemplate deletes a template from disk
 func (m *JobTemplateManager) deleteTemplate(name string) error {
 	// Find and remove from memory
 	for i, template := range m.templates {
@@ -110,13 +113,17 @@ func (m *JobTemplateManager) deleteTemplate(name string) error {
 
 	return os.Remove(templatePath)
 }
+*/
 
 // getTemplates returns all available templates
 func (m *JobTemplateManager) getTemplates() []JobTemplate {
 	return m.templates
 }
 
-// getTemplate returns a specific template by name
+/*
+TODO(lint): Review unused code - func (*JobTemplateManager).getTemplate is unused
+
+getTemplate returns a specific template by name
 func (m *JobTemplateManager) getTemplate(name string) (*JobTemplate, error) {
 	for _, template := range m.templates {
 		if template.Name == name {
@@ -125,6 +132,7 @@ func (m *JobTemplateManager) getTemplate(name string) (*JobTemplate, error) {
 	}
 	return nil, fmt.Errorf("template %s not found", name)
 }
+*/
 
 // addTemplate adds a new template
 func (m *JobTemplateManager) addTemplate(template JobTemplate) error {
@@ -217,7 +225,7 @@ func (m *JobTemplateManager) createDefaultTemplates() {
 	}
 
 	for _, template := range defaultTemplates {
-		m.addTemplate(template)
+		_ = m.addTemplate(template)
 	}
 }
 
@@ -429,12 +437,12 @@ func (v *JobsView) extractJobSubmissionFromForm(form *tview.Form) *dao.JobSubmis
 
 	nodeCount := 1
 	if nodes != "" {
-		fmt.Sscanf(nodes, "%d", &nodeCount)
+		_, _ = fmt.Sscanf(nodes, "%d", &nodeCount)
 	}
 
 	cpusPerNodeCount := 1
 	if cpusPerNode != "" {
-		fmt.Sscanf(cpusPerNode, "%d", &cpusPerNodeCount)
+		_, _ = fmt.Sscanf(cpusPerNode, "%d", &cpusPerNodeCount)
 	}
 
 	return &dao.JobSubmission{

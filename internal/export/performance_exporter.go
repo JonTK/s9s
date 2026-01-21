@@ -27,7 +27,7 @@ func NewPerformanceExporter(defaultPath string) *PerformanceExporter {
 	}
 
 	// Ensure export directory exists
-	os.MkdirAll(defaultPath, 0755)
+	_ = os.MkdirAll(defaultPath, 0755)
 
 	return &PerformanceExporter{
 		defaultPath: defaultPath,
@@ -148,48 +148,87 @@ func (pe *PerformanceExporter) exportText(data PerformanceReportData, outputPath
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Write header
-	fmt.Fprintf(file, "S9s Performance Report\n")
-	fmt.Fprintf(file, "=====================\n\n")
-	fmt.Fprintf(file, "Generated: %s\n", data.GeneratedAt.Format("2006-01-02 15:04:05"))
-	fmt.Fprintf(file, "Period: %s\n\n", data.ReportPeriod)
+	if _, err := fmt.Fprintf(file, "S9s Performance Report\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "=====================\n\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "Generated: %s\n", data.GeneratedAt.Format("2006-01-02 15:04:05")); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "Period: %s\n\n", data.ReportPeriod); err != nil {
+		return err
+	}
 
 	// System Metrics
-	fmt.Fprintf(file, "System Metrics\n")
-	fmt.Fprintf(file, "--------------\n")
-	fmt.Fprintf(file, "CPU Usage: %.2f%%\n", data.SystemMetrics.CPUUsage)
-	fmt.Fprintf(file, "Memory Usage: %.2f%% (%s / %s)\n", 
+	if _, err := fmt.Fprintf(file, "System Metrics\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "--------------\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "CPU Usage: %.2f%%\n", data.SystemMetrics.CPUUsage); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "Memory Usage: %.2f%% (%s / %s)\n",
 		data.SystemMetrics.MemoryUsage,
 		formatBytes(int64(data.SystemMetrics.MemoryUsed)),
-		formatBytes(int64(data.SystemMetrics.MemoryTotal)))
-	fmt.Fprintf(file, "Goroutines: %d\n", data.SystemMetrics.GoroutineCount)
-	fmt.Fprintf(file, "Response Time (avg): %v\n\n", data.SystemMetrics.ResponseTime)
+		formatBytes(int64(data.SystemMetrics.MemoryTotal))); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "Goroutines: %d\n", data.SystemMetrics.GoroutineCount); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "Response Time (avg): %v\n\n", data.SystemMetrics.ResponseTime); err != nil {
+		return err
+	}
 
 	// Operation Statistics
-	fmt.Fprintf(file, "Operation Statistics\n")
-	fmt.Fprintf(file, "-------------------\n")
-	fmt.Fprintf(file, "%-30s %10s %15s %15s\n", "Operation", "Count", "Avg Time", "Total Time")
-	fmt.Fprintf(file, "%s\n", strings.Repeat("-", 80))
-	
+	if _, err := fmt.Fprintf(file, "Operation Statistics\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "-------------------\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "%-30s %10s %15s %15s\n", "Operation", "Count", "Avg Time", "Total Time"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "%s\n", strings.Repeat("-", 80)); err != nil {
+		return err
+	}
+
 	for _, op := range data.OperationStats {
-		fmt.Fprintf(file, "%-30s %10d %15v %15v\n",
+		if _, err := fmt.Fprintf(file, "%-30s %10d %15v %15v\n",
 			op.Name,
 			op.Count,
 			op.AverageTime,
-			op.TotalTime)
+			op.TotalTime); err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(file, "\n")
-
+	if _, err := fmt.Fprintf(file, "\n"); err != nil {
+		return err
+	}
 
 	// Optimization Tips
 	if len(data.OptimizationTips) > 0 {
-		fmt.Fprintf(file, "Optimization Recommendations\n")
-		fmt.Fprintf(file, "---------------------------\n")
+		if _, err := fmt.Fprintf(file, "Optimization Recommendations\n"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(file, "---------------------------\n"); err != nil {
+			return err
+		}
 		for i, tip := range data.OptimizationTips {
-			fmt.Fprintf(file, "%d. %s\n", i+1, tip.Suggestion)
-			fmt.Fprintf(file, "   Impact: %s | Category: %s\n\n", tip.Impact, tip.Category)
+			if _, err := fmt.Fprintf(file, "%d. %s\n", i+1, tip.Suggestion); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(file, "   Impact: %s | Category: %s\n\n", tip.Impact, tip.Category); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -202,7 +241,7 @@ func (pe *PerformanceExporter) exportJSON(data PerformanceReportData, outputPath
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -220,38 +259,70 @@ func (pe *PerformanceExporter) exportCSV(data PerformanceReportData, outputPath 
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
 	// Write metadata
-	writer.Write([]string{"Report Type", "Performance Report"})
-	writer.Write([]string{"Generated", data.GeneratedAt.Format("2006-01-02 15:04:05")})
-	writer.Write([]string{"Period", data.ReportPeriod})
-	writer.Write([]string{}) // Empty line
+	if err := writer.Write([]string{"Report Type", "Performance Report"}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Generated", data.GeneratedAt.Format("2006-01-02 15:04:05")}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Period", data.ReportPeriod}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{}); err != nil { // Empty line
+		return err
+	}
 
 	// System Metrics
-	writer.Write([]string{"System Metrics"})
-	writer.Write([]string{"Metric", "Value"})
-	writer.Write([]string{"CPU Usage", fmt.Sprintf("%.2f%%", data.SystemMetrics.CPUUsage)})
-	writer.Write([]string{"Memory Usage", fmt.Sprintf("%.2f%%", data.SystemMetrics.MemoryUsage)})
-	writer.Write([]string{"Memory Used", formatBytes(int64(data.SystemMetrics.MemoryUsed))})
-	writer.Write([]string{"Memory Total", formatBytes(int64(data.SystemMetrics.MemoryTotal))})
-	writer.Write([]string{"Goroutines", fmt.Sprintf("%d", data.SystemMetrics.GoroutineCount)})
-	writer.Write([]string{"Response Time", data.SystemMetrics.ResponseTime.String()})
-	writer.Write([]string{}) // Empty line
+	if err := writer.Write([]string{"System Metrics"}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Metric", "Value"}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"CPU Usage", fmt.Sprintf("%.2f%%", data.SystemMetrics.CPUUsage)}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Memory Usage", fmt.Sprintf("%.2f%%", data.SystemMetrics.MemoryUsage)}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Memory Used", formatBytes(int64(data.SystemMetrics.MemoryUsed))}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Memory Total", formatBytes(int64(data.SystemMetrics.MemoryTotal))}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Goroutines", fmt.Sprintf("%d", data.SystemMetrics.GoroutineCount)}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Response Time", data.SystemMetrics.ResponseTime.String()}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{}); err != nil { // Empty line
+		return err
+	}
 
 	// Operation Statistics
-	writer.Write([]string{"Operation Statistics"})
-	writer.Write([]string{"Operation", "Count", "Average Time", "Total Time"})
+	if err := writer.Write([]string{"Operation Statistics"}); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{"Operation", "Count", "Average Time", "Total Time"}); err != nil {
+		return err
+	}
 	for _, op := range data.OperationStats {
-		writer.Write([]string{
+		if err := writer.Write([]string{
 			op.Name,
 			fmt.Sprintf("%d", op.Count),
 			op.AverageTime.String(),
 			op.TotalTime.String(),
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -263,42 +334,83 @@ func (pe *PerformanceExporter) exportMarkdown(data PerformanceReportData, output
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Write Markdown content
-	fmt.Fprintf(file, "# S9s Performance Report\n\n")
-	fmt.Fprintf(file, "**Generated:** %s  \n", data.GeneratedAt.Format("2006-01-02 15:04:05"))
-	fmt.Fprintf(file, "**Period:** %s\n\n", data.ReportPeriod)
+	if _, err := fmt.Fprintf(file, "# S9s Performance Report\n\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "**Generated:** %s  \n", data.GeneratedAt.Format("2006-01-02 15:04:05")); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "**Period:** %s\n\n", data.ReportPeriod); err != nil {
+		return err
+	}
 
 	// System Metrics
-	fmt.Fprintf(file, "## System Metrics\n\n")
-	fmt.Fprintf(file, "| Metric | Value |\n")
-	fmt.Fprintf(file, "|--------|-------|\n")
-	fmt.Fprintf(file, "| CPU Usage | %.2f%% |\n", data.SystemMetrics.CPUUsage)
-	fmt.Fprintf(file, "| Memory Usage | %.2f%% |\n", data.SystemMetrics.MemoryUsage)
-	fmt.Fprintf(file, "| Memory Used | %s |\n", formatBytes(int64(data.SystemMetrics.MemoryUsed)))
-	fmt.Fprintf(file, "| Memory Total | %s |\n", formatBytes(int64(data.SystemMetrics.MemoryTotal)))
-	fmt.Fprintf(file, "| Goroutines | %d |\n", data.SystemMetrics.GoroutineCount)
-	fmt.Fprintf(file, "| Avg Response Time | %v |\n\n", data.SystemMetrics.ResponseTime)
+	if _, err := fmt.Fprintf(file, "## System Metrics\n\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Metric | Value |\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "|--------|-------|\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| CPU Usage | %.2f%% |\n", data.SystemMetrics.CPUUsage); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Memory Usage | %.2f%% |\n", data.SystemMetrics.MemoryUsage); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Memory Used | %s |\n", formatBytes(int64(data.SystemMetrics.MemoryUsed))); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Memory Total | %s |\n", formatBytes(int64(data.SystemMetrics.MemoryTotal))); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Goroutines | %d |\n", data.SystemMetrics.GoroutineCount); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "| Avg Response Time | %v |\n\n", data.SystemMetrics.ResponseTime); err != nil {
+		return err
+	}
 
 	// Operation Statistics
-	fmt.Fprintf(file, "## Operation Statistics\n\n")
-	fmt.Fprintf(file, "| Operation | Count | Avg Time | Total Time |\n")
-	fmt.Fprintf(file, "|-----------|-------|----------|------------|\n")
-	for _, op := range data.OperationStats {
-		fmt.Fprintf(file, "| %s | %d | %v | %v |\n",
-			op.Name, op.Count, op.AverageTime, op.TotalTime)
+	if _, err := fmt.Fprintf(file, "## Operation Statistics\n\n"); err != nil {
+		return err
 	}
-	fmt.Fprintf(file, "\n")
-
+	if _, err := fmt.Fprintf(file, "| Operation | Count | Avg Time | Total Time |\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "|-----------|-------|----------|------------|\n"); err != nil {
+		return err
+	}
+	for _, op := range data.OperationStats {
+		if _, err := fmt.Fprintf(file, "| %s | %d | %v | %v |\n",
+			op.Name, op.Count, op.AverageTime, op.TotalTime); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintf(file, "\n"); err != nil {
+		return err
+	}
 
 	// Optimization Tips
 	if len(data.OptimizationTips) > 0 {
-		fmt.Fprintf(file, "## Optimization Recommendations\n\n")
+		if _, err := fmt.Fprintf(file, "## Optimization Recommendations\n\n"); err != nil {
+			return err
+		}
 		for i, tip := range data.OptimizationTips {
-			fmt.Fprintf(file, "### %d. %s\n\n", i+1, tip.Suggestion)
-			fmt.Fprintf(file, "- **Impact:** %s\n", tip.Impact)
-			fmt.Fprintf(file, "- **Category:** %s\n\n", tip.Category)
+			if _, err := fmt.Fprintf(file, "### %d. %s\n\n", i+1, tip.Suggestion); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(file, "- **Impact:** %s\n", tip.Impact); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(file, "- **Category:** %s\n\n", tip.Category); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -311,7 +423,7 @@ func (pe *PerformanceExporter) exportHTML(data PerformanceReportData, outputPath
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// HTML template
 	htmlTemplate := `<!DOCTYPE html>
@@ -430,7 +542,7 @@ func (pe *PerformanceExporter) GetDefaultPath() string {
 // SetDefaultPath sets the default export path
 func (pe *PerformanceExporter) SetDefaultPath(path string) {
 	pe.defaultPath = path
-	os.MkdirAll(path, 0755)
+	_ = os.MkdirAll(path, 0755)
 }
 
 // BatchExportReports exports multiple performance reports in different formats

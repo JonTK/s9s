@@ -36,7 +36,7 @@ func NewJobOutputExporter(defaultPath string) *JobOutputExporter {
 	}
 
 	// Ensure export directory exists
-	os.MkdirAll(defaultPath, 0755)
+	_ = os.MkdirAll(defaultPath, 0755)
 
 	return &JobOutputExporter{
 		defaultPath: defaultPath,
@@ -150,7 +150,7 @@ func (e *JobOutputExporter) exportText(data JobOutputData, outputPath string) er
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Write header
 	header := fmt.Sprintf("Job Output Export\n"+
@@ -185,7 +185,7 @@ func (e *JobOutputExporter) exportJSON(data JobOutputData, outputPath string) er
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -203,7 +203,7 @@ func (e *JobOutputExporter) exportCSV(data JobOutputData, outputPath string) err
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -259,7 +259,7 @@ func (e *JobOutputExporter) exportMarkdown(data JobOutputData, outputPath string
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Write Markdown content
 	markdown := fmt.Sprintf("# Job Output Export\n\n"+
@@ -308,7 +308,7 @@ func (e *JobOutputExporter) GetDefaultPath() string {
 // SetDefaultPath sets the default export path
 func (e *JobOutputExporter) SetDefaultPath(path string) {
 	e.defaultPath = path
-	os.MkdirAll(path, 0755)
+	_ = os.MkdirAll(path, 0755)
 }
 
 // BatchExport exports multiple job outputs in the specified format
@@ -398,7 +398,7 @@ func (e *JobOutputExporter) exportHTML(data JobOutputData, outputPath string) er
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// HTML template
 	htmlTemplate := `<!DOCTYPE html>

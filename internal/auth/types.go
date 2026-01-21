@@ -30,7 +30,7 @@ func (t *Token) IsExpired() bool {
 
 // ExpiresIn returns the duration until the token expires
 func (t *Token) ExpiresIn() time.Duration {
-	return t.ExpiresAt.Sub(time.Now())
+	return time.Until(t.ExpiresAt)
 }
 
 // AuthConfig holds configuration for authenticators

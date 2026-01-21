@@ -122,7 +122,7 @@ func NewUsersView(client dao.SlurmClient) *UsersView {
 
 // Init initializes the users view
 func (v *UsersView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -220,7 +220,7 @@ func (v *UsersView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case '/':
 			v.app.SetFocus(v.filterInput)
@@ -249,7 +249,7 @@ func (v *UsersView) OnFocus() error {
 	}
 	// Refresh when gaining focus if we haven't loaded data yet
 	if len(v.users) == 0 && !v.IsRefreshing() {
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	}
 	return nil
 }
@@ -282,9 +282,10 @@ func (v *UsersView) updateTable() {
 
 		// Format admin level with color
 		adminLevel := user.AdminLevel
-		if adminLevel == "Administrator" {
+		switch adminLevel {
+		case "Administrator":
 			adminLevel = fmt.Sprintf("[red]%s[white]", adminLevel)
-		} else if adminLevel == "Operator" {
+		case "Operator":
 			adminLevel = fmt.Sprintf("[yellow]%s[white]", adminLevel)
 		}
 
@@ -310,7 +311,10 @@ func (v *UsersView) updateTable() {
 	v.table.SetData(data)
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*UsersView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *UsersView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -350,6 +354,7 @@ func (v *UsersView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *UsersView) scheduleRefresh() {
@@ -470,9 +475,10 @@ func (v *UsersView) formatUserDetails(user *dao.User) string {
 
 	// Admin level with color
 	adminColor := "white"
-	if user.AdminLevel == "Administrator" {
+	switch user.AdminLevel {
+	case "Administrator":
 		adminColor = "red"
-	} else if user.AdminLevel == "Operator" {
+	case "Operator":
 		adminColor = "yellow"
 	}
 	details.WriteString(fmt.Sprintf("[yellow]Admin Level:[white] [%s]%s[white]\n", adminColor, user.AdminLevel))
@@ -633,7 +639,7 @@ func (v *UsersView) focusOnUser(userName string) {
 	for i, user := range v.users {
 		if user.Name == userName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Focus status removed since individual view status bars are no longer used
 			return
 		}

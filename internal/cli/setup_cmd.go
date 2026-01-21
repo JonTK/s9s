@@ -60,7 +60,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	if setupFlagValues.autoDiscover {
 		if err := runAutoDiscovery(); err != nil {
 			fmt.Printf("⚠️  Auto-discovery failed: %v\n", err)
-			fmt.Println("Continuing with manual setup...\n")
+			fmt.Println("Continuing with manual setup...")
 		}
 	}
 

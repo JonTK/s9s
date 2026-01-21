@@ -287,14 +287,14 @@ func BenchmarkPaneManagement(b *testing.B) {
 			if mpm.GetPaneCount() >= 8 {
 				mpm.Close()
 			}
-			mpm.NewPane("", fmt.Sprintf("Bench Pane %d", i), components.PaneTypeView, nil)
+			_ = mpm.NewPane("", fmt.Sprintf("Bench Pane %d", i), components.PaneTypeView, nil)
 		}
 	})
 	
 	b.Run("SwitchPanes", func(b *testing.B) {
 		// Add some panes first
 		for i := 0; i < 5; i++ {
-			mpm.NewPane("", fmt.Sprintf("Switch Pane %d", i), components.PaneTypeView, nil)
+			_ = mpm.NewPane("", fmt.Sprintf("Switch Pane %d", i), components.PaneTypeView, nil)
 		}
 		
 		b.ResetTimer()

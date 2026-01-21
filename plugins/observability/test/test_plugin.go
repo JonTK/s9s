@@ -15,7 +15,7 @@ import (
 func main() {
 	// Set up master key for testing (32 bytes base64 encoded)
 	// This is just a test key: "test-master-key-32-bytes-long!!!!"
-	os.Setenv("OBSERVABILITY_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchISEh")
+	_ = os.Setenv("OBSERVABILITY_MASTER_KEY", "dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchISEh")
 	
 	// Load configuration
 	configData, err := os.ReadFile("test-config.yaml")
@@ -86,11 +86,11 @@ func main() {
 	// Test caching
 	fmt.Println("\nTesting cache functionality...")
 	start := time.Now()
-	_, err = components.CachedClient.Query(testCtx, "node_cpu_seconds_total", time.Now())
+	_, _ = components.CachedClient.Query(testCtx, "node_cpu_seconds_total", time.Now())
 	firstQueryTime := time.Since(start)
-	
+
 	start = time.Now()
-	_, err = components.CachedClient.Query(testCtx, "node_cpu_seconds_total", time.Now())
+	_, _ = components.CachedClient.Query(testCtx, "node_cpu_seconds_total", time.Now())
 	secondQueryTime := time.Since(start)
 	
 	fmt.Printf("✓ First query: %v\n", firstQueryTime)

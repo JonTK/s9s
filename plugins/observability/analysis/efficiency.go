@@ -19,11 +19,11 @@ import (
 type ResourceType string
 
 const (
-	ResourceCPU        ResourceType = "cpu"
-	ResourceMemory     ResourceType = "memory"
-	ResourceStorage    ResourceType = "storage"
-	ResourceNetwork    ResourceType = "network"
-	ResourceGPU        ResourceType = "gpu"
+	ResourceCPU     ResourceType = "cpu"
+	ResourceMemory  ResourceType = "memory"
+	ResourceStorage ResourceType = "storage"
+	ResourceNetwork ResourceType = "network"
+	ResourceGPU     ResourceType = "gpu"
 )
 
 // EfficiencyLevel represents efficiency rating levels
@@ -39,24 +39,24 @@ const (
 
 // ResourceEfficiency represents efficiency analysis for a resource type
 type ResourceEfficiency struct {
-	ResourceType     ResourceType      `json:"resource_type"`
-	OverallScore     float64           `json:"overall_score"`
-	EfficiencyLevel  EfficiencyLevel   `json:"efficiency_level"`
-	Utilization      UtilizationStats  `json:"utilization"`
-	Recommendations  []Recommendation  `json:"recommendations"`
-	TrendAnalysis    *TrendSummary     `json:"trend_analysis,omitempty"`
-	CostImpact       *CostAnalysis     `json:"cost_impact,omitempty"`
-	LastAnalyzed     time.Time         `json:"last_analyzed"`
+	ResourceType    ResourceType     `json:"resource_type"`
+	OverallScore    float64          `json:"overall_score"`
+	EfficiencyLevel EfficiencyLevel  `json:"efficiency_level"`
+	Utilization     UtilizationStats `json:"utilization"`
+	Recommendations []Recommendation `json:"recommendations"`
+	TrendAnalysis   *TrendSummary    `json:"trend_analysis,omitempty"`
+	CostImpact      *CostAnalysis    `json:"cost_impact,omitempty"`
+	LastAnalyzed    time.Time        `json:"last_analyzed"`
 }
 
 // UtilizationStats contains utilization statistics
 type UtilizationStats struct {
-	Average           float64   `json:"average"`
-	Peak              float64   `json:"peak"`
-	Low               float64   `json:"low"`
-	StandardDeviation float64   `json:"standard_deviation"`
-	Percentiles       Percentiles `json:"percentiles"`
-	WastePercentage   float64   `json:"waste_percentage"`
+	Average           float64       `json:"average"`
+	Peak              float64       `json:"peak"`
+	Low               float64       `json:"low"`
+	StandardDeviation float64       `json:"standard_deviation"`
+	Percentiles       Percentiles   `json:"percentiles"`
+	WastePercentage   float64       `json:"waste_percentage"`
 	IdleTime          time.Duration `json:"idle_time"`
 }
 
@@ -71,66 +71,66 @@ type Percentiles struct {
 
 // Recommendation represents an optimization recommendation
 type Recommendation struct {
-	ID             string          `json:"id"`
-	Title          string          `json:"title"`
-	Description    string          `json:"description"`
-	Impact         RecommendationImpact `json:"impact"`
-	Confidence     float64         `json:"confidence"`
-	EstimatedSaving float64        `json:"estimated_saving"`
-	ImplementationComplexity string `json:"implementation_complexity"`
-	Priority       int             `json:"priority"`
-	Category       string          `json:"category"`
+	ID                       string               `json:"id"`
+	Title                    string               `json:"title"`
+	Description              string               `json:"description"`
+	Impact                   RecommendationImpact `json:"impact"`
+	Confidence               float64              `json:"confidence"`
+	EstimatedSaving          float64              `json:"estimated_saving"`
+	ImplementationComplexity string               `json:"implementation_complexity"`
+	Priority                 int                  `json:"priority"`
+	Category                 string               `json:"category"`
 }
 
 // RecommendationImpact describes the potential impact of a recommendation
 type RecommendationImpact struct {
-	ResourceSaving   float64 `json:"resource_saving"`
-	CostSaving       float64 `json:"cost_saving"`
-	PerformanceGain  float64 `json:"performance_gain"`
-	EfficiencyGain   float64 `json:"efficiency_gain"`
+	ResourceSaving  float64 `json:"resource_saving"`
+	CostSaving      float64 `json:"cost_saving"`
+	PerformanceGain float64 `json:"performance_gain"`
+	EfficiencyGain  float64 `json:"efficiency_gain"`
 }
 
 // TrendSummary provides a summary of trend analysis
 type TrendSummary struct {
-	Direction    string    `json:"direction"`
-	Slope        float64   `json:"slope"`
-	Confidence   float64   `json:"confidence"`
-	Prediction   float64   `json:"prediction"`
+	Direction      string    `json:"direction"`
+	Slope          float64   `json:"slope"`
+	Confidence     float64   `json:"confidence"`
+	Prediction     float64   `json:"prediction"`
 	PredictionDate time.Time `json:"prediction_date"`
 }
 
 // CostAnalysis provides cost-related analysis
 type CostAnalysis struct {
-	CurrentCost      float64 `json:"current_cost"`
-	OptimizedCost    float64 `json:"optimized_cost"`
-	PotentialSaving  float64 `json:"potential_saving"`
-	ROI              float64 `json:"roi"`
-	PaybackPeriod    time.Duration `json:"payback_period"`
+	CurrentCost     float64       `json:"current_cost"`
+	OptimizedCost   float64       `json:"optimized_cost"`
+	PotentialSaving float64       `json:"potential_saving"`
+	ROI             float64       `json:"roi"`
+	PaybackPeriod   time.Duration `json:"payback_period"`
 }
 
 // ClusterEfficiencyAnalysis contains overall cluster efficiency analysis
 type ClusterEfficiencyAnalysis struct {
-	OverallScore         float64                        `json:"overall_score"`
-	EfficiencyLevel      EfficiencyLevel               `json:"efficiency_level"`
-	ResourceAnalysis     map[ResourceType]*ResourceEfficiency `json:"resource_analysis"`
-	TopRecommendations   []Recommendation              `json:"top_recommendations"`
-	EfficiencyTrends     map[ResourceType]*TrendSummary `json:"efficiency_trends"`
-	ClusterUtilization   ClusterUtilizationSummary     `json:"cluster_utilization"`
-	CostOptimization     *CostOptimizationSummary      `json:"cost_optimization,omitempty"`
-	LastAnalyzed         time.Time                     `json:"last_analyzed"`
-	AnalysisPeriod       time.Duration                 `json:"analysis_period"`
+	OverallScore       float64                              `json:"overall_score"`
+	EfficiencyLevel    EfficiencyLevel                      `json:"efficiency_level"`
+	ResourceAnalysis   map[ResourceType]*ResourceEfficiency `json:"resource_analysis"`
+	TopRecommendations []Recommendation                     `json:"top_recommendations"`
+	EfficiencyTrends   map[ResourceType]*TrendSummary       `json:"efficiency_trends"`
+	ClusterUtilization ClusterUtilizationSummary            `json:"cluster_utilization"`
+	CostOptimization   *CostOptimizationSummary             `json:"cost_optimization,omitempty"`
+	LastAnalyzed       time.Time                            `json:"last_analyzed"`
+	AnalysisPeriod     time.Duration                        `json:"analysis_period"`
 }
 
 // ClusterUtilizationSummary provides cluster-wide utilization summary
 type ClusterUtilizationSummary struct {
-	TotalNodes       int             `json:"total_nodes"`
-	ActiveNodes      int             `json:"active_nodes"`
-	IdleNodes        int             `json:"idle_nodes"`
-	TotalJobs        int             `json:"total_jobs"`
-	QueuedJobs       int             `json:"queued_jobs"`
-	RunningJobs      int             `json:"running_jobs"`
-	AverageWaitTime  time.Duration   `json:"average_wait_time"`
-	ResourceWaste    map[ResourceType]float64 `json:"resource_waste"`
+	TotalNodes      int                      `json:"total_nodes"`
+	ActiveNodes     int                      `json:"active_nodes"`
+	IdleNodes       int                      `json:"idle_nodes"`
+	TotalJobs       int                      `json:"total_jobs"`
+	QueuedJobs      int                      `json:"queued_jobs"`
+	RunningJobs     int                      `json:"running_jobs"`
+	AverageWaitTime time.Duration            `json:"average_wait_time"`
+	ResourceWaste   map[ResourceType]float64 `json:"resource_waste"`
 }
 
 // CostOptimizationSummary provides cost optimization insights
@@ -144,7 +144,7 @@ type CostOptimizationSummary struct {
 
 // ResourceEfficiencyAnalyzer analyzes resource efficiency
 type ResourceEfficiencyAnalyzer struct {
-	client            *prometheus.CachedClient
+	client              *prometheus.CachedClient
 	historicalCollector *historical.HistoricalDataCollector
 	historicalAnalyzer  *historical.HistoricalAnalyzer
 }
@@ -161,15 +161,15 @@ func NewResourceEfficiencyAnalyzer(client *prometheus.CachedClient, collector *h
 // AnalyzeClusterEfficiency performs comprehensive cluster efficiency analysis
 func (rea *ResourceEfficiencyAnalyzer) AnalyzeClusterEfficiency(ctx context.Context, analysisPeriod time.Duration) (*ClusterEfficiencyAnalysis, error) {
 	analysis := &ClusterEfficiencyAnalysis{
-		ResourceAnalysis:   make(map[ResourceType]*ResourceEfficiency),
-		EfficiencyTrends:   make(map[ResourceType]*TrendSummary),
-		LastAnalyzed:       time.Now(),
-		AnalysisPeriod:     analysisPeriod,
+		ResourceAnalysis: make(map[ResourceType]*ResourceEfficiency),
+		EfficiencyTrends: make(map[ResourceType]*TrendSummary),
+		LastAnalyzed:     time.Now(),
+		AnalysisPeriod:   analysisPeriod,
 	}
 
 	// Analyze each resource type
 	resourceTypes := []ResourceType{ResourceCPU, ResourceMemory, ResourceStorage, ResourceNetwork}
-	
+
 	var totalScore float64
 	var allRecommendations []Recommendation
 
@@ -251,7 +251,7 @@ func (rea *ResourceEfficiencyAnalyzer) AnalyzeResourceEfficiency(ctx context.Con
 
 	// Calculate overall efficiency score
 	overallScore := rea.calculateEfficiencyScore(utilizationStats, resourceType)
-	
+
 	// Generate recommendations
 	recommendations := rea.generateRecommendations(resourceType, utilizationStats, overallScore)
 
@@ -330,7 +330,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateUtilizationStats(dataPoints []hi
 	// Calculate idle time
 	totalDataPoints := len(dataPoints)
 	idlePercentage := float64(idleCount) / float64(totalDataPoints)
-	
+
 	// Assuming data points are collected every 5 minutes
 	totalDuration := time.Duration(totalDataPoints) * 5 * time.Minute
 	idleTime := time.Duration(float64(totalDuration) * idlePercentage)
@@ -349,7 +349,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateUtilizationStats(dataPoints []hi
 // calculateEfficiencyScore calculates an overall efficiency score (0-100)
 func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyScore(stats *UtilizationStats, resourceType ResourceType) float64 {
 	// Base score from utilization (optimal range: 70-85%)
-	utilizationScore := 100.0
+	var utilizationScore float64
 	if stats.Average < 20 {
 		utilizationScore = stats.Average * 2 // Heavily penalize low utilization
 	} else if stats.Average < 70 {
@@ -372,7 +372,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyScore(stats *Utilizati
 	wasteScore := 100 - stats.WastePercentage
 
 	// Resource-specific adjustments
-	var resourceMultiplier float64 = 1.0
+	var resourceMultiplier = 1.0
 	switch resourceType {
 	case ResourceCPU:
 		// CPU efficiency is critical for performance
@@ -503,26 +503,26 @@ func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType Reso
 func (rea *ResourceEfficiencyAnalyzer) calculateCostImpact(resourceType ResourceType, stats *UtilizationStats, recommendations []Recommendation) *CostAnalysis {
 	// Simplified cost model - in production, this would use actual pricing data
 	baseCostPerUnit := rea.getBaseCostPerUnit(resourceType)
-	
+
 	// Current cost based on average utilization
 	currentCost := baseCostPerUnit * (stats.Average / 100)
-	
+
 	// Calculate potential optimized cost
 	totalSaving := 0.0
 	for _, rec := range recommendations {
 		totalSaving += rec.EstimatedSaving
 	}
-	
+
 	optimizedCost := currentCost * (1 - totalSaving/100)
 	potentialSaving := currentCost - optimizedCost
-	
+
 	// Calculate ROI (assuming implementation cost is 10% of savings)
 	implementationCost := potentialSaving * 0.1
 	roi := 0.0
 	if implementationCost > 0 {
 		roi = (potentialSaving - implementationCost) / implementationCost * 100
 	}
-	
+
 	// Payback period (simplified to 3-6 months based on savings)
 	paybackPeriod := 6 * time.Hour * 24 * 30 // 6 months default
 	if totalSaving > 20 {
@@ -542,9 +542,9 @@ func (rea *ResourceEfficiencyAnalyzer) calculateCostImpact(resourceType Resource
 func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(ctx context.Context) (*ClusterUtilizationSummary, error) {
 	// This would typically query SLURM metrics for cluster-wide statistics
 	// For now, we'll return a simplified analysis
-	
+
 	summary := &ClusterUtilizationSummary{
-		TotalNodes:      10,  // This would be queried from SLURM
+		TotalNodes:      10, // This would be queried from SLURM
 		ActiveNodes:     8,
 		IdleNodes:       2,
 		TotalJobs:       50,
@@ -568,21 +568,21 @@ func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(ctx context.Con
 func (rea *ResourceEfficiencyAnalyzer) calculateCostOptimization(analysis *ClusterEfficiencyAnalysis) (*CostOptimizationSummary, error) {
 	currentMonthlyCost := 10000.0 // This would be calculated from actual usage
 	totalSavingsPercentage := 0.0
-	
+
 	// Sum up savings from all recommendations
 	for _, rec := range analysis.TopRecommendations {
 		totalSavingsPercentage += rec.EstimatedSaving
 	}
-	
+
 	// Cap savings at reasonable maximum
 	if totalSavingsPercentage > 40 {
 		totalSavingsPercentage = 40
 	}
-	
+
 	monthlySavings := currentMonthlyCost * (totalSavingsPercentage / 100)
 	optimizedMonthlyCost := currentMonthlyCost - monthlySavings
 	annualSavings := monthlySavings * 12
-	
+
 	// Calculate ROI based on implementation effort
 	implementationCost := monthlySavings * 2 // Assume 2 months implementation cost
 	roi := 0.0
@@ -621,9 +621,9 @@ func (rea *ResourceEfficiencyAnalyzer) getBaseCostPerUnit(resourceType ResourceT
 	case ResourceCPU:
 		return 50.0 // $50 per CPU core per month
 	case ResourceMemory:
-		return 5.0  // $5 per GB per month
+		return 5.0 // $5 per GB per month
 	case ResourceStorage:
-		return 0.1  // $0.1 per GB per month
+		return 0.1 // $0.1 per GB per month
 	case ResourceNetwork:
 		return 10.0 // $10 per Gbps per month
 	default:
@@ -662,15 +662,15 @@ func (rea *ResourceEfficiencyAnalyzer) standardDeviation(values []float64) float
 	if len(values) <= 1 {
 		return 0
 	}
-	
+
 	mean := rea.average(values)
 	sumSquaredDiff := 0.0
-	
+
 	for _, v := range values {
 		diff := v - mean
 		sumSquaredDiff += diff * diff
 	}
-	
+
 	variance := sumSquaredDiff / float64(len(values)-1)
 	return math.Sqrt(variance)
 }
@@ -679,15 +679,15 @@ func (rea *ResourceEfficiencyAnalyzer) percentile(sortedValues []float64, percen
 	if len(sortedValues) == 0 {
 		return 0
 	}
-	
+
 	index := percentile * float64(len(sortedValues)-1)
 	lower := int(math.Floor(index))
 	upper := int(math.Ceil(index))
-	
+
 	if lower == upper {
 		return sortedValues[lower]
 	}
-	
+
 	weight := index - float64(lower)
 	return sortedValues[lower]*(1-weight) + sortedValues[upper]*weight
 }

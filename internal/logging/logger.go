@@ -128,7 +128,7 @@ func newLogger(config *Config) *Logger {
 		// Ensure log directory exists
 		logDir := filepath.Dir(config.Filename)
 		if err := os.MkdirAll(logDir, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create log directory: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to create log directory: %v\n", err)
 		} else {
 			fileWriter := &lumberjack.Logger{
 				Filename:   config.Filename,

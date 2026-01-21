@@ -182,7 +182,7 @@ func (al *AlertLogger) LogAlert(alert *components.Alert) error {
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Create log entry
 	entry := AlertLogEntry{
@@ -202,7 +202,7 @@ func (al *AlertLogger) LogAlert(alert *components.Alert) error {
 
 	// Check if rotation is needed
 	if info, err := file.Stat(); err == nil && info.Size() > al.maxSize {
-		al.rotateLog()
+		_ = al.rotateLog()
 	}
 
 	return nil
@@ -259,7 +259,7 @@ func (al *AlertLogger) cleanOldLogs() {
 			}
 
 			if info.ModTime().Before(cutoff) {
-				os.Remove(filepath.Join(logDir, file.Name()))
+				_ = os.Remove(filepath.Join(logDir, file.Name()))
 			}
 		}
 	}

@@ -383,7 +383,7 @@ func (vm *ViewManager) SetCurrentView(name string) error {
 	// Call OnLoseFocus on the old view
 	if vm.currentView != "" {
 		if oldView, err := vm.GetView(vm.currentView); err == nil {
-			oldView.OnLoseFocus()
+			_ = oldView.OnLoseFocus()
 		}
 	}
 

@@ -203,32 +203,16 @@ func (j *jobManager) Get(id string) (*Job, error) {
 }
 
 func (j *jobManager) Submit(job *JobSubmission) (string, error) {
-	// Check if the slurm-client supports job submission
-	// Use a more specific interface check to avoid conflicts
-	type jobSubmitter interface {
-		Submit(ctx context.Context, job interface{}) (interface{}, error)
-	}
-	
-	if submitter, ok := j.client.(jobSubmitter); ok {
-		// Convert our JobSubmission to the format expected by slurm-client
-		slurmJob := convertJobSubmissionToSlurm(job)
+	// Convert our JobSubmission to slurm-client format
+	slurmJob := convertJobSubmissionToSlurm(job)
 
-		result, err := submitter.Submit(j.ctx, slurmJob)
-		if err != nil {
-			return "", fmt.Errorf("submitting job via slurm-client: %w", err)
-		}
-
-		// Convert the result back to our Job type
-		if slurmJobResult, ok := result.(interface {
-			GetJobID() string
-		}); ok {
-			return slurmJobResult.GetJobID(), nil
-		}
+	// Call slurm-client Submit directly
+	result, err := j.client.Submit(j.ctx, slurmJob)
+	if err != nil {
+		return "", fmt.Errorf("submitting job via slurm-client: %w", err)
 	}
 
-	// Fallback: If slurm-client doesn't support submission or we're in a testing context,
-	// simulate job submission with a basic implementation
-	return j.simulateJobSubmission(job)
+	return result.JobID, nil
 }
 
 // simulateJobSubmission creates a simulated job for testing/demo purposes
@@ -239,34 +223,40 @@ func (j *jobManager) simulateJobSubmission(job *JobSubmission) (string, error) {
 }
 
 // convertJobSubmissionToSlurm converts our JobSubmission to the format expected by slurm-client
-func convertJobSubmissionToSlurm(job *JobSubmission) interface{} {
-	// This would need to be implemented based on the actual slurm-client API
-	// For now, return a generic map that could work with various REST API formats
-	return map[string]interface{}{
-		"name":              job.Name,
-		"script":            job.Script,
-		"command":           job.Command,
-		"partition":         job.Partition,
-		"account":           job.Account,
-		"qos":               job.QoS,
-		"nodes":             job.Nodes,
-		"cpus":              job.CPUs,
-		"cpus_per_node":     job.CPUsPerNode,
-		"memory":            job.Memory,
-		"gpus":              job.GPUs,
-		"time_limit":        job.TimeLimit,
-		"working_directory": job.WorkingDir,
-		"output_file":       job.OutputFile,
-		"error_file":        job.ErrorFile,
-		"stdout":            job.StdOut,
-		"stderr":            job.StdErr,
-		"email_notify":      job.EmailNotify,
-		"email":             job.Email,
-		"environment":       job.Environment,
-		"dependencies":      job.Dependencies,
-		"array":             job.ArraySpec,
-		"exclusive":         job.Exclusive,
-		"requeue":           job.Requeue,
+func convertJobSubmissionToSlurm(job *JobSubmission) *slurm.JobSubmission {
+	// Convert time limit from string to int (minutes)
+	timeLimit := 0
+	if job.TimeLimit != "" {
+		// Parse time limit (e.g., "01:00:00" to minutes)
+		// Simple implementation: assume format is minutes or HH:MM:SS
+		var hours, minutes, seconds int
+		if _, err := fmt.Sscanf(job.TimeLimit, "%d:%d:%d", &hours, &minutes, &seconds); err == nil {
+			timeLimit = hours*60 + minutes
+		} else if _, err := fmt.Sscanf(job.TimeLimit, "%d", &timeLimit); err != nil {
+			// Default to 60 minutes if parsing fails
+			timeLimit = 60
+		}
+	}
+
+	// Convert memory from string to int (MB)
+	memory := 0
+	if job.Memory != "" {
+		// Simple implementation: assume format is in MB
+		_, _ = fmt.Sscanf(job.Memory, "%d", &memory)
+	}
+
+	return &slurm.JobSubmission{
+		Name:        job.Name,
+		Script:      job.Script,
+		Command:     job.Command,
+		Partition:   job.Partition,
+		Account:     job.Account,
+		CPUs:        job.CPUs,
+		Memory:      memory,
+		TimeLimit:   timeLimit,
+		WorkingDir:  job.WorkingDir,
+		Environment: job.Environment,
+		Nodes:       job.Nodes,
 	}
 }
 
@@ -304,27 +294,14 @@ func (j *jobManager) Release(id string) error {
 }
 
 func (j *jobManager) Requeue(id string) (*Job, error) {
-	// Check if the slurm-client supports requeue
-	if requeuer, ok := j.client.(interface {
-		Requeue(ctx context.Context, id string) (interface{}, error)
-	}); ok {
-		result, err := requeuer.Requeue(j.ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("requeuing job %s via slurm-client: %w", id, err)
-		}
-
-		// Convert result back to Job if possible
-		if job, ok := result.(interface {
-			GetJobID() string
-			GetState() string
-		}); ok {
-			// Get the updated job details
-			return j.Get(job.GetJobID())
-		}
+	// Call slurm-client Requeue directly
+	err := j.client.Requeue(j.ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("requeuing job %s via slurm-client: %w", id, err)
 	}
 
-	// Fallback: simulate requeue for testing/demo purposes
-	return j.simulateRequeue(id)
+	// Get the updated job details
+	return j.Get(id)
 }
 
 // simulateRequeue simulates a requeue operation for testing/demo purposes
@@ -543,7 +520,10 @@ func (r *reservationManager) List() (*ReservationList, error) {
 	}, nil
 }
 
-// getMockReservationList returns mock reservation data as fallback
+/*
+TODO(lint): Review unused code - func (*reservationManager).getMockReservationList is unused
+
+getMockReservationList returns mock reservation data as fallback
 func (r *reservationManager) getMockReservationList() *ReservationList {
 	now := time.Now()
 	mockReservations := []*Reservation{
@@ -589,6 +569,7 @@ func (r *reservationManager) getMockReservationList() *ReservationList {
 		Reservations: mockReservations,
 	}
 }
+*/
 
 func (r *reservationManager) Get(name string) (*Reservation, error) {
 	reservation, err := r.client.Get(r.ctx, name)
@@ -806,7 +787,10 @@ func (q *qosManager) List() (*QoSList, error) {
 	}, nil
 }
 
-// getMockQoSList returns mock QoS data as fallback
+/*
+TODO(lint): Review unused code - func (*qosManager).getMockQoSList is unused
+
+getMockQoSList returns mock QoS data as fallback
 func (q *qosManager) getMockQoSList() *QoSList {
 	mockQosList := []*QoS{
 		{
@@ -864,6 +848,7 @@ func (q *qosManager) getMockQoSList() *QoSList {
 		Total: len(mockQosList),
 	}
 }
+*/
 
 func (q *qosManager) Get(name string) (*QoS, error) {
 	qos, err := q.client.Get(q.ctx, name)
@@ -897,7 +882,10 @@ func (a *accountManager) List() (*AccountList, error) {
 	}, nil
 }
 
-// getMockAccountList returns mock account data as fallback
+/*
+TODO(lint): Review unused code - func (*accountManager).getMockAccountList is unused
+
+getMockAccountList returns mock account data as fallback
 func (a *accountManager) getMockAccountList() *AccountList {
 	mockAccounts := []*Account{
 		{
@@ -967,6 +955,7 @@ func (a *accountManager) getMockAccountList() *AccountList {
 		Total:    len(mockAccounts),
 	}
 }
+*/
 
 func (a *accountManager) Get(name string) (*Account, error) {
 	account, err := a.client.Get(a.ctx, name)
@@ -1000,7 +989,10 @@ func (u *userManager) List() (*UserList, error) {
 	}, nil
 }
 
-// getMockUserList returns mock user data as fallback
+/*
+TODO(lint): Review unused code - func (*userManager).getMockUserList is unused
+
+getMockUserList returns mock user data as fallback
 func (u *userManager) getMockUserList() *UserList {
 	mockUsers := []*User{
 		{
@@ -1075,6 +1067,7 @@ func (u *userManager) getMockUserList() *UserList {
 		Total: len(mockUsers),
 	}
 }
+*/
 
 func (u *userManager) Get(name string) (*User, error) {
 	user, err := u.client.Get(u.ctx, name)

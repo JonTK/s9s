@@ -172,7 +172,7 @@ func LoadWithPath(configPath string) (*Config, error) {
 
 	// Ensure config directory exists
 	configDir := filepath.Join(os.Getenv("HOME"), ".s9s")
-	os.MkdirAll(configDir, 0755)
+	_ = os.MkdirAll(configDir, 0755)
 
 	return cfg, nil
 }

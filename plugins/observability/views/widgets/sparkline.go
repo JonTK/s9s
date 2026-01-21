@@ -13,12 +13,12 @@ import (
 type SparklineWidget struct {
 	*tview.Box
 
-	title      string
-	values     []float64
-	maxPoints  int
-	min        float64
-	max        float64
-	autoScale  bool
+	title     string
+	values    []float64
+	maxPoints int
+	min       float64
+	max       float64
+	autoScale bool
 
 	// Display options
 	showValue  bool
@@ -122,7 +122,7 @@ func (s *SparklineWidget) updateScale() {
 
 // Draw draws the sparkline
 func (s *SparklineWidget) Draw(screen tcell.Screen) {
-	s.Box.DrawForSubclass(screen, s)
+	s.DrawForSubclass(screen, s)
 
 	x, y, width, height := s.GetInnerRect()
 	if width <= 0 || height <= 0 || len(s.values) == 0 {
@@ -200,7 +200,7 @@ func (s *SparklineWidget) drawSparkline(screen tcell.Screen, x, y, width, height
 						tcell.StyleDefault.Foreground(color))
 				} else if j == barHeight && barHeight < height {
 					// Top of bar with partial block
-					partialIdx := int((normalized * float64(height) - float64(barHeight)) * 8)
+					partialIdx := int((normalized*float64(height) - float64(barHeight)) * 8)
 					if partialIdx > 0 && partialIdx < len(sparkChars) {
 						screen.SetContent(x+i, y+height-1-j, sparkChars[partialIdx-1], nil,
 							tcell.StyleDefault.Foreground(color))

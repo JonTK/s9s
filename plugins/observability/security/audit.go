@@ -160,8 +160,8 @@ func (al *AuditLogger) LogEvent(event AuditEvent) {
 		return // Skip event if serialization fails
 	}
 
-	al.writer.Write(eventData)
-	al.writer.Write([]byte("\n"))
+	_, _ = al.writer.Write(eventData)
+	_, _ = al.writer.Write([]byte("\n"))
 }
 
 // LogAPIRequest logs an API request with response details
@@ -386,7 +386,7 @@ func (al *AuditLogger) rotateIfNeeded() error {
 	}
 
 	// Close current file
-	al.file.Close()
+	_ = al.file.Close()
 
 	// Rotate files
 	if err := al.rotateFiles(); err != nil {
@@ -409,13 +409,13 @@ func (al *AuditLogger) rotateFiles() error {
 	
 	// Remove oldest file if we've reached the limit
 	oldestFile := fmt.Sprintf("%s.%d", baseName, al.config.MaxFiles)
-	os.Remove(oldestFile) // Ignore error if file doesn't exist
+	_ = os.Remove(oldestFile) // Ignore error if file doesn't exist
 
 	// Shift all files
 	for i := al.config.MaxFiles - 1; i >= 1; i-- {
 		oldFile := fmt.Sprintf("%s.%d", baseName, i)
 		newFile := fmt.Sprintf("%s.%d", baseName, i+1)
-		os.Rename(oldFile, newFile) // Ignore errors
+		_ = os.Rename(oldFile, newFile) // Ignore errors
 	}
 
 	// Move current file to .1

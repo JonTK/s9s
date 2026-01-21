@@ -208,7 +208,7 @@ func (l *Logger) Component(component string) *Logger {
 		logger:    l.logger,
 		level:     l.level,
 		component: component,
-		mu:        l.mu, // Share mutex with parent
+		// mu is zero-initialized (new mutex for component)
 	}
 }
 

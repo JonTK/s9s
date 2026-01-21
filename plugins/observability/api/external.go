@@ -162,7 +162,7 @@ func (api *ExternalAPI) Stop(ctx context.Context) error {
 	}
 
 	if api.auditLogger != nil {
-		api.auditLogger.Close()
+		_ = api.auditLogger.Close()
 	}
 
 	if api.server == nil {
@@ -710,7 +710,7 @@ func (api *ExternalAPI) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (api *ExternalAPI) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "healthy",
 		"time":   time.Now(),
 	})
@@ -739,13 +739,13 @@ func (api *ExternalAPI) parseTime(timeStr string) (time.Time, error) {
 func (api *ExternalAPI) writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(data)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func (api *ExternalAPI) writeError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "error",
 		"error":  message,
 	})

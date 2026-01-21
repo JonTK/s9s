@@ -169,7 +169,7 @@ func (km *KeyManager) DiscoverKeys() error {
 
 	// Auto-load keys to agent if enabled
 	if km.autoLoad {
-		km.LoadKeysToAgent()
+		_ = km.LoadKeysToAgent()
 	}
 
 	return nil
@@ -181,7 +181,7 @@ func (km *KeyManager) isPrivateKey(path string) bool {
 	if err != nil {
 		return false
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	if scanner.Scan() {
@@ -329,7 +329,7 @@ func (km *KeyManager) generateRSAKey(keyPath, pubPath, comment string, bits int)
 	if err != nil {
 		return fmt.Errorf("failed to create private key file: %w", err)
 	}
-	defer privFile.Close()
+	defer func() { _ = privFile.Close() }()
 
 	// Write private key in PKCS#1 format
 	privKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
@@ -353,7 +353,7 @@ func (km *KeyManager) generateRSAKey(keyPath, pubPath, comment string, bits int)
 	if err != nil {
 		return fmt.Errorf("failed to create public key file: %w", err)
 	}
-	defer pubFile.Close()
+	defer func() { _ = pubFile.Close() }()
 
 	pubKeyStr := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pubKey)))
 	if comment != "" {
@@ -728,13 +728,13 @@ func (km *KeyManager) StartAgent() error {
 			parts := strings.Split(line, "=")
 			if len(parts) == 2 {
 				sockPath := strings.Trim(parts[1], "; ")
-				os.Setenv("SSH_AUTH_SOCK", sockPath)
+				_ = os.Setenv("SSH_AUTH_SOCK", sockPath)
 			}
 		} else if strings.Contains(line, "SSH_AGENT_PID") {
 			parts := strings.Split(line, "=")
 			if len(parts) == 2 {
 				pidStr := strings.Trim(parts[1], "; ")
-				os.Setenv("SSH_AGENT_PID", pidStr)
+				_ = os.Setenv("SSH_AGENT_PID", pidStr)
 			}
 		}
 	}
@@ -760,13 +760,13 @@ func (km *KeyManager) StopAgent() error {
 		pid, err := strconv.Atoi(pidStr)
 		if err == nil {
 			cmd := exec.Command("kill", strconv.Itoa(pid))
-			cmd.Run() // Ignore errors
+			_ = cmd.Run() // Ignore errors
 		}
 	}
 
 	// Clear environment variables
-	os.Unsetenv("SSH_AUTH_SOCK")
-	os.Unsetenv("SSH_AGENT_PID")
+	_ = os.Unsetenv("SSH_AUTH_SOCK")
+	_ = os.Unsetenv("SSH_AGENT_PID")
 
 	return nil
 }

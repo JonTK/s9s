@@ -400,7 +400,7 @@ func TestSSHConnectionScenarios(t *testing.T) {
 		}
 
 		// Simulate disconnect
-		terminal1.Close()
+		_ = terminal1.Close()
 
 		// Remove old terminal
 		err = manager.RemoveTerminal(nodeID)

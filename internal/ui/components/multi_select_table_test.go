@@ -152,7 +152,7 @@ func TestMultiSelectTable_GetSelectedData(t *testing.T) {
 	// Test single-row behavior (compatibility mode)
 	table.SetMultiSelectMode(false)
 	// Simulate selecting row 1 (second row)
-	table.Table.Select(2, 0) // Row 2 in display (row 1 in data)
+	table.Select(2, 0) // Row 2 in display (row 1 in data)
 
 	selectedData := table.GetSelectedData()
 	if selectedData == nil {
@@ -222,7 +222,7 @@ func TestMultiSelectTable_KeyboardShortcuts(t *testing.T) {
 
 	// Test space key for toggle
 	spaceEvent := tcell.NewEventKey(tcell.KeyRune, ' ', tcell.ModNone)
-	table.Table.Select(1, 0) // Select first data row for display
+	table.Select(1, 0) // Select first data row for display
 	result := table.handleMultiSelectInput(spaceEvent)
 
 	if result != nil {

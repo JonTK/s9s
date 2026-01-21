@@ -350,12 +350,12 @@ func (o *NodesOverlay) backgroundRefresh(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Initial refresh
-	o.refreshMetrics(ctx)
+	_ = o.refreshMetrics(ctx)
 
 	for {
 		select {
 		case <-ticker.C:
-			o.refreshMetrics(ctx)
+			_ = o.refreshMetrics(ctx)
 		case <-ctx.Done():
 			return
 		}

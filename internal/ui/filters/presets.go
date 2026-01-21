@@ -28,7 +28,7 @@ func NewPresetManager() *PresetManager {
 	presetsDir := filepath.Join(homeDir, ".s9s", "filters")
 
 	// Create presets directory if it doesn't exist
-	os.MkdirAll(presetsDir, 0755)
+	_ = os.MkdirAll(presetsDir, 0755)
 
 	manager := &PresetManager{
 		presetsDir: presetsDir,
@@ -36,7 +36,7 @@ func NewPresetManager() *PresetManager {
 	}
 
 	// Load existing presets
-	manager.loadPresets()
+	_ = manager.loadPresets()
 
 	// Add default presets if none exist
 	if len(manager.presets) == 0 {
@@ -238,17 +238,17 @@ func (m *PresetManager) createDefaultPresets() {
 
 	// Add presets
 	for _, preset := range jobPresets {
-		m.AddPreset(preset)
+		_ = m.AddPreset(preset)
 	}
 	for _, preset := range nodePresets {
-		m.AddPreset(preset)
+		_ = m.AddPreset(preset)
 	}
 	for _, preset := range globalPresets {
-		m.AddPreset(preset)
+		_ = m.AddPreset(preset)
 	}
 
 	// Save to disk
-	m.savePresets()
+	_ = m.savePresets()
 }
 
 // GetPresets returns presets for a specific view type

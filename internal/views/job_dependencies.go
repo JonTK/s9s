@@ -98,7 +98,7 @@ func (v *JobsView) showJobDependencies() {
 func (v *JobsView) buildDependencyTree(job *dao.Job) string {
 	var content strings.Builder
 
-	content.WriteString(fmt.Sprintf("[yellow]Job Dependency Analysis[white]\n\n"))
+	content.WriteString("[yellow]Job Dependency Analysis[white]\n\n")
 	content.WriteString(fmt.Sprintf("[teal]Job:[white] %s (%s)\n", job.ID, job.Name))
 	content.WriteString(fmt.Sprintf("[teal]State:[white] %s\n", job.State))
 	content.WriteString(fmt.Sprintf("[teal]Submit Time:[white] %s\n\n", job.SubmitTime.Format("2006-01-02 15:04:05")))
@@ -343,6 +343,6 @@ func (v *JobsView) showRemoveDependencyForm(jobID string) {
 // atoi converts string to int with fallback
 func atoi(s string) int {
 	var result int
-	fmt.Sscanf(s, "%d", &result)
+	_, _ = fmt.Sscanf(s, "%d", &result)
 	return result
 }

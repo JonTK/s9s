@@ -21,7 +21,8 @@ type NodeMetrics struct {
 type NodeMetricsCollector struct {
 	nodes          map[string]*NodeMetrics
 	nodeLabel      string // Prometheus label for node identification
-	prometheusNode string // How nodes are identified in Prometheus
+	// TODO(lint): Review unused code - field prometheusNode is unused
+	// prometheusNode string // How nodes are identified in Prometheus
 }
 
 // NewNodeMetricsCollector creates a new node metrics collector

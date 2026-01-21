@@ -717,7 +717,7 @@ func (cm *ConfigManager) saveConfiguration() {
 	
 	// Call save callback if set
 	if cm.onSave != nil {
-		cm.onSave(cm.currentConfig)
+		_ = cm.onSave(cm.currentConfig)
 	}
 }
 
@@ -743,7 +743,7 @@ func (cm *ConfigManager) applyConfiguration() {
 	
 	// Call apply callback if set
 	if cm.onApply != nil {
-		cm.onApply(cm.currentConfig)
+		_ = cm.onApply(cm.currentConfig)
 	}
 }
 
@@ -947,7 +947,7 @@ func (cm *ConfigManager) showContextManager() {
 		cm.app.SetFocus(cm)
 	})
 	
-	cm.pages.AddPage("context-modal", modal, false, true)
+	_ = cm.pages.AddPage("context-modal", modal, false, true)
 }
 
 // showShortcutManager shows a modal for managing shortcuts
@@ -965,7 +965,7 @@ func (cm *ConfigManager) showShortcutManager() {
 		cm.app.SetFocus(cm)
 	})
 	
-	cm.pages.AddPage("shortcut-modal", modal, false, true)
+	_ = cm.pages.AddPage("shortcut-modal", modal, false, true)
 }
 
 // showAliasManager shows a modal for managing aliases
@@ -983,7 +983,7 @@ func (cm *ConfigManager) showAliasManager() {
 		cm.app.SetFocus(cm)
 	})
 	
-	cm.pages.AddPage("alias-modal", modal, false, true)
+	_ = cm.pages.AddPage("alias-modal", modal, false, true)
 }
 
 // showPluginManager shows a modal for managing plugins
@@ -1001,5 +1001,5 @@ func (cm *ConfigManager) showPluginManager() {
 		cm.app.SetFocus(cm)
 	})
 	
-	cm.pages.AddPage("plugin-modal", modal, false, true)
+	_ = cm.pages.AddPage("plugin-modal", modal, false, true)
 }

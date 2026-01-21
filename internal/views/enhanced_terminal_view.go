@@ -360,7 +360,7 @@ func (etv *EnhancedTerminalView) createTerminalPane(hostname, username string) {
 func (etv *EnhancedTerminalView) closeActiveTerminal() {
 	activePane := etv.paneManager.GetActivePane()
 	if activePane != nil && activePane.Type == components.PaneTypeTerminal {
-		etv.closeTerminalPane(activePane.ID)
+		_ = etv.closeTerminalPane(activePane.ID)
 	}
 }
 
@@ -371,7 +371,7 @@ func (etv *EnhancedTerminalView) closeTerminalPane(paneID string) error {
 	
 	// Close the terminal pane
 	if terminalPane, exists := etv.terminalPanes[paneID]; exists {
-		terminalPane.Close()
+		_ = terminalPane.Close()
 		delete(etv.terminalPanes, paneID)
 	}
 	
@@ -516,7 +516,7 @@ func (etv *EnhancedTerminalView) Stop() {
 	// Close all terminals
 	etv.mu.Lock()
 	for paneID := range etv.terminalPanes {
-		etv.closeTerminalPane(paneID)
+		_ = etv.closeTerminalPane(paneID)
 	}
 	etv.mu.Unlock()
 	

@@ -39,7 +39,7 @@ func NewMultiSelectTable(config *TableConfig) *MultiSelectTable {
 	}
 
 	// Override input handling for multi-select
-	mst.Table.Table.SetInputCapture(mst.handleMultiSelectInput)
+	mst.SetInputCapture(mst.handleMultiSelectInput)
 
 	return mst
 }
@@ -272,7 +272,7 @@ func (mst *MultiSelectTable) handleMultiSelectInput(event *tcell.EventKey) *tcel
 			switch event.Rune() {
 			case ' ':
 				// Toggle current row
-				currentRow, _ := mst.Table.Table.GetSelection()
+				currentRow, _ := mst.GetSelection()
 				mst.ToggleRow(currentRow)
 				return nil
 			case 'a', 'A':
@@ -300,15 +300,15 @@ func (mst *MultiSelectTable) handleMultiSelectInput(event *tcell.EventKey) *tcel
 		switch event.Rune() {
 		case 'j':
 			// Move down (like ArrowDown)
-			return mst.Table.handleInput(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
+			return mst.handleInput(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
 		case 'k':
 			// Move up (like ArrowUp)
-			return mst.Table.handleInput(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+			return mst.handleInput(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
 		}
 	}
 
 	// Let the base table handle other input
-	return mst.Table.handleInput(event)
+	return mst.handleInput(event)
 }
 
 // InvertSelection inverts the current selection
@@ -341,12 +341,16 @@ func (mst *MultiSelectTable) InvertSelection() {
 	}
 }
 
-// updateSelectAllState updates the select all checkbox state
+/*
+TODO(lint): Review unused code - func (*MultiSelectTable).updateSelectAllState is unused
+
+updateSelectAllState updates the select all checkbox state
 func (mst *MultiSelectTable) updateSelectAllState() {
 	mst.mu.Lock()
 	defer mst.mu.Unlock()
 	mst.updateSelectAllStateUnsafe()
 }
+*/
 
 // updateSelectAllStateUnsafe updates the select all checkbox state without locking
 func (mst *MultiSelectTable) updateSelectAllStateUnsafe() {
@@ -390,7 +394,7 @@ func (mst *MultiSelectTable) refreshDisplay() {
 				SetSelectable(false).
 				SetExpansion(1)
 
-			mst.Table.Table.SetCell(headerRow, col, cell)
+			mst.SetCell(headerRow, col, cell)
 		}
 		headerRow++
 	}
@@ -435,7 +439,7 @@ func (mst *MultiSelectTable) refreshDisplay() {
 				}
 			}
 
-			mst.Table.Table.SetCell(displayRow, col, cell)
+			mst.SetCell(displayRow, col, cell)
 		}
 	}
 }

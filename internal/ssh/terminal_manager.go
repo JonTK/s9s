@@ -102,7 +102,7 @@ func (tm *TerminalManager) RemoveTerminal(nodeID string) error {
 	}
 
 	// Close the terminal
-	terminal.Close()
+	_ = terminal.Close()
 
 	// Remove from map
 	delete(tm.terminals, nodeID)
@@ -269,7 +269,7 @@ func (tm *TerminalManager) CloseAll() {
 	defer tm.mu.Unlock()
 
 	for nodeID, terminal := range tm.terminals {
-		terminal.Close()
+		_ = terminal.Close()
 		delete(tm.terminals, nodeID)
 	}
 

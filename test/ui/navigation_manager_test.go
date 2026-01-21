@@ -161,7 +161,7 @@ func TestNavigationInput(t *testing.T) {
 			Name:     fmt.Sprintf("Target %d", i),
 			Shortcut: char,
 		}
-		nm.RegisterTarget(target)
+		_ = nm.RegisterTarget(target)
 	}
 	
 	t.Run("QuickModeNavigation", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestNavigationSearch(t *testing.T) {
 	}
 	
 	for _, target := range targets {
-		nm.RegisterTarget(target)
+		_ = nm.RegisterTarget(target)
 	}
 	
 	t.Run("CustomSearchCallback", func(t *testing.T) {
@@ -273,16 +273,16 @@ func TestNavigationCallbacks(t *testing.T) {
 		Name: "Target 2",
 	}
 	
-	nm.RegisterTarget(target1)
-	nm.RegisterTarget(target2)
+	_ = nm.RegisterTarget(target1)
+	_ = nm.RegisterTarget(target2)
 	
 	// Navigate to first target
-	nm.NavigateTo("target1")
+	_ = nm.NavigateTo("target1")
 	assert.Equal(t, "", navigatedFrom) // No previous target
 	assert.Equal(t, "target1", navigatedTo)
 	
 	// Navigate to second target
-	nm.NavigateTo("target2")
+	_ = nm.NavigateTo("target2")
 	assert.Equal(t, "target1", navigatedFrom)
 	assert.Equal(t, "target2", navigatedTo)
 }
@@ -298,7 +298,7 @@ func BenchmarkNavigationManager(b *testing.B) {
 				ID:   fmt.Sprintf("bench-target-%d", i),
 				Name: fmt.Sprintf("Bench Target %d", i),
 			}
-			nm.RegisterTarget(target)
+			_ = nm.RegisterTarget(target)
 		}
 	})
 	
@@ -309,13 +309,13 @@ func BenchmarkNavigationManager(b *testing.B) {
 				ID:   fmt.Sprintf("nav-target-%d", i),
 				Name: fmt.Sprintf("Nav Target %d", i),
 			}
-			nm.RegisterTarget(target)
+			_ = nm.RegisterTarget(target)
 		}
 		
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			targetID := fmt.Sprintf("nav-target-%d", i%10)
-			nm.NavigateTo(targetID)
+			_ = nm.NavigateTo(targetID)
 		}
 	})
 	

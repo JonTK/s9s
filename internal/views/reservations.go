@@ -122,7 +122,7 @@ func NewReservationsView(client dao.SlurmClient) *ReservationsView {
 
 // Init initializes the reservations view
 func (v *ReservationsView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -221,7 +221,7 @@ func (v *ReservationsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case '/':
 			v.app.SetFocus(v.filterInput)
@@ -253,7 +253,7 @@ func (v *ReservationsView) OnFocus() error {
 	}
 	// Refresh when gaining focus if we haven't loaded data yet
 	if len(v.reservations) == 0 && !v.IsRefreshing() {
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	}
 	return nil
 }
@@ -357,7 +357,10 @@ func getReservationStateColor(state string, start, end, now time.Time) string {
 	}
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*ReservationsView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *ReservationsView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -397,6 +400,7 @@ func (v *ReservationsView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *ReservationsView) scheduleRefresh() {
@@ -673,7 +677,7 @@ func (v *ReservationsView) focusOnReservation(reservationName string) {
 	for i, reservation := range v.reservations {
 		if reservation.Name == reservationName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Focus status removed since individual view status bars are no longer used
 			return
 		}

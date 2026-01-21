@@ -176,7 +176,7 @@ func (sp *SessionPersistence) CleanupOldData() error {
 
 		if info.ModTime().Before(cutoff) {
 			filePath := filepath.Join(sp.dataDir, entry.Name())
-			os.Remove(filePath) // Ignore errors
+			_ = os.Remove(filePath) // Ignore errors
 		}
 	}
 

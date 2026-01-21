@@ -3,7 +3,6 @@ package performance
 import (
 	"fmt"
 	"runtime"
-	"runtime/pprof"
 	"sync"
 	"time"
 )
@@ -29,24 +28,25 @@ type Metric struct {
 
 // Profiler handles performance profiling
 type Profiler struct {
-	metrics      []Metric
-	mu           sync.RWMutex
-	cpuProfile   *pprof.Profile
-	startTime    time.Time
-	operations   map[string]*OperationStats
-	memBaseline  runtime.MemStats
+	metrics            []Metric
+	mu                 sync.RWMutex
+	// TODO(lint): Review unused code - field cpuProfile is unused
+	// cpuProfile         *pprof.Profile
+	startTime          time.Time
+	operations         map[string]*OperationStats
+	memBaseline        runtime.MemStats
 	baselineGoroutines int
 }
 
 // OperationStats tracks statistics for a specific operation
 type OperationStats struct {
-	Name         string
-	Count        int64
-	TotalTime    time.Duration
-	MinTime      time.Duration
-	MaxTime      time.Duration
-	LastTime     time.Duration
-	mu           sync.Mutex
+	Name      string
+	Count     int64
+	TotalTime time.Duration
+	MinTime   time.Duration
+	MaxTime   time.Duration
+	LastTime  time.Duration
+	mu        sync.Mutex
 }
 
 // NewProfiler creates a new profiler
@@ -163,13 +163,13 @@ func (p *Profiler) GetOperationStats() map[string]OperationSummary {
 		}
 
 		summary[name] = OperationSummary{
-			Name:         name,
-			Count:        stats.Count,
-			TotalTime:    stats.TotalTime,
-			AverageTime:  avg,
-			MinTime:      stats.MinTime,
-			MaxTime:      stats.MaxTime,
-			LastTime:     stats.LastTime,
+			Name:        name,
+			Count:       stats.Count,
+			TotalTime:   stats.TotalTime,
+			AverageTime: avg,
+			MinTime:     stats.MinTime,
+			MaxTime:     stats.MaxTime,
+			LastTime:    stats.LastTime,
 		}
 		stats.mu.Unlock()
 	}
@@ -211,13 +211,13 @@ type MemoryDelta struct {
 
 // Report generates a performance report
 func (p *Profiler) Report() string {
-	report := fmt.Sprintf("Performance Report\n")
-	report += fmt.Sprintf("==================\n")
+	report := "Performance Report\n"
+	report += "==================\n"
 	report += fmt.Sprintf("Uptime: %v\n\n", time.Since(p.startTime))
 
 	// Memory stats
 	memDelta := p.GetMemoryDelta()
-	report += fmt.Sprintf("Memory Changes:\n")
+	report += "Memory Changes:\n"
 	report += fmt.Sprintf("  Heap Alloc Delta: %+d MB\n", memDelta.HeapAllocDelta/1024/1024)
 	report += fmt.Sprintf("  Heap Objects Delta: %+d\n", memDelta.HeapObjectsDelta)
 	report += fmt.Sprintf("  Goroutines Delta: %+d\n", memDelta.GoroutinesDelta)
@@ -226,7 +226,7 @@ func (p *Profiler) Report() string {
 	// Operation stats
 	opStats := p.GetOperationStats()
 	if len(opStats) > 0 {
-		report += fmt.Sprintf("Operation Statistics:\n")
+		report += "Operation Statistics:\n"
 		for _, stats := range opStats {
 			report += fmt.Sprintf("  %s:\n", stats.Name)
 			report += fmt.Sprintf("    Count: %d\n", stats.Count)
@@ -288,12 +288,12 @@ func BenchmarkOperation(name string, iterations int, operation func()) Benchmark
 	runtime.ReadMemStats(&memAfter)
 
 	return BenchmarkResult{
-		Name:          name,
-		Iterations:    iterations,
-		TotalTime:     elapsed,
-		TimePerOp:     elapsed / time.Duration(iterations),
-		AllocsPerOp:   int64(memAfter.Mallocs-memBefore.Mallocs) / int64(iterations),
-		BytesPerOp:    int64(memAfter.TotalAlloc-memBefore.TotalAlloc) / int64(iterations),
+		Name:        name,
+		Iterations:  iterations,
+		TotalTime:   elapsed,
+		TimePerOp:   elapsed / time.Duration(iterations),
+		AllocsPerOp: int64(memAfter.Mallocs-memBefore.Mallocs) / int64(iterations),
+		BytesPerOp:  int64(memAfter.TotalAlloc-memBefore.TotalAlloc) / int64(iterations),
 	}
 }
 

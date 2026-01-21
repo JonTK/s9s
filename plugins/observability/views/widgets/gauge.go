@@ -13,16 +13,16 @@ import (
 type GaugeWidget struct {
 	*tview.Box
 
-	title    string
-	value    float64
-	min      float64
-	max      float64
-	unit     string
+	title string
+	value float64
+	min   float64
+	max   float64
+	unit  string
 
 	// Display options
-	showValue     bool
+	showValue      bool
 	showPercentage bool
-	colorFunc     func(float64) tcell.Color
+	colorFunc      func(float64) tcell.Color
 }
 
 // NewGaugeWidget creates a new gauge widget
@@ -59,7 +59,7 @@ func (g *GaugeWidget) GetPrimitive() tview.Primitive {
 
 // Draw draws the gauge
 func (g *GaugeWidget) Draw(screen tcell.Screen) {
-	g.Box.DrawForSubclass(screen, g)
+	g.DrawForSubclass(screen, g)
 
 	x, y, width, height := g.GetInnerRect()
 	if width <= 0 || height <= 0 {

@@ -189,8 +189,8 @@ func TestGetStats(t *testing.T) {
 
 	// Add subscriptions
 	params := map[string]interface{}{}
-	manager.Subscribe("prometheus-metrics", params, callback)
-	manager.Subscribe("alerts", params, callback)
+	_, _ = manager.Subscribe("prometheus-metrics", params, callback)
+	_, _ = manager.Subscribe("alerts", params, callback)
 
 	stats = manager.GetStats()
 	if stats["total_subscriptions"] != 2 {
@@ -363,7 +363,7 @@ func TestConcurrentSubscriptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer manager.Stop()
+	defer func() { _ = manager.Stop() }()
 
 	// Create subscriptions concurrently
 	done := make(chan bool)

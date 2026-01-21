@@ -384,7 +384,7 @@ func writeValidationError(w http.ResponseWriter, err error) {
 		"code":   "VALIDATION_ERROR",
 	}
 
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // GetStats returns validation statistics

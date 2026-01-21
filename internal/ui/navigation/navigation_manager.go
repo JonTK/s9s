@@ -230,7 +230,7 @@ func (nm *NavigationManager) UnregisterTarget(id string) error {
 	// Handle current target change
 	if nm.currentTarget == id {
 		if len(nm.targetOrder) > 0 {
-			nm.navigateToTarget(nm.targetOrder[0], false)
+			_ = nm.navigateToTargetLocked(nm.targetOrder[0], false)
 		} else {
 			nm.currentTarget = ""
 		}
@@ -246,48 +246,53 @@ func (nm *NavigationManager) NavigateTo(targetID string) error {
 	return nm.navigateToTarget(targetID, true)
 }
 
-// navigateToTarget performs the actual navigation
+// navigateToTarget performs the actual navigation (acquires lock)
 func (nm *NavigationManager) navigateToTarget(targetID string, addToHistory bool) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
+	return nm.navigateToTargetLocked(targetID, addToHistory)
+}
+
+// navigateToTargetLocked performs navigation assuming lock is already held
+func (nm *NavigationManager) navigateToTargetLocked(targetID string, addToHistory bool) error {
 	target, exists := nm.targets[targetID]
 	if !exists {
 		return fmt.Errorf("target %s not found", targetID)
 	}
-	
+
 	if !target.Visible {
 		return fmt.Errorf("target %s is not visible", targetID)
 	}
-	
+
 	// Deactivate current target
 	if nm.currentTarget != "" {
 		if currentTarget := nm.targets[nm.currentTarget]; currentTarget != nil && currentTarget.OnDeactivate != nil {
 			currentTarget.OnDeactivate()
 		}
 	}
-	
+
 	oldTarget := nm.currentTarget
 	nm.currentTarget = targetID
-	
+
 	// Add to history
 	if addToHistory && nm.enableHistory {
 		nm.addToHistory(targetID)
 	}
-	
+
 	// Activate new target
 	if target.OnActivate != nil {
 		target.OnActivate()
 	}
-	
+
 	// Update breadcrumb
 	nm.updateBreadcrumb()
-	
+
 	// Call callback
 	if nm.onNavigate != nil {
 		nm.onNavigate(oldTarget, targetID)
 	}
-	
+
 	return nil
 }
 
@@ -315,12 +320,12 @@ func (nm *NavigationManager) HandleInput(event *tcell.EventKey) *tcell.EventKey 
 	// Handle character shortcuts in quick mode
 	if nm.quickModeActive && event.Key() == tcell.KeyRune {
 		if targetID, exists := nm.quickAccessMap[event.Rune()]; exists && targetID != "" {
-			nm.navigateToTarget(targetID, true)
+			_ = nm.navigateToTargetLocked(targetID, true)
 			nm.ExitQuickMode()
 			return nil
 		}
 	}
-	
+
 	return event
 }
 
@@ -341,6 +346,7 @@ func (nm *NavigationManager) handleCommandInput(event *tcell.EventKey) *tcell.Ev
 }
 
 // handleSearchInput handles input in search mode
+// Assumes lock is already held by caller (HandleInput)
 func (nm *NavigationManager) handleSearchInput(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyEsc:
@@ -348,7 +354,7 @@ func (nm *NavigationManager) handleSearchInput(event *tcell.EventKey) *tcell.Eve
 		return nil
 	case tcell.KeyEnter:
 		if len(nm.searchResults) > 0 {
-			nm.navigateToTarget(nm.searchResults[0], true)
+			_ = nm.navigateToTargetLocked(nm.searchResults[0], true)
 			nm.ExitSearchMode()
 		}
 		return nil
@@ -368,6 +374,7 @@ func (nm *NavigationManager) handleSearchInput(event *tcell.EventKey) *tcell.Eve
 }
 
 // handleQuickInput handles input in quick navigation mode
+// Assumes lock is already held by caller (HandleInput)
 func (nm *NavigationManager) handleQuickInput(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyEsc:
@@ -375,12 +382,12 @@ func (nm *NavigationManager) handleQuickInput(event *tcell.EventKey) *tcell.Even
 		return nil
 	case tcell.KeyRune:
 		if targetID, exists := nm.quickAccessMap[event.Rune()]; exists && targetID != "" {
-			nm.navigateToTarget(targetID, true)
+			_ = nm.navigateToTargetLocked(targetID, true)
 			nm.ExitQuickMode()
 			return nil
 		}
 	}
-	
+
 	return event
 }
 
@@ -513,21 +520,22 @@ func (nm *NavigationManager) defaultSearch(query string) []string {
 }
 
 // executeCommand executes a command from the command palette
+// Assumes lock is already held by caller (via handleCommandInput from HandleInput)
 func (nm *NavigationManager) executeCommand(command string) {
 	// Parse and execute command
 	parts := strings.Fields(command)
 	if len(parts) == 0 {
 		return
 	}
-	
+
 	cmd := strings.ToLower(parts[0])
-	
+
 	switch cmd {
 	case "go", "nav", "navigate":
 		if len(parts) >= 2 {
 			targetName := strings.Join(parts[1:], " ")
 			if targetID := nm.findTargetByName(targetName); targetID != "" {
-				nm.navigateToTarget(targetID, true)
+				_ = nm.navigateToTargetLocked(targetID, true)
 			}
 		}
 	case "search", "find":
@@ -565,7 +573,7 @@ func (nm *NavigationManager) GoBack() {
 	if nm.history.current > 0 {
 		nm.history.current--
 		targetID := nm.history.items[nm.history.current]
-		nm.navigateToTarget(targetID, false)
+		_ = nm.navigateToTarget(targetID, false)
 	}
 }
 
@@ -574,7 +582,7 @@ func (nm *NavigationManager) GoForward() {
 	if nm.history.current < len(nm.history.items)-1 {
 		nm.history.current++
 		targetID := nm.history.items[nm.history.current]
-		nm.navigateToTarget(targetID, false)
+		_ = nm.navigateToTarget(targetID, false)
 	}
 }
 

@@ -30,7 +30,7 @@ func NewAgentAuth() (*AgentAuth, error) {
 	agentClient := agent.NewClient(conn)
 	signers, err := agentClient.Signers()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to get signers from SSH agent: %w", err)
 	}
 
@@ -59,7 +59,7 @@ func (aa *AgentAuth) RefreshSigners() error {
 
 	// Close existing connection
 	if aa.agentConn != nil {
-		aa.agentConn.Close()
+		_ = aa.agentConn.Close()
 	}
 
 	// Reconnect
@@ -71,7 +71,7 @@ func (aa *AgentAuth) RefreshSigners() error {
 	agentClient := agent.NewClient(conn)
 	signers, err := agentClient.Signers()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("failed to get signers from SSH agent: %w", err)
 	}
 
@@ -147,7 +147,7 @@ func IsAgentAvailable() bool {
 	if err != nil {
 		return false
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	agentClient := agent.NewClient(conn)
 	keys, err := agentClient.List()
@@ -169,7 +169,7 @@ func GetAgentKeyCount() (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to connect to SSH agent: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	agentClient := agent.NewClient(conn)
 	keys, err := agentClient.List()
@@ -191,7 +191,7 @@ func TestAgentConnection() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to SSH agent: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	agentClient := agent.NewClient(conn)
 	_, err = agentClient.List()
