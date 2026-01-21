@@ -3,8 +3,20 @@
 # Build variables
 BINARY_NAME=s9s
 BUILD_DIR=build
-VERSION?=$(shell git describe --tags --always --dirty)
-LDFLAGS=-ldflags "-X main.version=$(VERSION)"
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILT_BY?=$(shell whoami)
+
+# Version package path
+VERSION_PKG=github.com/jontk/s9s/internal/version
+
+# Build flags
+LDFLAGS=-ldflags "\
+	-X $(VERSION_PKG).Version=$(VERSION) \
+	-X $(VERSION_PKG).Commit=$(COMMIT) \
+	-X $(VERSION_PKG).Date=$(DATE) \
+	-X $(VERSION_PKG).BuiltBy=$(BUILT_BY)"
 
 # Go variables
 GOCMD=go
@@ -18,16 +30,23 @@ GOMOD=$(GOCMD) mod
 TEST_TIMEOUT=30m
 INTEGRATION_TEST_TIMEOUT=45m
 
-.PHONY: all build clean test test-unit test-integration test-performance test-ssh test-streaming coverage bench lint fmt vet tidy deps install uninstall run dev help
+.PHONY: all build clean test test-unit test-integration test-performance test-ssh test-streaming coverage bench lint fmt vet tidy deps install uninstall run dev version help
 
 # Default target
 all: clean deps test build
 
+# Show version information
+version:
+	@echo "Version:   $(VERSION)"
+	@echo "Commit:    $(COMMIT)"
+	@echo "Built:     $(DATE)"
+	@echo "Built by:  $(BUILT_BY)"
+
 # Build the application
 build:
-	@echo "Building $(BINARY_NAME)..."
+	@echo "Building $(BINARY_NAME) $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) .
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/s9s
 
 # Clean build artifacts
 clean:
@@ -137,7 +156,7 @@ run: build
 # Run in development mode with race detection
 dev:
 	@echo "Running in development mode..."
-	$(GOCMD) run -race . -debug
+	$(GOCMD) run -race ./cmd/s9s --debug
 
 # Development helpers
 .PHONY: test-quick test-verbose test-short install-tools
@@ -180,9 +199,10 @@ ci-test:
 # CI build phase
 ci-build:
 	@echo "Running CI build..."
-	CGO_ENABLED=0 GOOS=linux $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-linux .
-	CGO_ENABLED=0 GOOS=darwin $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-darwin .
-	CGO_ENABLED=0 GOOS=windows $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-windows.exe .
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 GOOS=linux $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-linux ./cmd/s9s
+	CGO_ENABLED=0 GOOS=darwin $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-darwin ./cmd/s9s
+	CGO_ENABLED=0 GOOS=windows $(GOBUILD) $(LDFLAGS) -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-windows.exe ./cmd/s9s
 
 # CI lint phase
 ci-lint: fmt vet lint
@@ -212,9 +232,9 @@ docker-test:
 release:
 	@echo "Creating release..."
 	@if command -v goreleaser >/dev/null 2>&1; then \
-		goreleaser release --rm-dist; \
+		goreleaser release --clean; \
 	else \
-		echo "goreleaser not installed. Please install it first."; \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
 		exit 1; \
 	fi
 
@@ -222,9 +242,19 @@ release:
 release-snapshot:
 	@echo "Creating snapshot release..."
 	@if command -v goreleaser >/dev/null 2>&1; then \
-		goreleaser release --snapshot --rm-dist; \
+		goreleaser release --snapshot --clean; \
 	else \
-		echo "goreleaser not installed. Please install it first."; \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+		exit 1; \
+	fi
+
+# Check if ready for release
+release-check:
+	@echo "Checking release readiness..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		goreleaser check; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
 		exit 1; \
 	fi
 
@@ -255,6 +285,7 @@ help:
 	@echo "  clean         - Clean build artifacts"
 	@echo "  install       - Install binary to GOPATH/bin"
 	@echo "  uninstall     - Remove binary from GOPATH/bin"
+	@echo "  version       - Show build version information"
 	@echo ""
 	@echo "Development Targets:"
 	@echo "  run           - Build and run the application"
@@ -296,6 +327,7 @@ help:
 	@echo "Release Targets:"
 	@echo "  release       - Create release with goreleaser"
 	@echo "  release-snapshot - Create snapshot release"
+	@echo "  release-check - Check if project is ready for release"
 	@echo ""
 	@echo "Documentation Targets:"
 	@echo "  docs          - Generate documentation"

@@ -12,11 +12,11 @@ import (
 	"github.com/jontk/s9s/internal/app"
 	"github.com/jontk/s9s/internal/config"
 	"github.com/jontk/s9s/internal/mock"
+	"github.com/jontk/s9s/internal/version"
 	"github.com/spf13/cobra"
 )
 
 const (
-	version = "0.1.0"
 	appName = "S9S - SLURM Terminal UI"
 )
 
@@ -83,7 +83,8 @@ func initConfig() {
 func runRoot(cmd *cobra.Command, args []string) error {
 	// Handle version flag
 	if showVersion {
-		fmt.Printf("%s version %s\n", appName, version)
+		info := version.Get()
+		fmt.Printf("%s version %s\n", appName, info.Short())
 		return nil
 	}
 
