@@ -479,7 +479,10 @@ func (v *JobOutputView) copyPathToClipboard(filePath string) {
 	v.showNotification(fmt.Sprintf("File path:\n%s\n\n(Copy this path manually)", filePath))
 }
 
-// formatBytes formats byte size in human-readable format
+/*
+TODO(lint): Review unused code - func (*JobOutputView).formatBytes is unused
+
+formatBytes formats byte size in human-readable format
 func (v *JobOutputView) formatBytes(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
@@ -492,6 +495,7 @@ func (v *JobOutputView) formatBytes(bytes int64) string {
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
+*/
 
 // showNotification shows a temporary notification
 func (v *JobOutputView) showNotification(message string) {

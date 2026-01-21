@@ -431,7 +431,7 @@ func (v *StreamMonitorView) removeSelectedStream() {
 func (v *StreamMonitorView) removeStream(streamKey string, panel *StreamPanel) {
 	// Stop the stream
 	panel.isActive = false
-	v.streamManager.StopStream(panel.jobID, panel.outputType)
+	_ = v.streamManager.StopStream(panel.jobID, panel.outputType)
 
 	// Unsubscribe
 	if panel.streamChan != nil {
@@ -449,7 +449,7 @@ func (v *StreamMonitorView) removeStream(streamKey string, panel *StreamPanel) {
 func (v *StreamMonitorView) stopAllStreams() {
 	for _, panel := range v.activeStreams {
 		panel.isActive = false
-		v.streamManager.StopStream(panel.jobID, panel.outputType)
+		_ = v.streamManager.StopStream(panel.jobID, panel.outputType)
 	}
 	v.updateStatus()
 }

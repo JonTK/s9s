@@ -266,7 +266,7 @@ func (p *ObservabilityPlugin) Stop(ctx context.Context) error {
 	if p.logger != nil {
 		p.logger.Info("plugin", "Observability plugin stopped successfully")
 		if p.config.Logging.Enabled {
-			p.logger.Close()
+			_ = p.logger.Close()
 		}
 	}
 
@@ -588,7 +588,7 @@ func (p *ObservabilityPlugin) Unsubscribe(ctx context.Context, subscriptionID pl
 
 	// Remove from persistence
 	if p.components.Persistence != nil {
-		p.components.Persistence.DeleteSubscription(string(subscriptionID))
+		_ = p.components.Persistence.DeleteSubscription(string(subscriptionID))
 	}
 
 	return nil

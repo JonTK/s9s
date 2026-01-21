@@ -328,9 +328,7 @@ func (tm *TemplateManager) GetCategories() []string {
 
 // CreateQuickStartConfig creates a quick-start configuration
 func (tm *TemplateManager) CreateQuickStartConfig(clusterHost string, clusterName string) (*Config, error) {
-	if clusterName == "" {
-		clusterName = "quickstart-cluster"
-	}
+	_ = clusterName // Parameter reserved for future use
 	if clusterHost == "" {
 		clusterHost = "localhost"
 	}

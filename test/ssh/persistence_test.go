@@ -16,7 +16,7 @@ func TestSessionPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test 1: Create persistence manager
 	t.Run("CreatePersistence", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestSessionManagerWithPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test 1: Enable persistence
 	t.Run("EnablePersistence", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestPersistenceEdgeCases(t *testing.T) {
 		// Clean up default directory
 		homeDir, _ := os.UserHomeDir()
 		defaultDir := filepath.Join(homeDir, ".config", "s9s", "ssh_sessions")
-		os.RemoveAll(defaultDir)
+		_ = os.RemoveAll(defaultDir)
 	})
 
 	// Test 2: Non-existent sessions file
@@ -305,7 +305,7 @@ func TestPersistenceEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 
 		persistence, err := ssh.NewSessionPersistence(tempDir)
 		if err != nil {
@@ -329,11 +329,11 @@ func TestPersistenceEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 
 		// Write invalid JSON
 		filePath := filepath.Join(tempDir, "sessions.json")
-		os.WriteFile(filePath, []byte("invalid json"), 0600)
+		_ = os.WriteFile(filePath, []byte("invalid json"), 0600)
 
 		persistence, err := ssh.NewSessionPersistence(tempDir)
 		if err != nil {

@@ -269,7 +269,7 @@ func (o *OAuth2Authenticator) discoverEndpoints(discoveryURL string) (string, st
 	if err != nil {
 		return "", "", fmt.Errorf("discovery request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", "", fmt.Errorf("discovery failed with status %d", resp.StatusCode)
@@ -327,7 +327,7 @@ func (o *OAuth2Authenticator) stopCallbackServer() {
 	if o.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		o.server.Shutdown(ctx)
+		_ = o.server.Shutdown(ctx)
 		o.server = nil
 	}
 }
@@ -364,7 +364,7 @@ func (o *OAuth2Authenticator) handleCallback(w http.ResponseWriter, r *http.Requ
 	// Success response
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`
+	_, _ = w.Write([]byte(`
 		<html>
 		<body>
 			<h2>Authentication Successful</h2>
@@ -444,7 +444,7 @@ func (o *OAuth2Authenticator) exchangeCodeForToken(tokenEndpoint, code, codeVeri
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -545,7 +545,7 @@ func (o *OAuth2Authenticator) RefreshToken(ctx context.Context, token *Token) (*
 	if err != nil {
 		return nil, fmt.Errorf("refresh request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -656,7 +656,7 @@ func (o *OAuth2Authenticator) RevokeToken(ctx context.Context, token *Token) err
 	if err != nil {
 		return fmt.Errorf("revocation request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("token revocation failed with status %d", resp.StatusCode)
@@ -680,7 +680,7 @@ func (o *OAuth2Authenticator) getDiscoveryDocument(discoveryURL string) (*oidcDi
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("discovery request failed with status %d", resp.StatusCode)

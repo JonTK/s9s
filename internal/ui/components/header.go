@@ -145,7 +145,7 @@ func (h *Header) updateDisplay() {
 		content.WriteString(fmt.Sprintf(" | [green]Updated: %s ago[white]", formatAge(age)))
 	}
 
-	h.TextView.SetText(content.String())
+	h.SetText(content.String())
 }
 
 // formatMetrics formats cluster metrics for display

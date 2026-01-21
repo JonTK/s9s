@@ -259,7 +259,7 @@ func (sp *SubscriptionPersistence) RestoreFromBackup(backupFile string) error {
 
 	// Clear existing subscriptions first
 	for id := range sp.subscriptionMgr.ListSubscriptions() {
-		sp.subscriptionMgr.Unsubscribe(plugin.SubscriptionID(id))
+		_ = sp.subscriptionMgr.Unsubscribe(plugin.SubscriptionID(id))
 	}
 
 	// Restore subscriptions from backup

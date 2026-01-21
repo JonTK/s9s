@@ -175,7 +175,7 @@ func (a *APIAuthenticator) Authenticate(ctx context.Context, config AuthConfig) 
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -360,7 +360,7 @@ func (a *APIAuthenticator) RefreshToken(ctx context.Context, token *Token) (*Tok
 	if err != nil {
 		return nil, fmt.Errorf("refresh request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -425,7 +425,7 @@ func (a *APIAuthenticator) validateTokenWithAPI(ctx context.Context, token *Toke
 	if err != nil {
 		return fmt.Errorf("token validation request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("token validation failed with status %d", resp.StatusCode)
@@ -470,7 +470,7 @@ func (a *APIAuthenticator) RevokeToken(ctx context.Context, token *Token) error 
 	if err != nil {
 		return fmt.Errorf("token revocation request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("token revocation failed with status %d", resp.StatusCode)

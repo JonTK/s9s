@@ -64,7 +64,7 @@ func TestNew(t *testing.T) {
 				assert.NotNil(t, app.cmdLine)
 
 				// Clean up
-				app.Stop()
+				_ = app.Stop()
 			}
 		})
 	}
@@ -88,7 +88,7 @@ func TestBasicFunctionality(t *testing.T) {
 	ctx := context.Background()
 	app, err := New(ctx, cfg)
 	require.NoError(t, err)
-	defer app.Stop()
+	defer func() { _ = app.Stop() }()
 
 	// Test basic state
 	assert.False(t, app.isRunning)

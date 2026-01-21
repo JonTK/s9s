@@ -123,7 +123,7 @@ func NewQoSView(client dao.SlurmClient) *QoSView {
 
 // Init initializes the QoS view
 func (v *QoSView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -224,7 +224,7 @@ func (v *QoSView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case '/':
 			v.app.SetFocus(v.filterInput)
@@ -250,7 +250,7 @@ func (v *QoSView) OnFocus() error {
 	}
 	// Refresh when gaining focus if we haven't loaded data yet
 	if len(v.qosList) == 0 && !v.IsRefreshing() {
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	}
 	return nil
 }
@@ -340,7 +340,10 @@ func formatQoSTimeLimit(minutes int) string {
 	return fmt.Sprintf("%dm", mins)
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*QoSView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *QoSView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -365,6 +368,7 @@ func (v *QoSView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *QoSView) scheduleRefresh() {
@@ -632,7 +636,7 @@ func (v *QoSView) focusOnQoS(qosName string) {
 	for i, qos := range v.qosList {
 		if qos.Name == qosName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Focus status removed since individual view status bars are no longer used
 			return
 		}

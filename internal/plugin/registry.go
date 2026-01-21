@@ -332,8 +332,8 @@ func (r *Registry) validatePluginInfo(info Info) error {
 
 // comparePriority compares plugin priorities
 func (r *Registry) comparePriority(a, b string) bool {
-	pluginA, _ := r.plugins[a]
-	pluginB, _ := r.plugins[b]
+	pluginA := r.plugins[a]
+	pluginB := r.plugins[b]
 
 	priorityA := 0
 	priorityB := 0
@@ -353,4 +353,3 @@ func (r *Registry) comparePriority(a, b string) bool {
 func getCurrentTimestamp() int64 {
 	return time.Now().Unix()
 }
-

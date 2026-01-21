@@ -13,18 +13,18 @@ import (
 // AlertsWidget displays active alerts
 type AlertsWidget struct {
 	*tview.TextView
-	alerts      []models.Alert
-	maxAlerts   int
-	showTime    bool
+	alerts    []models.Alert
+	maxAlerts int
+	showTime  bool
 }
 
 // NewAlertsWidget creates a new alerts widget
 func NewAlertsWidget() *AlertsWidget {
 	w := &AlertsWidget{
-		TextView:    tview.NewTextView(),
-		alerts:      []models.Alert{},
-		maxAlerts:   10,
-		showTime:    true,
+		TextView:  tview.NewTextView(),
+		alerts:    []models.Alert{},
+		maxAlerts: 10,
+		showTime:  true,
 	}
 
 	w.SetDynamicColors(true).
@@ -225,10 +225,10 @@ func NewAlertHistoryWidget() *AlertHistoryWidget {
 		selectedRow: -1,
 	}
 
-	w.Table.SetBorder(true)
-	w.Table.SetTitle(" Alert History ")
-	w.Table.SetSelectable(true, false)
-	w.Table.SetFixed(1, 0)
+	w.SetBorder(true)
+	w.SetTitle(" Alert History ")
+	w.SetSelectable(true, false)
+	w.SetFixed(1, 0)
 
 	// Set up headers
 	headers := []string{"Time", "Severity", "Alert", "Message", "Status"}

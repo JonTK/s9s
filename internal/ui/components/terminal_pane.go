@@ -19,25 +19,26 @@ type TerminalPane struct {
 	username       string
 	sessionID      string
 	sessionManager *ssh.SessionManager
-	
+
 	// UI components
-	container      *tview.Flex
-	terminal       *tview.TextView
-	statusLine     *tview.TextView
-	
+	container  *tview.Flex
+	terminal   *tview.TextView
+	statusLine *tview.TextView
+
 	// State
 	connected      bool
 	lastActivity   time.Time
 	commandHistory []string
-	currentInput   string
-	
+	// TODO(lint): Review unused code - field currentInput is unused
+	// currentInput   string
+
 	// Callbacks
-	onClose        func(string) error
-	onTitleChange  func(string, string)
-	
+	onClose       func(string) error
+	onTitleChange func(string, string)
+
 	// Input handling
-	inputBuffer    strings.Builder
-	inputMode      bool
+	inputBuffer strings.Builder
+	inputMode   bool
 }
 
 // NewTerminalPane creates a new terminal pane
@@ -50,9 +51,9 @@ func NewTerminalPane(id, hostname, username string, sessionManager *ssh.SessionM
 		lastActivity:   time.Now(),
 		commandHistory: make([]string, 0, 100),
 	}
-	
+
 	tp.initializeUI()
-	
+
 	return tp
 }
 
@@ -66,21 +67,21 @@ func (tp *TerminalPane) initializeUI() {
 	tp.terminal.SetBorder(true)
 	tp.terminal.SetTitle(fmt.Sprintf(" %s@%s ", tp.username, tp.hostname))
 	tp.terminal.SetTitleAlign(tview.AlignLeft)
-	
+
 	// Create status line
 	tp.statusLine = tview.NewTextView()
 	tp.statusLine.SetDynamicColors(true)
 	tp.statusLine.SetText(tp.getStatusText())
-	
+
 	// Create container
 	tp.container = tview.NewFlex()
 	tp.container.SetDirection(tview.FlexRow)
 	tp.container.AddItem(tp.terminal, 0, 1, true)
 	tp.container.AddItem(tp.statusLine, 1, 0, false)
-	
+
 	// Set up input handling
 	tp.container.SetInputCapture(tp.handleInput)
-	
+
 	// Initialize with connection message
 	tp.addOutput("[yellow]Initializing terminal session...[white]\n")
 	tp.addOutput(fmt.Sprintf("[cyan]Connecting to %s@%s[white]\n", tp.username, tp.hostname))
@@ -90,9 +91,9 @@ func (tp *TerminalPane) initializeUI() {
 func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
-	
+
 	tp.lastActivity = time.Now()
-	
+
 	switch event.Key() {
 	case tcell.KeyEnter:
 		if tp.inputMode {
@@ -101,7 +102,7 @@ func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 			tp.executeCommand(command)
 			return nil
 		}
-		
+
 	case tcell.KeyBackspace, tcell.KeyBackspace2:
 		if tp.inputMode && tp.inputBuffer.Len() > 0 {
 			current := tp.inputBuffer.String()
@@ -112,7 +113,7 @@ func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 			}
 			return nil
 		}
-		
+
 	case tcell.KeyCtrlC:
 		if tp.inputMode {
 			tp.inputBuffer.Reset()
@@ -120,21 +121,21 @@ func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 			tp.showPrompt()
 			return nil
 		}
-		
+
 	case tcell.KeyCtrlD:
 		if tp.inputMode && tp.inputBuffer.Len() == 0 {
 			tp.addOutput("[yellow]logout[white]\n")
 			tp.disconnect()
 			return nil
 		}
-		
+
 	case tcell.KeyRune:
 		if tp.inputMode {
 			tp.inputBuffer.WriteRune(event.Rune())
 			tp.updatePrompt()
 			return nil
 		}
-		
+
 		// Handle special characters when not in input mode
 		switch event.Rune() {
 		case 'i', 'I':
@@ -154,7 +155,7 @@ func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 			return nil
 		}
 	}
-	
+
 	return event
 }
 
@@ -164,40 +165,40 @@ func (tp *TerminalPane) executeCommand(command string) {
 		tp.showPrompt()
 		return
 	}
-	
+
 	// Add to history
 	tp.commandHistory = append(tp.commandHistory, command)
 	if len(tp.commandHistory) > 100 {
 		tp.commandHistory = tp.commandHistory[1:]
 	}
-	
+
 	// Display command
 	tp.addOutput(fmt.Sprintf("[green]%s@%s[white]:[blue]~[white]$ %s\n", tp.username, tp.hostname, command))
-	
+
 	// Handle built-in commands
 	switch {
 	case command == "exit" || command == "logout":
 		tp.addOutput("[yellow]logout[white]\n")
 		tp.disconnect()
 		return
-		
+
 	case command == "clear":
 		tp.clearTerminal()
 		tp.showPrompt()
 		return
-		
+
 	case command == "help":
 		tp.showHelp()
 		tp.showPrompt()
 		return
-		
+
 	case strings.HasPrefix(command, "echo "):
 		message := strings.TrimPrefix(command, "echo ")
 		tp.addOutput(fmt.Sprintf("%s\n", message))
 		tp.showPrompt()
 		return
 	}
-	
+
 	// Execute remote command if connected
 	if tp.connected && tp.sessionManager != nil && tp.sessionID != "" {
 		tp.executeRemoteCommand(command)
@@ -210,15 +211,14 @@ func (tp *TerminalPane) executeCommand(command string) {
 
 // executeRemoteCommand executes a command on the remote host
 func (tp *TerminalPane) executeRemoteCommand(command string) {
-	
 	// Show executing status
 	tp.addOutput("[yellow]Executing...[white]\n")
 	tp.updateStatusLine()
-	
+
 	go func() {
 		// Simulate command execution (in real implementation, this would use SSH)
 		time.Sleep(100 * time.Millisecond) // Simulate network delay
-		
+
 		// Mock response based on command
 		var output string
 		switch {
@@ -241,7 +241,7 @@ func (tp *TerminalPane) executeRemoteCommand(command string) {
 		default:
 			output = fmt.Sprintf("bash: %s: command not found", command)
 		}
-		
+
 		// Update UI on main thread
 		go tp.addOutput(fmt.Sprintf("%s\n", output))
 		go tp.showPrompt()
@@ -255,14 +255,14 @@ func (tp *TerminalPane) connect() {
 		tp.addOutput("[yellow]Already connected[white]\n")
 		return
 	}
-	
+
 	tp.addOutput(fmt.Sprintf("[yellow]Connecting to %s@%s...[white]\n", tp.username, tp.hostname))
 	tp.updateStatusLine()
-	
+
 	go func() {
 		// Simulate connection process
 		time.Sleep(500 * time.Millisecond)
-		
+
 		if tp.sessionManager != nil {
 			// Try to create/connect session
 			session, err := tp.sessionManager.CreateSession(tp.hostname, tp.username)
@@ -271,22 +271,22 @@ func (tp *TerminalPane) connect() {
 				tp.updateStatusLine()
 				return
 			}
-			
+
 			err = tp.sessionManager.ConnectSession(session.ID)
 			if err != nil {
 				tp.addOutput(fmt.Sprintf("[red]Connection failed: %v[white]\n", err))
 				tp.updateStatusLine()
 				return
 			}
-			
+
 			tp.sessionID = session.ID
 		}
-		
+
 		// Connection successful
 		tp.mu.Lock()
 		tp.connected = true
 		tp.mu.Unlock()
-		
+
 		tp.addOutput(fmt.Sprintf("[green]Connected to %s@%s[white]\n", tp.username, tp.hostname))
 		tp.addOutput("Welcome to the SSH terminal!\n")
 		tp.addOutput("Type 'help' for available commands or 'i' to enter interactive mode.\n")
@@ -302,19 +302,19 @@ func (tp *TerminalPane) disconnect() {
 		tp.addOutput("[yellow]Not connected[white]\n")
 		return
 	}
-	
+
 	tp.addOutput("[yellow]Disconnecting...[white]\n")
-	
+
 	if tp.sessionManager != nil && tp.sessionID != "" {
-		go tp.sessionManager.CloseSession(tp.sessionID)
+		go func() { _ = tp.sessionManager.CloseSession(tp.sessionID) }()
 	}
-	
+
 	tp.mu.Lock()
 	tp.connected = false
 	tp.sessionID = ""
 	tp.inputMode = false
 	tp.mu.Unlock()
-	
+
 	tp.addOutput("[red]Connection closed[white]\n")
 	tp.updateStatusLine()
 	tp.updateTitle()
@@ -333,7 +333,7 @@ func (tp *TerminalPane) enterInputMode() {
 	tp.mu.Lock()
 	tp.inputMode = true
 	tp.mu.Unlock()
-	
+
 	tp.addOutput("[cyan]Entering interactive mode. Press Ctrl+C to exit.[white]\n")
 	tp.showPrompt()
 	tp.updateStatusLine()
@@ -344,7 +344,7 @@ func (tp *TerminalPane) showPrompt() {
 	if !tp.connected {
 		return
 	}
-	
+
 	prompt := fmt.Sprintf("[green]%s@%s[white]:[blue]~[white]$ ", tp.username, tp.hostname)
 	tp.addOutput(prompt)
 }
@@ -355,7 +355,7 @@ func (tp *TerminalPane) updatePrompt() {
 	// For simplicity, we'll just show the input
 	current := tp.terminal.GetText(false)
 	lines := strings.Split(current, "\n")
-	
+
 	if len(lines) > 0 {
 		lastLine := lines[len(lines)-1]
 		if strings.Contains(lastLine, "$ ") {
@@ -374,7 +374,7 @@ func (tp *TerminalPane) updatePrompt() {
 func (tp *TerminalPane) addOutput(text string) {
 	current := tp.terminal.GetText(false)
 	tp.terminal.SetText(current + text)
-	
+
 	// Auto-scroll to bottom
 	tp.terminal.ScrollToEnd()
 }
@@ -423,7 +423,7 @@ func (tp *TerminalPane) updateStatusLine() {
 // getStatusText returns the current status text
 func (tp *TerminalPane) getStatusText() string {
 	status := fmt.Sprintf("[white]%s@%s", tp.username, tp.hostname)
-	
+
 	if tp.connected {
 		status += " [green]●[white] Connected"
 		if tp.inputMode {
@@ -432,13 +432,13 @@ func (tp *TerminalPane) getStatusText() string {
 	} else {
 		status += " [red]●[white] Disconnected"
 	}
-	
+
 	status += fmt.Sprintf(" | Last: %s", tp.lastActivity.Format("15:04:05"))
-	
+
 	if len(tp.commandHistory) > 0 {
 		status += fmt.Sprintf(" | History: %d", len(tp.commandHistory))
 	}
-	
+
 	return status
 }
 
@@ -450,9 +450,9 @@ func (tp *TerminalPane) updateTitle() {
 	} else {
 		title = fmt.Sprintf(" ○ %s@%s ", tp.username, tp.hostname)
 	}
-	
+
 	tp.terminal.SetTitle(title)
-	
+
 	if tp.onTitleChange != nil {
 		tp.onTitleChange(tp.id, title)
 	}
@@ -507,11 +507,11 @@ func (tp *TerminalPane) Close() error {
 	if tp.connected {
 		tp.disconnect()
 	}
-	
+
 	if tp.onClose != nil {
 		return tp.onClose(tp.id)
 	}
-	
+
 	return nil
 }
 
@@ -519,11 +519,11 @@ func (tp *TerminalPane) Close() error {
 func (tp *TerminalPane) SendCommand(command string) error {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
-	
+
 	if !tp.connected {
 		return fmt.Errorf("terminal not connected")
 	}
-	
+
 	tp.executeCommand(command)
 	return nil
 }
@@ -532,7 +532,7 @@ func (tp *TerminalPane) SendCommand(command string) error {
 func (tp *TerminalPane) GetCommandHistory() []string {
 	tp.mu.RLock()
 	defer tp.mu.RUnlock()
-	
+
 	history := make([]string, len(tp.commandHistory))
 	copy(history, tp.commandHistory)
 	return history

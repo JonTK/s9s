@@ -122,7 +122,7 @@ func NewAccountsView(client dao.SlurmClient) *AccountsView {
 
 // Init initializes the accounts view
 func (v *AccountsView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -220,7 +220,7 @@ func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case '/':
 			v.app.SetFocus(v.filterInput)
@@ -249,7 +249,7 @@ func (v *AccountsView) OnFocus() error {
 	}
 	// Refresh when gaining focus if we haven't loaded data yet
 	if len(v.accounts) == 0 && !v.IsRefreshing() {
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	}
 	return nil
 }
@@ -315,7 +315,10 @@ func formatLimit(limit int) string {
 	return fmt.Sprintf("%d", limit)
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*AccountsView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *AccountsView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -350,6 +353,7 @@ func (v *AccountsView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *AccountsView) scheduleRefresh() {
@@ -474,9 +478,9 @@ func (v *AccountsView) buildAccountSubtree(tree *strings.Builder, account *dao.A
 		connector = "└── "
 	}
 
-	tree.WriteString(fmt.Sprintf("%s%s[green]%s[white]", prefix, connector, account.Name))
+	_, _ = fmt.Fprintf(tree, "%s%s[green]%s[white]", prefix, connector, account.Name)
 	if account.Description != "" {
-		tree.WriteString(fmt.Sprintf(" (%s)", account.Description))
+		_, _ = fmt.Fprintf(tree, " (%s)", account.Description)
 	}
 	tree.WriteString("\n")
 
@@ -745,7 +749,7 @@ func (v *AccountsView) focusOnAccount(accountName string) {
 	for i, account := range v.accounts {
 		if account.Name == accountName {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Focus status removed since individual view status bars are no longer used
 			return
 		}

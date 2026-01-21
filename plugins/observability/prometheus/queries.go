@@ -194,7 +194,10 @@ func (qb *QueryBuilder) GetClusterQueries() (map[string]string, error) {
 	return queries, nil
 }
 
-// escapeRegex escapes special regex characters in a string
+/*
+TODO(lint): Review unused code - func escapeRegex is unused
+
+escapeRegex escapes special regex characters in a string
 func escapeRegex(s string) string {
 	// Escape common regex special characters
 	replacer := strings.NewReplacer(
@@ -215,6 +218,7 @@ func escapeRegex(s string) string {
 	)
 	return replacer.Replace(s)
 }
+*/
 
 // Helper for testing template output
 func TestTemplateOutput() {

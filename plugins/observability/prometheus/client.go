@@ -95,7 +95,7 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("connection test failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -117,7 +117,7 @@ func (c *Client) Query(ctx context.Context, query string, time time.Time) (*Quer
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -148,7 +148,7 @@ func (c *Client) QueryRange(ctx context.Context, query string, start, end time.T
 	if err != nil {
 		return nil, fmt.Errorf("range query failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -180,7 +180,7 @@ func (c *Client) Series(ctx context.Context, matches []string, start, end time.T
 	if err != nil {
 		return nil, fmt.Errorf("series query failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -210,7 +210,7 @@ func (c *Client) Labels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("labels query failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

@@ -13,13 +13,13 @@ import (
 type HeatmapWidget struct {
 	*tview.Box
 
-	title      string
-	data       map[string]map[string]float64 // [row][col]value
-	rows       []string                      // Row labels
-	cols       []string                      // Column labels
-	min        float64
-	max        float64
-	autoScale  bool
+	title     string
+	data      map[string]map[string]float64 // [row][col]value
+	rows      []string                      // Row labels
+	cols      []string                      // Column labels
+	min       float64
+	max       float64
+	autoScale bool
 
 	// Display options
 	showValues bool
@@ -36,19 +36,19 @@ type HeatmapWidget struct {
 // NewHeatmapWidget creates a new heatmap widget
 func NewHeatmapWidget(title string) *HeatmapWidget {
 	h := &HeatmapWidget{
-		Box:        tview.NewBox(),
-		title:      title,
-		data:       make(map[string]map[string]float64),
-		rows:       []string{},
-		cols:       []string{},
-		autoScale:  true,
-		showValues: true,
-		cellWidth:  8,
-		cellHeight: 1,
-		colorFunc:  defaultHeatmapColorFunc,
+		Box:         tview.NewBox(),
+		title:       title,
+		data:        make(map[string]map[string]float64),
+		rows:        []string{},
+		cols:        []string{},
+		autoScale:   true,
+		showValues:  true,
+		cellWidth:   8,
+		cellHeight:  1,
+		colorFunc:   defaultHeatmapColorFunc,
 		selectedRow: -1,
 		selectedCol: -1,
-		selectable: true,
+		selectable:  true,
 	}
 
 	h.SetBorder(true).SetTitle(title)
@@ -139,7 +139,7 @@ func (h *HeatmapWidget) updateScale() {
 
 // Draw draws the heatmap
 func (h *HeatmapWidget) Draw(screen tcell.Screen) {
-	h.Box.DrawForSubclass(screen, h)
+	h.DrawForSubclass(screen, h)
 
 	x, y, width, height := h.GetInnerRect()
 	if width <= 0 || height <= 0 || len(h.rows) == 0 || len(h.cols) == 0 {

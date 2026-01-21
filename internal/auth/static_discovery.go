@@ -191,7 +191,7 @@ func (s *StaticEndpointDiscoverer) HealthCheck(ctx context.Context, endpoint End
 	if err != nil {
 		return fmt.Errorf("health check request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check response status
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {

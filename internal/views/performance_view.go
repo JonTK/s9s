@@ -17,19 +17,19 @@ import (
 // PerformanceView provides a comprehensive performance monitoring interface
 type PerformanceView struct {
 	BaseView
-	
+
 	// Dependencies
 	client    dao.SlurmClient
 	profiler  *performance.Profiler
 	optimizer *performance.Optimizer
-	
+
 	// UI Components
-	app         *tview.Application
-	pages       *tview.Pages
-	container   *tview.Flex
-	dashboard   *widgets.PerformanceDashboard
-	controlBar  *tview.TextView
-	
+	app        *tview.Application
+	pages      *tview.Pages
+	container  *tview.Flex
+	dashboard  *widgets.PerformanceDashboard
+	controlBar *tview.TextView
+
 	// State
 	monitoringEnabled bool
 	autoRefresh       bool
@@ -39,47 +39,47 @@ type PerformanceView struct {
 // NewPerformanceView creates a new performance monitoring view
 func NewPerformanceView(client dao.SlurmClient) *PerformanceView {
 	pv := &PerformanceView{
-		client:          client,
+		client:            client,
 		monitoringEnabled: true,
-		autoRefresh:     true,
-		refreshInterval: 2 * time.Second,
+		autoRefresh:       true,
+		refreshInterval:   2 * time.Second,
 	}
-	
+
 	pv.BaseView = BaseView{
 		name:  "performance",
 		title: "Performance Monitor",
 	}
-	
+
 	// Initialize performance components
 	pv.profiler = performance.NewProfiler()
 	pv.optimizer = performance.NewOptimizer(pv.profiler)
-	
+
 	return pv
 }
 
 // Init initializes the performance view
 func (pv *PerformanceView) Init(ctx context.Context) error {
 	pv.ctx = ctx
-	
+
 	// Initialize dashboard
 	pv.dashboard = widgets.NewPerformanceDashboard(pv.profiler, pv.optimizer)
 	pv.dashboard.SetUpdateInterval(pv.refreshInterval)
-	
+
 	// Create control bar
 	pv.controlBar = tview.NewTextView()
 	pv.controlBar.SetDynamicColors(true)
 	pv.controlBar.SetTextAlign(tview.AlignCenter)
 	pv.updateControlBar()
-	
+
 	// Create main container
 	pv.container = tview.NewFlex()
 	pv.container.SetDirection(tview.FlexRow)
 	pv.container.AddItem(pv.dashboard.GetContainer(), 0, 1, true)
 	pv.container.AddItem(pv.controlBar, 2, 0, false)
-	
+
 	// Set up input handling
 	pv.container.SetInputCapture(pv.handleInput)
-	
+
 	// Don't start monitoring automatically during initialization
 	// Monitoring will be started when the view is first displayed
 	// if pv.monitoringEnabled {
@@ -87,7 +87,7 @@ func (pv *PerformanceView) Init(ctx context.Context) error {
 	//		log.Printf("Warning: Failed to start performance monitoring: %v", err)
 	//	}
 	// }
-	
+
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (pv *PerformanceView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 		pv.exportMetrics()
 		return nil
 	}
-	
+
 	switch event.Rune() {
 	case 's', 'S':
 		pv.toggleMonitoring()
@@ -143,7 +143,7 @@ func (pv *PerformanceView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 		pv.decreaseRefreshRate()
 		return nil
 	}
-	
+
 	// Pass through to dashboard
 	return event
 }
@@ -151,7 +151,7 @@ func (pv *PerformanceView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 // toggleMonitoring toggles performance monitoring on/off
 func (pv *PerformanceView) toggleMonitoring() {
 	pv.monitoringEnabled = !pv.monitoringEnabled
-	
+
 	if pv.monitoringEnabled {
 		if err := pv.dashboard.Start(); err != nil {
 			log.Printf("Error starting monitoring: %v", err)
@@ -159,7 +159,7 @@ func (pv *PerformanceView) toggleMonitoring() {
 	} else {
 		pv.dashboard.Stop()
 	}
-	
+
 	pv.updateControlBar()
 }
 
@@ -193,27 +193,27 @@ func (pv *PerformanceView) showProfilerReport() {
 		pv.showModal("Error", "Profiler not available")
 		return
 	}
-	
+
 	// Get operation stats and memory info
 	stats := pv.profiler.GetOperationStats()
 	memStats := pv.profiler.CaptureMemoryStats()
-	
+
 	// Create detailed report content
-	content := fmt.Sprintf("Performance Profiler Report\n\n")
+	content := "Performance Profiler Report\n\n"
 	content += fmt.Sprintf("Report Generated: %s\n", time.Now().Format("2006-01-02 15:04:05"))
 	content += fmt.Sprintf("Total Operations: %d\n", len(stats))
-	content += fmt.Sprintf("Memory Usage: %d MB / %d MB\n", 
-		memStats.HeapInuse/1024/1024, 
+	content += fmt.Sprintf("Memory Usage: %d MB / %d MB\n",
+		memStats.HeapInuse/1024/1024,
 		memStats.Sys/1024/1024)
-	
+
 	if len(stats) > 0 {
 		content += "\nOperation Statistics:\n"
 		for name, stat := range stats {
-			content += fmt.Sprintf("• %s: %d ops, avg %v, total %v\n", 
+			content += fmt.Sprintf("• %s: %d ops, avg %v, total %v\n",
 				name, stat.Count, stat.AverageTime, stat.TotalTime)
 		}
 	}
-	
+
 	pv.showModal("Profiler Report", content)
 }
 
@@ -223,22 +223,22 @@ func (pv *PerformanceView) showOptimizerSettings() {
 		pv.showModal("Error", "Optimizer not available")
 		return
 	}
-	
+
 	content := "Performance Optimizer Settings\n\n"
 	content += "Available Optimizations:\n"
 	content += "• Memory optimization (Ctrl+M)\n"
 	content += "• Performance tuning (Ctrl+P)\n"
 	content += "• Garbage collection tuning\n"
 	content += "• Connection pooling\n\n"
-	content += "Auto-optimization: " 
+	content += "Auto-optimization: "
 	if pv.dashboard.IsRunning() {
 		content += "Enabled\n"
 	} else {
 		content += "Disabled\n"
 	}
-	
+
 	content += "\nPress O to toggle auto-optimization"
-	
+
 	pv.showModal("Optimizer Settings", content)
 }
 
@@ -248,22 +248,22 @@ func (pv *PerformanceView) exportMetrics() {
 		pv.showModal("Error", "No profiler data to export")
 		return
 	}
-	
+
 	// Create export dialog
 	exportDialog := widgets.NewPerformanceExportDialog(pv.profiler, pv.optimizer)
-	
+
 	// Set export handler
 	exportDialog.SetExportHandler(func(format export.ExportFormat, path string) {
 		// Close dialog
 		if pv.pages != nil {
 			pv.pages.RemovePage("export-dialog")
 		}
-		
+
 		// Show success message
 		pv.app.QueueUpdateDraw(func() {
 			pv.controlBar.SetText("[green]Performance report exported successfully[white]")
 		})
-		
+
 		// Restore normal control bar after a few seconds
 		go func() {
 			time.Sleep(3 * time.Second)
@@ -272,14 +272,14 @@ func (pv *PerformanceView) exportMetrics() {
 			})
 		}()
 	})
-	
+
 	// Set cancel handler
 	exportDialog.SetCancelHandler(func() {
 		if pv.pages != nil {
 			pv.pages.RemovePage("export-dialog")
 		}
 	})
-	
+
 	// Show dialog
 	if pv.pages != nil {
 		pv.pages.AddPage("export-dialog", exportDialog, true, true)
@@ -294,51 +294,51 @@ func (pv *PerformanceView) showHelp() {
 	content += "R, Ctrl+R    - Toggle auto-refresh\n"
 	content += "F5           - Manual refresh\n"
 	content += "+/-          - Increase/decrease refresh rate\n\n"
-	
+
 	content += "PROFILER & OPTIMIZER:\n"
 	content += "P, Ctrl+P    - Show profiler report\n"
 	content += "O, Ctrl+O    - Show optimizer settings\n"
 	content += "E, Ctrl+E    - Export metrics\n\n"
-	
+
 	content += "DASHBOARD CONTROLS:\n"
 	content += "A            - Toggle alerts\n"
 	content += "C            - Clear history\n"
 	content += "O            - Toggle auto-optimize\n\n"
-	
+
 	content += "NAVIGATION:\n"
 	content += "F1, H        - Show this help\n"
 	content += "Esc, Q       - Return to main menu\n\n"
-	
+
 	content += "The dashboard shows real-time CPU, memory, network,\n"
 	content += "and operation metrics with color-coded alerts."
-	
+
 	pv.showModal("Help", content)
 }
 
 // updateControlBar updates the control bar with current status
 func (pv *PerformanceView) updateControlBar() {
 	status := ""
-	
+
 	// Monitoring status
 	if pv.monitoringEnabled {
 		status += "[green]●[white] Monitoring: ON  "
 	} else {
 		status += "[red]●[white] Monitoring: OFF  "
 	}
-	
+
 	// Auto-refresh status
 	if pv.autoRefresh {
 		status += "[green]●[white] Auto-refresh: ON  "
 	} else {
 		status += "[gray]●[white] Auto-refresh: OFF  "
 	}
-	
+
 	// Refresh interval
 	status += fmt.Sprintf("Interval: %v  ", pv.refreshInterval)
-	
+
 	// Controls hint
 	status += "\n[gray]S:Start/Stop R:Refresh +:Faster -:Slower P:Profiler O:Optimizer E:Export H:Help[white]"
-	
+
 	pv.controlBar.SetText(status)
 }
 
@@ -353,7 +353,7 @@ func (pv *PerformanceView) showModal(title, content string) {
 			pv.pages.RemovePage("modal")
 		}
 	})
-	
+
 	if pv.pages != nil {
 		pv.pages.AddPage("modal", modal, true, true)
 	}
@@ -389,20 +389,20 @@ func (pv *PerformanceView) OnLoseFocus() error {
 // Update refreshes the view data
 func (pv *PerformanceView) Update() error {
 	if pv.autoRefresh {
-		pv.dashboard.Start()
+		_ = pv.dashboard.Start()
 	}
 	return nil
 }
 
 // Refresh manually refreshes the view
 func (pv *PerformanceView) Refresh() error {
-	pv.dashboard.Start()
+	_ = pv.dashboard.Start()
 	return nil
 }
 
 // refresh is the internal refresh method
 func (pv *PerformanceView) refresh() {
-	pv.Refresh()
+	_ = pv.Refresh()
 }
 
 // OnKey handles key events

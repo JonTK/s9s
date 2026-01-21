@@ -174,7 +174,7 @@ func (ed *EnvironmentDiscovery) parseConfigFile(path string) *DiscoveredCluster 
 	if err != nil {
 		return nil
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	cluster := &DiscoveredCluster{
 		ConfigPath:       path,
@@ -335,7 +335,7 @@ func (nd *NetworkDiscovery) testEndpoint(ctx context.Context, endpoint string) b
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check if it looks like a SLURM REST API response
 	return resp.StatusCode == 200 || resp.StatusCode == 401 || resp.StatusCode == 403

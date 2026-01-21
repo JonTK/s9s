@@ -70,7 +70,7 @@ func TestNewCollector(t *testing.T) {
 	client := &MockPrometheusClient{}
 	
 	collector := NewCollector(ctx, client)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	if collector == nil {
 		t.Fatal("Expected collector instance, got nil")
@@ -143,7 +143,7 @@ func TestCollectorDoubleStartStop(t *testing.T) {
 	client := &MockPrometheusClient{}
 	
 	collector := NewCollector(ctx, client)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	// Start twice - should not fail
 	err1 := collector.Start()
@@ -175,7 +175,7 @@ func TestInstrumentedClient(t *testing.T) {
 	mockClient := &MockPrometheusClient{latency: 10 * time.Millisecond}
 	
 	collector := NewCollector(ctx, mockClient)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	instrumentedClient := collector.WrapClient(mockClient)
 	
@@ -241,7 +241,7 @@ func TestInstrumentedClientFailures(t *testing.T) {
 	mockClient := &MockPrometheusClient{shouldFail: true}
 	
 	collector := NewCollector(ctx, mockClient)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	instrumentedClient := collector.WrapClient(mockClient)
 	
@@ -277,7 +277,7 @@ func TestMetricsCollection(t *testing.T) {
 	mockClient := &MockPrometheusClient{latency: 5 * time.Millisecond}
 	
 	collector := NewCollector(ctx, mockClient)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	err := collector.Start()
 	if err != nil {
@@ -344,7 +344,7 @@ func TestPrometheusMetricsCollection(t *testing.T) {
 	mockClient := &MockPrometheusClient{}
 	
 	collector := NewCollector(ctx, mockClient)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	// Manually trigger Prometheus metrics collection
 	collector.updatePrometheusMetrics()
@@ -368,7 +368,7 @@ func TestPrometheusMetricsCollectionFailure(t *testing.T) {
 	mockClient := &MockPrometheusClient{shouldFail: true}
 	
 	collector := NewCollector(ctx, mockClient)
-	defer collector.Stop()
+	defer func() { _ = collector.Stop() }()
 	
 	// Manually trigger Prometheus metrics collection
 	collector.updatePrometheusMetrics()

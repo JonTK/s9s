@@ -92,7 +92,7 @@ func (c *Client) QueryRangeStreamWithConfig(ctx context.Context, query string, s
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("streaming range query failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -149,7 +149,7 @@ func (c *Client) doStreamingRequest(ctx context.Context, method, path string, bo
 // processStreamingResponse processes the HTTP response body as a stream
 func (c *Client) processStreamingResponse(ctx context.Context, body io.ReadCloser, dataStream chan<- StreamingDataChunk, config StreamingConfig) {
 	defer close(dataStream)
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 
 	// Create a buffered reader for efficient reading
 	reader := bufio.NewReaderSize(body, config.BufferSize)

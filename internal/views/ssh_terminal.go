@@ -19,15 +19,15 @@ type SSHTerminalView struct {
 	sessionManager *ssh.SessionManager
 
 	// UI components
-	modal          *tview.Flex
-	sessionList    *tview.List
-	nodeInfoView   *tview.TextView
-	statusBar      *tview.TextView
+	modal        *tview.Flex
+	sessionList  *tview.List
+	nodeInfoView *tview.TextView
+	statusBar    *tview.TextView
 
 	// State
-	selectedNode   string
-	activeSession  *ssh.SSHSession
-	nodes          []string // Available nodes
+	selectedNode  string
+	activeSession *ssh.SSHSession
+	nodes         []string // Available nodes
 }
 
 // NewSSHTerminalView creates a new SSH terminal view
@@ -345,10 +345,10 @@ func (v *SSHTerminalView) showSystemInfo() {
 		infoText.WriteString(fmt.Sprintf("[yellow]System Information for %s[white]\n\n", v.activeSession.Hostname))
 
 		sections := map[string][]string{
-			"System": {"hostname", "kernel", "distribution", "uptime"},
-			"Hardware": {"cpu_info", "memory"},
-			"Storage": {"disk_usage"},
-			"Network": {"network"},
+			"System":      {"hostname", "kernel", "distribution", "uptime"},
+			"Hardware":    {"cpu_info", "memory"},
+			"Storage":     {"disk_usage"},
+			"Network":     {"network"},
 			"Performance": {"load_avg", "processes"},
 		}
 
@@ -426,7 +426,7 @@ func (v *SSHTerminalView) loadNodeInfo(hostname string) {
 		return
 	}
 
-	info := fmt.Sprintf("[yellow]Node Information[white]\n\n")
+	info := "[yellow]Node Information[white]\n\n"
 	info += fmt.Sprintf("[cyan]Hostname:[white] %s\n", hostname)
 	info += fmt.Sprintf("[cyan]Status:[white] %s\n", v.getNodeStatus(hostname))
 
@@ -436,7 +436,7 @@ func (v *SSHTerminalView) loadNodeInfo(hostname string) {
 		info += fmt.Sprintf("[cyan]Last Activity:[white] %s\n", v.activeSession.LastActivity.Format("15:04:05"))
 
 		if len(v.activeSession.Tunnels) > 0 {
-			info += fmt.Sprintf("\n[cyan]Active Tunnels:[white]\n")
+			info += "\n[cyan]Active Tunnels:[white]\n"
 			for _, tunnel := range v.activeSession.Tunnels {
 				info += fmt.Sprintf("  %s:%d -> %s:%d (%s)\n",
 					"localhost", tunnel.LocalPort, tunnel.RemoteHost, tunnel.RemotePort, tunnel.Type)

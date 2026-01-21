@@ -23,24 +23,24 @@ func truncateWithColorCodes(text string, maxWidth int) string {
 	if maxWidth <= 0 {
 		return text
 	}
-	
+
 	displayWidth := getDisplayWidth(text)
 	if displayWidth <= maxWidth {
 		return text
 	}
-	
+
 	// Strip color codes for safe rune-level truncation
 	stripped := colorCodeRegex.ReplaceAllString(text, "")
 	if len([]rune(stripped)) <= maxWidth-3 {
 		return text
 	}
-	
+
 	// Truncate at rune level to avoid splitting UTF-8 sequences
 	runes := []rune(stripped)
 	if len(runes) > maxWidth-3 {
 		return string(runes[:maxWidth-3]) + "..."
 	}
-	
+
 	return stripped + "..."
 }
 
@@ -120,13 +120,13 @@ func NewTable(config *TableConfig) *Table {
 		SetBorderPadding(0, 0, 1, 1)
 
 	if config.Selectable {
-		table.Table.SetSelectedStyle(tcell.StyleDefault.
+		table.SetSelectedStyle(tcell.StyleDefault.
 			Background(config.SelectedColor).
 			Foreground(tcell.ColorBlack))
 	}
 
 	// Set up input handling
-	table.Table.SetInputCapture(table.handleInput)
+	table.SetInputCapture(table.handleInput)
 
 	return table
 }
@@ -195,7 +195,7 @@ func (t *Table) Sort(column int) {
 
 // GetSelectedRow returns the currently selected row index
 func (t *Table) GetSelectedRow() int {
-	row, _ := t.Table.GetSelection()
+	row, _ := t.GetSelection()
 	if row < t.config.FixedRows {
 		return -1
 	}
@@ -214,7 +214,7 @@ func (t *Table) GetSelectedData() []string {
 // SetOnSelect sets the selection callback
 func (t *Table) SetOnSelect(fn func(row, col int)) {
 	t.onSelect = fn
-	t.Table.SetSelectedFunc(func(row, col int) {
+	t.SetSelectedFunc(func(row, col int) {
 		if row >= t.config.FixedRows && t.onSelect != nil {
 			t.onSelect(row-t.config.FixedRows, col)
 		}
@@ -259,7 +259,7 @@ func (t *Table) refresh() {
 				SetSelectable(false).
 				SetExpansion(1)
 
-			t.Table.SetCell(0, col, cell)
+			t.SetCell(0, col, cell)
 		}
 	}
 
@@ -289,7 +289,7 @@ func (t *Table) refresh() {
 				cell.SetTextColor(t.config.OddRowColor)
 			}
 
-			t.Table.SetCell(displayRow, colIdx, cell)
+			t.SetCell(displayRow, colIdx, cell)
 		}
 	}
 }
@@ -363,34 +363,33 @@ func (t *Table) handleInput(event *tcell.EventKey) *tcell.EventKey {
 	// Handle page navigation
 	switch event.Key() {
 	case tcell.KeyPgUp:
-		row, col := t.Table.GetSelection()
+		row, col := t.GetSelection()
 		newRow := row - 10
 		if newRow < t.config.FixedRows {
 			newRow = t.config.FixedRows
 		}
-		t.Table.Select(newRow, col)
+		t.Select(newRow, col)
 		return nil
 
 	case tcell.KeyPgDn:
-		row, col := t.Table.GetSelection()
+		row, col := t.GetSelection()
 		newRow := row + 10
-		maxRow := t.Table.GetRowCount() - 1
+		maxRow := t.GetRowCount() - 1
 		if newRow > maxRow {
 			newRow = maxRow
 		}
-		t.Table.Select(newRow, col)
+		t.Select(newRow, col)
 		return nil
 
 	case tcell.KeyHome:
-		_, col := t.Table.GetSelection()
-		t.Table.Select(t.config.FixedRows, col)
+		_, col := t.GetSelection()
+		t.Select(t.config.FixedRows, col)
 		return nil
 
 	case tcell.KeyEnd:
-		_, col := t.Table.GetSelection()
-		t.Table.Select(t.Table.GetRowCount()-1, col)
+		_, col := t.GetSelection()
+		t.Select(t.GetRowCount()-1, col)
 		return nil
-
 	}
 
 	return event

@@ -21,7 +21,8 @@ type DashboardView struct {
 	refreshTimer *time.Timer
 	refreshRate  time.Duration
 	container    *tview.Flex
-	app          *tview.Application
+	// TODO(lint): Review unused code - field app is unused
+	// app          *tview.Application
 	pages        *tview.Pages
 
 	// Dashboard components
@@ -97,7 +98,7 @@ func NewDashboardView(client dao.SlurmClient) *DashboardView {
 
 // Init initializes the dashboard view
 func (v *DashboardView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -234,7 +235,7 @@ func (v *DashboardView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case 'j', 'J':
 			// TODO: Switch to jobs view
@@ -259,7 +260,7 @@ func (v *DashboardView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 // OnFocus handles focus events
 func (v *DashboardView) OnFocus() error {
 	// Refresh when gaining focus
-	go v.Refresh()
+	go func() { _ = v.Refresh() }()
 	return nil
 }
 
@@ -780,7 +781,7 @@ func (v *DashboardView) showAdvancedAnalytics() {
 			if event.Rune() == 'R' || event.Rune() == 'r' {
 				// Refresh and update the display
 				go func() {
-					v.Refresh()
+					_ = v.Refresh()
 					newAnalytics := v.generateAdvancedAnalytics()
 					textView.SetText(newAnalytics)
 				}()
@@ -952,7 +953,7 @@ func (v *DashboardView) showHealthCheck() {
 			if event.Rune() == 'R' || event.Rune() == 'r' {
 				// Refresh and update the display
 				go func() {
-					v.Refresh()
+					_ = v.Refresh()
 					newHealthCheck := v.generateHealthCheck()
 					textView.SetText(newHealthCheck)
 				}()
@@ -991,9 +992,10 @@ func (v *DashboardView) generateHealthCheck() string {
 		downNodes := 0
 		drainNodes := 0
 		for _, node := range v.nodes {
-			if node.State == dao.NodeStateDown {
+			switch node.State {
+			case dao.NodeStateDown:
 				downNodes++
-			} else if node.State == dao.NodeStateDrain || node.State == dao.NodeStateDraining {
+			case dao.NodeStateDrain, dao.NodeStateDraining:
 				drainNodes++
 			}
 		}

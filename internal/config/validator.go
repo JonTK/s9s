@@ -58,7 +58,8 @@ type ConfigValidator struct {
 	config    *Config
 	result    *ConfigValidationResult
 	autoFix   bool
-	strict    bool
+	// TODO(lint): Review unused code - field strict is unused
+	// strict    bool
 }
 
 // NewConfigValidator creates a new configuration validator
@@ -448,11 +449,15 @@ func (v *ConfigValidator) isValidURL(urlStr string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// fileExists checks if a file exists
+/*
+TODO(lint): Review unused code - func (*ConfigValidator).fileExists is unused
+
+fileExists checks if a file exists
 func (v *ConfigValidator) fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
+*/
 
 // directoryExists checks if a directory exists
 func (v *ConfigValidator) directoryExists(path string) bool {
@@ -460,7 +465,10 @@ func (v *ConfigValidator) directoryExists(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-// contains checks if a slice contains a string
+/*
+TODO(lint): Review unused code - func (*ConfigValidator).contains is unused
+
+contains checks if a slice contains a string
 func (v *ConfigValidator) contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -469,6 +477,7 @@ func (v *ConfigValidator) contains(slice []string, item string) bool {
 	}
 	return false
 }
+*/
 
 // ValidateAndFix validates configuration and optionally applies fixes
 func ValidateAndFix(config *Config, autoFix bool) *ConfigValidationResult {

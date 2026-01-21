@@ -142,7 +142,7 @@ func (w *SetupWizard) printWelcome() {
 // setupBasics configures basic s9s settings
 func (w *SetupWizard) setupBasics() error {
 	fmt.Println("📋 Basic Configuration")
-	fmt.Println("   Let's start with some basic information about your setup.\n")
+	fmt.Println("   Let's start with some basic information about your setup.")
 
 	// Initialize config with defaults
 	w.config.RefreshRate = "30s"
@@ -176,7 +176,7 @@ func (w *SetupWizard) setupBasics() error {
 // setupCluster guides cluster configuration
 func (w *SetupWizard) setupCluster() error {
 	fmt.Println("🏢 Cluster Configuration")
-	fmt.Println("   Let's connect to your SLURM cluster.\n")
+	fmt.Println("   Let's connect to your SLURM cluster.")
 
 	// Cluster detection
 	fmt.Println("   First, let's try to auto-detect your cluster...")
@@ -310,7 +310,7 @@ func (w *SetupWizard) manualClusterConfig() config.ClusterConfig {
 // setupAuthentication configures authentication
 func (w *SetupWizard) setupAuthentication() error {
 	fmt.Println("🔐 Authentication Setup")
-	fmt.Println("   Choose how you'll authenticate with your SLURM cluster.\n")
+	fmt.Println("   Choose how you'll authenticate with your SLURM cluster.")
 
 	fmt.Println("   Available authentication methods:")
 	fmt.Println("   1. 🎫 SLURM Tokens (native, recommended for local)")
@@ -447,7 +447,7 @@ func (w *SetupWizard) setupOAuth2Auth() map[string]interface{} {
 // setupStorage configures secure storage options
 func (w *SetupWizard) setupStorage() error {
 	fmt.Println("🔒 Storage Configuration")
-	fmt.Println("   Configure secure storage for authentication tokens.\n")
+	fmt.Println("   Configure secure storage for authentication tokens.")
 
 	fmt.Println("   Available storage options:")
 	fmt.Println("   1. 🔐 System Keyring (recommended)")
@@ -470,7 +470,7 @@ func (w *SetupWizard) setupStorage() error {
 // setupAdvanced configures advanced options
 func (w *SetupWizard) setupAdvanced() error {
 	fmt.Println("⚙️ Advanced Configuration")
-	fmt.Println("   Configure advanced features and performance options.\n")
+	fmt.Println("   Configure advanced features and performance options.")
 
 	// Caching preferences - note: no Metadata field in Config
 	if w.confirm("Enable result caching for better performance?", true) {
@@ -585,7 +585,10 @@ func (w *SetupWizard) confirmOverwrite() bool {
 	return w.confirm("Would you like to overwrite it?", false)
 }
 
-// extractClusterName extracts cluster name from slurm.conf
+/*
+TODO(lint): Review unused code - func (*SetupWizard).extractClusterName is unused
+
+extractClusterName extracts cluster name from slurm.conf
 func (w *SetupWizard) extractClusterName(configPath string) string {
 	if configPath == "" {
 		return "cluster"
@@ -596,7 +599,7 @@ func (w *SetupWizard) extractClusterName(configPath string) string {
 	if err != nil {
 		return "cluster"
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -608,6 +611,7 @@ func (w *SetupWizard) extractClusterName(configPath string) string {
 
 	return "cluster"
 }
+*/
 
 // testEndpoint tests if an endpoint is accessible
 func (w *SetupWizard) testEndpoint(endpoint string) bool {

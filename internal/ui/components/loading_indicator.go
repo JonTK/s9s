@@ -58,7 +58,7 @@ func (li *LoadingIndicator) Show(message string) {
 	li.ctx, li.cancel = context.WithCancel(context.Background())
 
 	// Set initial message
-	li.Modal.SetText(li.spinnerFrames[0] + " " + message)
+	li.SetText(li.spinnerFrames[0] + " " + message)
 
 	// Start spinner animation
 	go li.animate()
@@ -112,7 +112,7 @@ func (li *LoadingIndicator) animate() {
 
 			if li.app != nil {
 				li.app.QueueUpdateDraw(func() {
-					li.Modal.SetText(spinnerText + " " + message)
+					li.SetText(spinnerText + " " + message)
 				})
 			}
 		}
@@ -128,7 +128,7 @@ func (li *LoadingIndicator) SetMessage(message string) {
 	if li.app != nil {
 		li.app.QueueUpdateDraw(func() {
 			spinnerText := li.spinnerFrames[li.currentFrame]
-			li.Modal.SetText(spinnerText + " " + message)
+			li.SetText(spinnerText + " " + message)
 		})
 	}
 }

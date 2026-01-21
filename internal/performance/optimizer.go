@@ -252,7 +252,7 @@ func (o *Optimizer) GetOptimizationSummary() string {
 		}
 	}
 
-	summary += fmt.Sprintf("Issues Found:\n")
+	summary += "Issues Found:\n"
 	summary += fmt.Sprintf("  High Impact: %d\n", highCount)
 	summary += fmt.Sprintf("  Medium Impact: %d\n", mediumCount)
 	summary += fmt.Sprintf("  Low Impact: %d\n", lowCount)

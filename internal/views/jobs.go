@@ -45,7 +45,7 @@ type JobsView struct {
 	selectionStatusText *tview.TextView
 	loadingManager      *components.LoadingManager
 	loadingWrapper      *components.LoadingWrapper
-	mainStatusBar       *components.StatusBar  // Reference to main app status bar
+	mainStatusBar       *components.StatusBar // Reference to main app status bar
 }
 
 // SetPages sets the pages reference for modal handling
@@ -174,7 +174,7 @@ func NewJobsView(client dao.SlurmClient) *JobsView {
 
 // Init initializes the jobs view
 func (v *JobsView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 	return v.Refresh()
 }
 
@@ -324,7 +324,7 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 			v.releaseSelectedJob()
 			return nil
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case 'o', 'O':
 			v.showJobOutput()
@@ -489,7 +489,10 @@ func (v *JobsView) updateTable() {
 	v.table.SetData(data)
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*JobsView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *JobsView) updateStatusBar(message string) {
 	if message != "" {
 		v.statusBar.SetText(message)
@@ -523,6 +526,7 @@ func (v *JobsView) updateStatusBar(message string) {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *JobsView) scheduleRefresh() {
@@ -536,7 +540,7 @@ func (v *JobsView) scheduleRefresh() {
 	}
 
 	v.refreshTimer = time.AfterFunc(v.refreshRate, func() {
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	})
 }
 
@@ -658,7 +662,7 @@ func (v *JobsView) performCancelJob(jobID string) {
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
 
 // holdSelectedJob holds the selected job
@@ -707,7 +711,7 @@ func (v *JobsView) holdSelectedJob() {
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
-		v.Refresh()
+		_ = v.Refresh()
 	}()
 }
 
@@ -758,7 +762,7 @@ func (v *JobsView) releaseSelectedJob() {
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
-		v.Refresh()
+		_ = v.Refresh()
 	}()
 }
 
@@ -891,7 +895,10 @@ func (v *JobsView) showJobOutput() {
 	}
 }
 
-// performJobSubmission performs the actual job submission
+/*
+TODO(lint): Review unused code - func (*JobsView).performJobSubmission is unused
+
+performJobSubmission performs the actual job submission
 func (v *JobsView) performJobSubmission(jobSub *dao.JobSubmission) {
 	// Note: Status bar update removed since individual view status bars are no longer used
 
@@ -905,8 +912,9 @@ func (v *JobsView) performJobSubmission(jobSub *dao.JobSubmission) {
 
 	// Refresh the view to show the new job
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
+*/
 
 // requeueSelectedJob requeues the selected job
 func (v *JobsView) requeueSelectedJob() {
@@ -970,7 +978,7 @@ func (v *JobsView) performRequeueJob(jobID string) {
 
 	// Refresh the view to show the new job
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
 
 // showJobSubmissionForm shows job submission form using the wizard
@@ -979,7 +987,7 @@ func (v *JobsView) showJobSubmissionForm() {
 	wizard.Show(v.pages, func(jobID string) {
 		// Success callback
 		// Note: Status bar update removed since individual view status bars are no longer used
-		go v.Refresh()
+		go func() { _ = v.Refresh() }()
 	}, func() {
 		// Cancel callback
 		// Note: Status bar update removed since individual view status bars are no longer used
@@ -1106,7 +1114,7 @@ func (v *JobsView) toggleStateFilter(state string) {
 		}
 	}
 
-	go v.Refresh()
+	go func() { _ = v.Refresh() }()
 }
 
 // promptUserFilter prompts for user filter
@@ -1119,7 +1127,7 @@ func (v *JobsView) promptUserFilter() {
 	input.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
 			v.userFilter = input.GetText()
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 		}
 		v.app.SetRoot(v.container, true)
 	})
@@ -1213,7 +1221,7 @@ func (v *JobsView) showBatchOperations() {
 	if v.batchOpsView != nil && len(selectedJobs) > 0 {
 		v.batchOpsView.ShowBatchOperations(selectedJobs, selectedJobsData, func() {
 			// Refresh the jobs view after batch operations complete
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 		})
 	} else {
 		// Show job selection menu if no jobs selected
@@ -1299,13 +1307,20 @@ func (v *JobsView) selectJobsByState(state string) {
 	// Note: Status bar update removed since individual view status bars are no longer used
 }
 
-// clearJobSelection clears all selected jobs
+/*
+TODO(lint): Review unused code - func (*JobsView).clearJobSelection is unused
+
+clearJobSelection clears all selected jobs
 func (v *JobsView) clearJobSelection() {
 	v.selectedJobs = make(map[string]bool)
 	// Note: Status bar update removed since individual view status bars are no longer used
 }
+*/
 
-// showSelectedJobs shows list of currently selected jobs
+/*
+TODO(lint): Review unused code - func (*JobsView).showSelectedJobs is unused
+
+showSelectedJobs shows list of currently selected jobs
 func (v *JobsView) showSelectedJobs() {
 	if len(v.selectedJobs) == 0 {
 		// Note: Status bar update removed since individual view status bars are no longer used
@@ -1357,8 +1372,12 @@ func (v *JobsView) showSelectedJobs() {
 		v.pages.AddPage("selected-jobs", centeredModal, true, true)
 	}
 }
+*/
 
-// batchCancelSelected cancels all selected jobs
+/*
+TODO(lint): Review unused code - func (*JobsView).batchCancelSelected is unused
+
+batchCancelSelected cancels all selected jobs
 func (v *JobsView) batchCancelSelected() {
 	if len(v.selectedJobs) == 0 {
 		// Note: Status bar update removed since individual view status bars are no longer used
@@ -1388,8 +1407,12 @@ func (v *JobsView) batchCancelSelected() {
 		v.pages.AddPage("batch-cancel-confirm", modal, true, true)
 	}
 }
+*/
 
-// performBatchCancel performs batch job cancellation
+/*
+TODO(lint): Review unused code - func (*JobsView).performBatchCancel is unused
+
+performBatchCancel performs batch job cancellation
 func (v *JobsView) performBatchCancel() {
 	success := 0
 	failed := 0
@@ -1408,10 +1431,14 @@ func (v *JobsView) performBatchCancel() {
 
 	// Refresh the view
 	time.Sleep(500 * time.Millisecond)
-	v.Refresh()
+	_ = v.Refresh()
 }
+*/
 
-// batchHoldSelected holds all selected jobs
+/*
+TODO(lint): Review unused code - func (*JobsView).batchHoldSelected is unused
+
+batchHoldSelected holds all selected jobs
 func (v *JobsView) batchHoldSelected() {
 	if len(v.selectedJobs) == 0 {
 		// Note: Status bar update removed since individual view status bars are no longer used
@@ -1436,11 +1463,15 @@ func (v *JobsView) batchHoldSelected() {
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
-		v.Refresh()
+		_ = v.Refresh()
 	}()
 }
+*/
 
-// batchReleaseSelected releases all selected jobs
+/*
+TODO(lint): Review unused code - func (*JobsView).batchReleaseSelected is unused
+
+batchReleaseSelected releases all selected jobs
 func (v *JobsView) batchReleaseSelected() {
 	if len(v.selectedJobs) == 0 {
 		// Note: Status bar update removed since individual view status bars are no longer used
@@ -1465,9 +1496,10 @@ func (v *JobsView) batchReleaseSelected() {
 
 		// Refresh the view
 		time.Sleep(500 * time.Millisecond)
-		v.Refresh()
+		_ = v.Refresh()
 	}()
 }
+*/
 
 // showAdvancedFilter shows the advanced filter bar
 func (v *JobsView) showAdvancedFilter() {
@@ -1587,7 +1619,7 @@ func (v *JobsView) focusOnJob(jobID string) {
 	for i, job := range v.jobs {
 		if job.ID == jobID {
 			// Select the row in the table
-			v.table.Table.Select(i, 0)
+			v.table.Select(i, 0)
 			// Note: Status bar update removed since individual view status bars are no longer used
 			return
 		}

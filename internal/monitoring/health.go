@@ -262,9 +262,10 @@ func (hm *HealthMonitor) registerDefaultChecks() {
 		downNodes := 0
 		drainNodes := 0
 		for _, node := range nodeList.Nodes {
-			if node.State == dao.NodeStateDown {
+			switch node.State {
+			case dao.NodeStateDown:
 				downNodes++
-			} else if node.State == dao.NodeStateDrain || node.State == dao.NodeStateDraining {
+			case dao.NodeStateDrain, dao.NodeStateDraining:
 				drainNodes++
 			}
 		}

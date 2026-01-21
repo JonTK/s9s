@@ -12,13 +12,15 @@ import (
 type FilterBar struct {
 	*tview.Flex
 	input          *tview.InputField
-	presetDropdown *tview.List
+	// TODO(lint): Review unused code - field presetDropdown is unused
+	// presetDropdown *tview.List
 	helpText       *tview.TextView
 	parser         *filters.FilterParser
 	presetManager  *filters.PresetManager
 	currentFilter  *filters.Filter
 	viewType       string
-	isAdvancedMode bool
+	// TODO(lint): Review unused code - field isAdvancedMode is unused
+	// isAdvancedMode bool
 	onFilterChange func(filter *filters.Filter)
 	onClose        func()
 	app            *tview.Application
@@ -271,7 +273,7 @@ func (fb *FilterBar) showSavePresetDialog() {
 			preset.ViewType = "all"
 		}
 
-		fb.presetManager.AddPreset(preset)
+		_ = fb.presetManager.AddPreset(preset)
 		fb.pages.RemovePage("save-preset")
 		fb.helpText.SetText(fmt.Sprintf("[green]Preset '%s' saved[white]", name))
 	})

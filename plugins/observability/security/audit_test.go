@@ -29,7 +29,7 @@ func TestNewAuditLogger(t *testing.T) {
 		t.Error("Expected writer to be initialized")
 	}
 
-	logger.Close()
+	_ = logger.Close()
 }
 
 func TestNewAuditLoggerWithFile(t *testing.T) {
@@ -46,7 +46,7 @@ func TestNewAuditLoggerWithFile(t *testing.T) {
 		t.Fatalf("NewAuditLogger with file failed: %v", err)
 	}
 
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	if logger.file == nil {
 		t.Error("Expected file to be opened")
@@ -73,7 +73,7 @@ func TestNewAuditLoggerDisabled(t *testing.T) {
 		t.Fatal("NewAuditLogger returned nil")
 	}
 
-	logger.Close()
+	_ = logger.Close()
 }
 
 func TestLogEvent(t *testing.T) {
@@ -86,7 +86,7 @@ func TestLogEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Override writer to capture output
 	logger.writer = &buffer
@@ -132,7 +132,7 @@ func TestLogEventSensitiveFiltering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.writer = &buffer
 
@@ -175,7 +175,7 @@ func TestLogAPIRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.writer = &buffer
 
@@ -240,7 +240,7 @@ func TestLogSecretAccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.writer = &buffer
 
@@ -292,14 +292,14 @@ func TestAuditMiddleware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.writer = &buffer
 
 	// Create test handler
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}
 
 	// Wrap with audit middleware
@@ -344,7 +344,7 @@ func TestAuditMiddlewareDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Create test handler
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -431,7 +431,7 @@ func TestIsSensitivePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	tests := []struct {
 		path      string
@@ -503,7 +503,7 @@ func TestLogLevelFiltering(t *testing.T) {
 			}
 			
 			logger, _ := NewAuditLogger(config)
-			defer logger.Close()
+			defer func() { _ = logger.Close() }()
 
 			result := logger.shouldLog(tt.event)
 			if result != tt.shouldLog {
@@ -517,7 +517,7 @@ func TestLogLevelFiltering(t *testing.T) {
 func TestExtractUserID(t *testing.T) {
 	config := DefaultAuditConfig()
 	logger, _ := NewAuditLogger(config)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	tests := []struct {
 		name       string
@@ -574,7 +574,7 @@ func TestAuditGetStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAuditLogger failed: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	stats := logger.GetStats()
 

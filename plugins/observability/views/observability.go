@@ -201,7 +201,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 			return nil
 		case tcell.KeyCtrlR:
 			// Force refresh
-			go v.refresh(context.Background())
+			go func() { _ = v.refresh(context.Background()) }()
 			return nil
 		case tcell.KeyEsc, tcell.KeyCtrlC:
 			// Return to previous view
@@ -224,7 +224,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 			return nil
 		case 'r', 'R':
 			// Refresh data
-			go v.refresh(context.Background())
+			go func() { _ = v.refresh(context.Background()) }()
 			return nil
 		case 'h', 'H', '?':
 			// Show help
@@ -703,12 +703,16 @@ func (v *ObservabilityView) convertToTimeSeries(name string, result *prometheus.
 	return nil
 }
 
-// parseFloat safely parses a string to float64
+/*
+TODO(lint): Review unused code - func parseFloat is unused
+
+parseFloat safely parses a string to float64
 func parseFloat(s string) (float64, error) {
 	var f float64
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
 }
+*/
 
 // nodeInstanceMap stores mapping from node name to full instance name with port
 var nodeInstanceMap = make(map[string]string)
@@ -1383,7 +1387,7 @@ func (v *ObservabilityView) HandleKey(event *tcell.EventKey) bool {
 		return true
 	case tcell.KeyCtrlR:
 		// Force refresh
-		go v.refresh(context.Background())
+		go func() { _ = v.refresh(context.Background()) }()
 		return true
 	case tcell.KeyEsc, tcell.KeyCtrlC:
 		// Return to previous view
@@ -1406,7 +1410,7 @@ func (v *ObservabilityView) HandleKey(event *tcell.EventKey) bool {
 		return true
 	case 'r', 'R':
 		// Refresh data
-		go v.refresh(context.Background())
+		go func() { _ = v.refresh(context.Background()) }()
 		return true
 	case 'h', 'H', '?':
 		// Show help

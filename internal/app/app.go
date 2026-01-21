@@ -6,7 +6,6 @@ import (
 	"log"
 	"path/filepath"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -87,12 +86,14 @@ func New(ctx context.Context, cfg *config.Config) (*S9s, error) {
 		}
 
 		if clusterConfig == nil {
+			cancel()
 			return nil, fmt.Errorf("no cluster configuration found for context: %s", cfg.CurrentContext)
 		}
 
 		// Create real SLURM adapter
 		adapter, err := dao.NewSlurmAdapter(appCtx, clusterConfig)
 		if err != nil {
+			cancel()
 			return nil, fmt.Errorf("failed to create SLURM adapter: %w", err)
 		}
 		client = adapter
@@ -208,7 +209,7 @@ func (s *S9s) Stop() error {
 	s.header.Stop()
 
 	// Stop all views
-	s.viewMgr.StopAll()
+	_ = s.viewMgr.StopAll()
 
 	// Stop the tview application
 	s.app.Stop()
@@ -284,7 +285,9 @@ func (s *S9s) initViews() error {
 	if err := jobsView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize jobs view: %w", err)
 	}
-	s.viewMgr.AddView(jobsView)
+	if err := s.viewMgr.AddView(jobsView); err != nil {
+		return fmt.Errorf("failed to add jobs view: %w", err)
+	}
 	s.contentPages.AddPage("jobs", jobsView.Render(), true, false)
 
 	// Create nodes view
@@ -293,7 +296,9 @@ func (s *S9s) initViews() error {
 	if err := nodesView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize nodes view: %w", err)
 	}
-	s.viewMgr.AddView(nodesView)
+	if err := s.viewMgr.AddView(nodesView); err != nil {
+		return fmt.Errorf("failed to add nodes view: %w", err)
+	}
 	s.contentPages.AddPage("nodes", nodesView.Render(), true, false)
 
 	// Create partitions view
@@ -302,7 +307,9 @@ func (s *S9s) initViews() error {
 	if err := partitionsView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize partitions view: %w", err)
 	}
-	s.viewMgr.AddView(partitionsView)
+	if err := s.viewMgr.AddView(partitionsView); err != nil {
+		return fmt.Errorf("failed to add partitions view: %w", err)
+	}
 	s.contentPages.AddPage("partitions", partitionsView.Render(), true, false)
 
 	// Create reservations view
@@ -312,7 +319,9 @@ func (s *S9s) initViews() error {
 	if err := reservationsView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize reservations view: %w", err)
 	}
-	s.viewMgr.AddView(reservationsView)
+	if err := s.viewMgr.AddView(reservationsView); err != nil {
+		return fmt.Errorf("failed to add reservations view: %w", err)
+	}
 	s.contentPages.AddPage("reservations", reservationsView.Render(), true, false)
 
 	// Create QoS view
@@ -322,7 +331,9 @@ func (s *S9s) initViews() error {
 	if err := qosView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize qos view: %w", err)
 	}
-	s.viewMgr.AddView(qosView)
+	if err := s.viewMgr.AddView(qosView); err != nil {
+		return fmt.Errorf("failed to add qos view: %w", err)
+	}
 	s.contentPages.AddPage("qos", qosView.Render(), true, false)
 
 	// Create Accounts view
@@ -332,7 +343,9 @@ func (s *S9s) initViews() error {
 	if err := accountsView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize accounts view: %w", err)
 	}
-	s.viewMgr.AddView(accountsView)
+	if err := s.viewMgr.AddView(accountsView); err != nil {
+		return fmt.Errorf("failed to add accounts view: %w", err)
+	}
 	s.contentPages.AddPage("accounts", accountsView.Render(), true, false)
 
 	// Create Users view
@@ -342,7 +355,9 @@ func (s *S9s) initViews() error {
 	if err := usersView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize users view: %w", err)
 	}
-	s.viewMgr.AddView(usersView)
+	if err := s.viewMgr.AddView(usersView); err != nil {
+		return fmt.Errorf("failed to add users view: %w", err)
+	}
 	s.contentPages.AddPage("users", usersView.Render(), true, false)
 
 	// Create Dashboard view
@@ -352,7 +367,9 @@ func (s *S9s) initViews() error {
 	if err := dashboardView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize dashboard view: %w", err)
 	}
-	s.viewMgr.AddView(dashboardView)
+	if err := s.viewMgr.AddView(dashboardView); err != nil {
+		return fmt.Errorf("failed to add dashboard view: %w", err)
+	}
 	s.contentPages.AddPage("dashboard", dashboardView.Render(), true, false)
 
 	// Create Health view
@@ -362,7 +379,9 @@ func (s *S9s) initViews() error {
 	if err := healthView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize health view: %w", err)
 	}
-	s.viewMgr.AddView(healthView)
+	if err := s.viewMgr.AddView(healthView); err != nil {
+		return fmt.Errorf("failed to add health view: %w", err)
+	}
 	s.contentPages.AddPage("health", healthView.Render(), true, false)
 
 	// Create Performance view
@@ -372,7 +391,9 @@ func (s *S9s) initViews() error {
 	if err := performanceView.Init(s.ctx); err != nil {
 		return fmt.Errorf("failed to initialize performance view: %w", err)
 	}
-	s.viewMgr.AddView(performanceView)
+	if err := s.viewMgr.AddView(performanceView); err != nil {
+		return fmt.Errorf("failed to add performance view: %w", err)
+	}
 	s.contentPages.AddPage("performance", performanceView.Render(), true, false)
 
 	// Update header with view names
@@ -395,7 +416,7 @@ func (s *S9s) setupKeyboardShortcuts() {
 		// Global shortcuts
 		switch event.Key() {
 		case tcell.KeyCtrlC:
-			s.Stop()
+			_ = s.Stop()
 			return nil
 		case tcell.KeyF1:
 			// Show help modal
@@ -443,7 +464,7 @@ func (s *S9s) setupKeyboardShortcuts() {
 				// Let the modal handle tab navigation
 				return event
 			}
-			s.viewMgr.NextView()
+			_ = s.viewMgr.NextView()
 			s.updateCurrentView()
 			return nil
 		case tcell.KeyBacktab:
@@ -451,7 +472,7 @@ func (s *S9s) setupKeyboardShortcuts() {
 				// Let the modal handle shift+tab navigation
 				return event
 			}
-			s.viewMgr.PreviousView()
+			_ = s.viewMgr.PreviousView()
 			s.updateCurrentView()
 			return nil
 		case tcell.KeyRune:
@@ -507,7 +528,7 @@ func (s *S9s) setupKeyboardShortcuts() {
 				s.switchToView("performance")
 				return nil
 			case 'q', 'Q':
-				s.Stop()
+				_ = s.Stop()
 				return nil
 			}
 		}
@@ -523,7 +544,10 @@ func (s *S9s) setupKeyboardShortcuts() {
 	})
 }
 
-// updateLoop runs periodic updates
+/*
+TODO(lint): Review unused code - func (*S9s).updateLoop is unused
+
+updateLoop runs periodic updates
 func (s *S9s) updateLoop() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -539,8 +563,12 @@ func (s *S9s) updateLoop() {
 		}
 	}
 }
+*/
 
-// updateClusterInfo updates cluster information in header
+/*
+TODO(lint): Review unused code - func (*S9s).updateClusterInfo is unused
+
+updateClusterInfo updates cluster information in header
 func (s *S9s) updateClusterInfo() {
 	// Get cluster info
 	clusterInfo, err := s.client.ClusterInfo()
@@ -562,6 +590,7 @@ func (s *S9s) updateClusterInfo() {
 		s.generateDemoAlerts()
 	}
 }
+*/
 
 // switchToView switches to the specified view
 func (s *S9s) switchToView(viewName string) {
@@ -633,7 +662,7 @@ func (s *S9s) onCommandDone(key tcell.Key) {
 func (s *S9s) executeCommand(command string) {
 	switch command {
 	case "q", "quit":
-		s.Stop()
+		_ = s.Stop()
 	case "jobs", "j":
 		s.switchToView("jobs")
 	case "nodes", "n":
@@ -747,7 +776,7 @@ func (s *S9s) startRefreshTimer(duration time.Duration) {
 				if s.isRunning {
 					if currentView, err := s.viewMgr.GetCurrentView(); err == nil {
 						// Refresh synchronously to prevent goroutine explosion
-						currentView.Refresh()
+						_ = currentView.Refresh()
 					}
 				}
 			case <-s.ctx.Done():
@@ -802,7 +831,10 @@ func (s *S9s) showAlertsModal() {
 	s.pages.AddPage("alerts", modal, true, true)
 }
 
-// generateDemoAlerts creates some demonstration alerts for the mock client
+/*
+TODO(lint): Review unused code - func (*S9s).generateDemoAlerts is unused
+
+generateDemoAlerts creates some demonstration alerts for the mock client
 func (s *S9s) generateDemoAlerts() {
 	// Only generate alerts once per minute to avoid spam
 	static := struct {
@@ -844,6 +876,7 @@ func (s *S9s) generateDemoAlerts() {
 		DismissAfter: 30 * time.Minute,
 	})
 }
+*/
 
 
 // showPreferences displays the preferences modal
@@ -883,7 +916,7 @@ func (s *S9s) showLayoutSwitcher() {
 	if layoutMgr, ok := s.layoutManager.(*layouts.LayoutManager); ok {
 		layouts.ShowLayoutSwitcher(layoutMgr, s.app, s.pages, func(layoutID string) {
 			// Update preferences with selected layout
-			s.userPrefs.Update(func(p *preferences.UserPreferences) error {
+			_ = s.userPrefs.Update(func(p *preferences.UserPreferences) error {
 				p.Layouts.CurrentLayout = layoutID
 				return nil
 			})
@@ -908,16 +941,16 @@ func (s *S9s) loadPlugins() error {
 	if err == nil {
 		s9sConfigDir := filepath.Join(homeDir, ".s9s")
 		pluginDir := filepath.Join(s9sConfigDir, "plugins")
-		s.pluginManager.LoadPluginsFromDirectory(pluginDir)
+		_ = s.pluginManager.LoadPluginsFromDirectory(pluginDir)
 	}
 
 	// Load plugins from system directory
 	systemPluginDir := "/usr/share/s9s/plugins"
-	s.pluginManager.LoadPluginsFromDirectory(systemPluginDir)
+	_ = s.pluginManager.LoadPluginsFromDirectory(systemPluginDir)
 
 	// Load plugins from local directory (for development)
 	localPluginDir := filepath.Join(".", "plugins")
-	s.pluginManager.LoadPluginsFromDirectory(localPluginDir)
+	_ = s.pluginManager.LoadPluginsFromDirectory(localPluginDir)
 
 	return nil
 }
@@ -945,10 +978,13 @@ func (s *S9s) registerPluginViews() error {
 		viewAdapter := &PluginViewAdapter{
 			pluginView: pluginView,
 		}
-		
+
 		// Add to view manager
-		s.viewMgr.AddView(viewAdapter)
-		
+		if err := s.viewMgr.AddView(viewAdapter); err != nil {
+			log.Printf("Warning: Failed to add plugin view %s: %v", pluginView.GetName(), err)
+			continue
+		}
+
 		// Add to content pages
 		s.contentPages.AddPage(pluginView.GetName(), pluginView.Render(), true, false)
 		

@@ -190,7 +190,7 @@ func (w *MetricsWidget) startAutoUpdate() {
 	w.updateTimer = time.NewTicker(5 * time.Second)
 	go func() {
 		for range w.updateTimer.C {
-			w.updateMetrics()
+			_ = w.updateMetrics()
 		}
 	}()
 }
@@ -364,7 +364,7 @@ func (w *ClockWidget) startAutoUpdate() {
 	w.updateTimer = time.NewTicker(1 * time.Second)
 	go func() {
 		for range w.updateTimer.C {
-			w.updateTime()
+			_ = w.updateTime()
 		}
 	}()
 }
@@ -470,7 +470,7 @@ func (w *QuickStartWidget) updateActions() error {
 // AddAction adds a new quick action
 func (w *QuickStartWidget) AddAction(action QuickAction) {
 	w.actions = append(w.actions, action)
-	w.updateActions()
+	_ = w.updateActions()
 }
 
 // TerminalWidget provides a terminal interface
@@ -664,7 +664,7 @@ func (w *LogsWidget) AddLog(message string) {
 		w.logs = w.logs[len(w.logs)-100:]
 	}
 
-	w.updateLogs()
+	_ = w.updateLogs()
 }
 
 // Helper function to check if string contains substring

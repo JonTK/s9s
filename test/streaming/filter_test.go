@@ -197,7 +197,7 @@ func TestFilterManager(t *testing.T) {
 	
 	t.Run("ClearFilters", func(t *testing.T) {
 		// Set a filter
-		fm.QuickFilter("test", streaming.FilterTypeKeyword)
+		_ = fm.QuickFilter("test", streaming.FilterTypeKeyword)
 		
 		// Clear filters
 		fm.ClearFilters()
@@ -209,7 +209,7 @@ func TestFilterManager(t *testing.T) {
 	
 	t.Run("SaveAndLoadPreset", func(t *testing.T) {
 		// Create a filter setup
-		fm.QuickFilter("error|warning", streaming.FilterTypeRegex)
+		_ = fm.QuickFilter("error|warning", streaming.FilterTypeRegex)
 		
 		// Save as preset
 		preset, err := fm.SavePreset("Error Filter", "Filters errors and warnings", "Debugging")
@@ -324,7 +324,7 @@ func TestStreamSearcher(t *testing.T) {
 	})
 	
 	t.Run("HighlightedLine", func(t *testing.T) {
-		searcher.Search("error", streaming.SearchOptions{})
+		_, _ = searcher.Search("error", streaming.SearchOptions{})
 		
 		highlighted := searcher.GetHighlightedLine("This is an error message", "yellow")
 		assert.Contains(t, highlighted, "[yellow]error[white]")
@@ -400,6 +400,6 @@ func BenchmarkSearch(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		searcher.Search("error", options)
+		_, _ = searcher.Search("error", options)
 	}
 }

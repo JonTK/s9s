@@ -315,7 +315,10 @@ func (p *AdvancedFilterParser) parseLastNPattern(pattern string, now time.Time) 
 
 // Enhanced comparison functions with advanced parsing
 
-// compareMemorySize compares memory sizes with unit parsing
+/*
+TODO(lint): Review unused code - func compareMemorySize is unused
+
+compareMemorySize compares memory sizes with unit parsing
 func compareMemorySize(a, b interface{}, op FilterOperator) bool {
 	aSize, aErr := parseMemoryValue(a)
 	bSize, bErr := parseMemoryValue(b)
@@ -342,6 +345,7 @@ func compareMemorySize(a, b interface{}, op FilterOperator) bool {
 		return false
 	}
 }
+*/
 
 // parseDurationValue attempts to parse a duration value
 func parseDurationValue(v interface{}) (time.Duration, error) {
@@ -369,7 +373,10 @@ func parseMemoryValue(v interface{}) (int64, error) {
 	}
 }
 
-// compareStrings compares strings with the given operator
+/*
+TODO(lint): Review unused code - func compareStrings is unused
+
+compareStrings compares strings with the given operator
 func compareStrings(a, b string, op FilterOperator) bool {
 	switch op {
 	case OpEquals:
@@ -398,6 +405,7 @@ func compareStrings(a, b string, op FilterOperator) bool {
 		return false
 	}
 }
+*/
 
 // IsMemoryField checks if a field represents memory
 func IsMemoryField(fieldName string) bool {

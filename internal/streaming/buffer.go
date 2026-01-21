@@ -248,7 +248,6 @@ func (cb *CircularBuffer) Resize(newCapacity int) {
 	if linesToKeep > newCapacity {
 		// Keep the most recent lines
 		currentLines = currentLines[linesToKeep-newCapacity:]
-		linesToKeep = newCapacity
 	}
 
 	for i, line := range currentLines {

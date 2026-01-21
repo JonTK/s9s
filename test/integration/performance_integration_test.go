@@ -298,7 +298,7 @@ func testMemoryLeakDetection(t *testing.T) {
 	}
 
 	// Clean up the "leak" to avoid affecting other tests
-	leakData = nil
+	_ = leakData // Keep reference to avoid compiler optimization
 	runtime.GC()
 	
 	t.Logf("Found %d memory-related recommendations", memoryRecs)

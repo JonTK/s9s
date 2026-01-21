@@ -350,7 +350,7 @@ func TestSessionManagerConcurrency(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			go func(cmd int) {
 				// This will fail without a real SSH connection, but shouldn't panic
-				manager.ExecuteCommand(session.ID, fmt.Sprintf("echo test%d", cmd))
+				_, _ = manager.ExecuteCommand(session.ID, fmt.Sprintf("echo test%d", cmd))
 				done <- true
 			}(i)
 		}

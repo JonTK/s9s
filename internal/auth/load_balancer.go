@@ -34,24 +34,25 @@ type ManagedEndpoint struct {
 
 // LoadBalancerConfig configures the load balancer behavior
 type LoadBalancerConfig struct {
-	Strategy                string
-	MaxConsecutiveFailures  int
-	CircuitBreakerTimeout   time.Duration
-	HealthCheckInterval     time.Duration
-	HealthCheckTimeout      time.Duration
-	HealthCheckPath         string
-	ResponseTimeWeight      float64
-	WeightUpdateInterval    time.Duration
+	Strategy               string
+	MaxConsecutiveFailures int
+	CircuitBreakerTimeout  time.Duration
+	HealthCheckInterval    time.Duration
+	HealthCheckTimeout     time.Duration
+	HealthCheckPath        string
+	ResponseTimeWeight     float64
+	WeightUpdateInterval   time.Duration
 }
 
 // HealthChecker performs periodic health checks on endpoints
 type HealthChecker struct {
-	client      *http.Client
-	config      LoadBalancerConfig
-	balancer    *AdvancedLoadBalancer
-	stopChan    chan struct{}
-	wg          sync.WaitGroup
-	mutex       sync.RWMutex
+	client   *http.Client
+	config   LoadBalancerConfig
+	balancer *AdvancedLoadBalancer
+	stopChan chan struct{}
+	wg       sync.WaitGroup
+	// TODO(lint): Review unused code - field mutex is unused
+	// mutex    sync.RWMutex
 }
 
 // NewAdvancedLoadBalancer creates a new advanced load balancer
@@ -297,7 +298,7 @@ func (a *AdvancedLoadBalancer) selectWeightedLeastConnections(candidates []*Mana
 // selectByResponseTime selects the endpoint with best response time
 func (a *AdvancedLoadBalancer) selectByResponseTime(candidates []*ManagedEndpoint) *ManagedEndpoint {
 	var best *ManagedEndpoint
-	var bestTime time.Duration = time.Hour // Start with a large value
+	var bestTime = time.Hour // Start with a large value
 
 	for _, candidate := range candidates {
 		if candidate.responseTime > 0 && candidate.responseTime < bestTime {
@@ -420,16 +421,16 @@ func (a *AdvancedLoadBalancer) GetEndpointStats() map[string]EndpointStats {
 	stats := make(map[string]EndpointStats)
 	for url, managed := range a.endpoints {
 		stats[url] = EndpointStats{
-			URL:                  url,
-			Status:               managed.Status.String(),
-			Weight:               managed.Weight,
-			ActiveConnections:    managed.activeConnections,
-			ConsecutiveFailures:  managed.consecutiveFailures,
-			ResponseTime:         managed.responseTime,
-			LastSuccess:          managed.lastSuccess,
-			LastFailure:          managed.lastFailure,
-			CircuitBreakerOpen:   managed.circuitBreakerOpen,
-			CircuitBreakerUntil:  managed.circuitBreakerUntil,
+			URL:                 url,
+			Status:              managed.Status.String(),
+			Weight:              managed.Weight,
+			ActiveConnections:   managed.activeConnections,
+			ConsecutiveFailures: managed.consecutiveFailures,
+			ResponseTime:        managed.responseTime,
+			LastSuccess:         managed.lastSuccess,
+			LastFailure:         managed.lastFailure,
+			CircuitBreakerOpen:  managed.circuitBreakerOpen,
+			CircuitBreakerUntil: managed.circuitBreakerUntil,
 		}
 	}
 
@@ -523,7 +524,7 @@ func (h *HealthChecker) checkEndpointHealth(ctx context.Context, endpoint *Endpo
 		h.balancer.UpdateEndpointHealth(endpoint, false)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	healthy := resp.StatusCode >= 200 && resp.StatusCode < 400
 	h.balancer.UpdateEndpointHealth(endpoint, healthy)

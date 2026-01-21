@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -25,7 +24,8 @@ type HealthView struct {
 	statusBar     *tview.TextView
 	app           *tview.Application
 	pages         *tview.Pages
-	mu            sync.RWMutex
+	// TODO(lint): Review unused code - field mu is unused
+	// mu            sync.RWMutex
 	refreshTimer  *time.Timer
 	refreshRate   time.Duration
 }
@@ -92,7 +92,7 @@ func (v *HealthView) SetPages(pages *tview.Pages) {
 
 // Init initializes the health view
 func (v *HealthView) Init(ctx context.Context) error {
-	v.BaseView.Init(ctx)
+	_ = v.BaseView.Init(ctx)
 
 	// Start health monitoring
 	v.healthMonitor.Start()
@@ -168,7 +168,7 @@ func (v *HealthView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 			v.resolveAlert()
 			return nil
 		case 'R':
-			go v.Refresh()
+			go func() { _ = v.Refresh() }()
 			return nil
 		case 'c', 'C':
 			v.clearResolvedAlerts()
@@ -315,7 +315,10 @@ func (v *HealthView) updateHealthChecks() {
 	v.checksBox.SetText(checksText.String())
 }
 
-// updateStatusBar updates the status bar
+/*
+TODO(lint): Review unused code - func (*HealthView).updateStatusBar is unused
+
+updateStatusBar updates the status bar
 func (v *HealthView) updateStatusBar() {
 	health := v.healthMonitor.GetHealth()
 	alertStats := v.healthMonitor.GetAlertManager().GetStats()
@@ -330,6 +333,7 @@ func (v *HealthView) updateStatusBar() {
 
 	v.statusBar.SetText(status)
 }
+*/
 
 // scheduleRefresh schedules the next refresh
 func (v *HealthView) scheduleRefresh() {
@@ -340,7 +344,7 @@ func (v *HealthView) scheduleRefresh() {
 	v.refreshTimer = time.AfterFunc(v.refreshRate, func() {
 		if v.app != nil {
 			v.app.QueueUpdateDraw(func() {
-				v.Refresh()
+				_ = v.Refresh()
 			})
 		}
 	})
