@@ -40,10 +40,35 @@ func NewTUITestHarnessWithSize(t *testing.T, width, height int) *TUITestHarness 
 	}
 	screen.SetSize(width, height)
 
-	// Create test config with mock client
+	// Create test config with mock client and default values
 	cfg := &config.Config{
-		UseMockClient: true,
-		RefreshRate:   "0s", // Disable auto-refresh in tests
+		UseMockClient:  true,
+		RefreshRate:    "0s", // Disable auto-refresh in tests
+		CurrentContext: "test",
+		MaxRetries:     3,
+		UI: config.UIConfig{
+			Skin:        "default",
+			EnableMouse: false,
+			Logoless:    false,
+			Statusless:  false,
+			NoIcons:     false,
+		},
+		Views: config.ViewsConfig{
+			Jobs: config.JobsViewConfig{
+				ShowOnlyActive: false,
+				DefaultSort:    "id",
+				MaxJobs:        100,
+			},
+			Nodes: config.NodesViewConfig{
+				GroupBy:          "state",
+				ShowUtilization:  true,
+			},
+		},
+		Features: config.FeaturesConfig{
+			Streaming: false,
+			Pulseye:   false,
+			Xray:      false,
+		},
 	}
 
 	// Create context
