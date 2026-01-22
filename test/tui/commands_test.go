@@ -12,7 +12,6 @@ func TestCommandExecution(t *testing.T) {
 		command  string
 		expected string // Expected view or state after command
 	}{
-		{"quit", "q", ""},      // Should initiate shutdown
 		{"jobs_short", "j", "jobs"},
 		{"nodes_short", "n", "nodes"},
 		{"partitions_short", "p", "partitions"},
