@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/jontk/s9s/internal/config"
+	"github.com/jontk/s9s/internal/security"
 	"github.com/spf13/cobra"
 )
 
@@ -93,9 +94,16 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 		editor = getDefaultEditor()
 	}
 
-	fmt.Printf("Opening %s in %s...\n", configPath, editor)
+	// Validate editor command path
+	validatedEditor, err := security.ValidateAndResolveCommand(editor, "editor")
+	if err != nil {
+		return fmt.Errorf("invalid editor command %q: %w", editor, err)
+	}
 
-	execCmd := exec.Command(editor, configPath)
+	fmt.Printf("Opening %s in %s...\n", configPath, filepath.Base(validatedEditor))
+
+	// nolint:gosec // G204: Command path is validated via security.ValidateAndResolveCommand
+	execCmd := exec.Command(validatedEditor, configPath)
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr

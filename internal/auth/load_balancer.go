@@ -2,8 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -222,6 +223,26 @@ func (a *AdvancedLoadBalancer) getAllManagedEndpoints() []*ManagedEndpoint {
 	return all
 }
 
+// secureRandInt generates a cryptographically secure random integer in the range [0, max)
+// This prevents prediction attacks on load balancer server selection
+func secureRandInt(max int) int {
+	if max <= 0 {
+		return 0
+	}
+
+	// Calculate the number of bits needed
+	var buf [8]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		// Fallback to time-based selection if crypto/rand fails
+		// This should never happen in practice
+		return int(time.Now().UnixNano()) % max
+	}
+
+	// Convert bytes to uint64 and take modulo
+	randomValue := binary.BigEndian.Uint64(buf[:])
+	return int(randomValue % uint64(max))
+}
+
 // Selection strategies
 
 // selectRoundRobin implements simple round-robin selection
@@ -242,8 +263,8 @@ func (a *AdvancedLoadBalancer) selectWeightedRoundRobin(candidates []*ManagedEnd
 		return a.selectRoundRobin(candidates)
 	}
 
-	// Weighted random selection
-	target := rand.Intn(totalWeight)
+	// Weighted random selection using cryptographically secure random
+	target := secureRandInt(totalWeight)
 	current := 0
 
 	for _, candidate := range candidates {
@@ -315,9 +336,9 @@ func (a *AdvancedLoadBalancer) selectByResponseTime(candidates []*ManagedEndpoin
 	return best
 }
 
-// selectRandom selects a random endpoint
+// selectRandom selects a random endpoint using cryptographically secure random
 func (a *AdvancedLoadBalancer) selectRandom(candidates []*ManagedEndpoint) *ManagedEndpoint {
-	index := rand.Intn(len(candidates))
+	index := secureRandInt(len(candidates))
 	return candidates[index]
 }
 

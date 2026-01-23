@@ -381,6 +381,7 @@ func (km *KeyManager) generateEd25519Key(keyPath, pubPath, comment string) error
 		args = append(args, "-C", comment)
 	}
 
+	// nolint:gosec // G204: ssh-keygen is a well-known system command, args are controlled and validated
 	cmd := exec.Command("ssh-keygen", args...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to generate Ed25519 key: %w", err)
@@ -759,6 +760,7 @@ func (km *KeyManager) StopAgent() error {
 	if pidStr != "" {
 		pid, err := strconv.Atoi(pidStr)
 		if err == nil {
+			// nolint:gosec // G204: kill command with validated numeric PID from SSH_AGENT_PID
 			cmd := exec.Command("kill", strconv.Itoa(pid))
 			_ = cmd.Run() // Ignore errors
 		}

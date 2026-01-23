@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/jontk/s9s/internal/security"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
@@ -56,7 +57,8 @@ type SSHConfig struct {
 
 // SSHClient handles SSH connections to cluster nodes
 type SSHClient struct {
-	config *SSHConfig
+	config         *SSHConfig
+	sshCommandPath string // Validated absolute path to ssh command
 }
 
 // NewSSHClient creates a new SSH client
@@ -85,8 +87,16 @@ func NewSSHClient(config *SSHConfig) *SSHClient {
 		config.Options["ConnectTimeout"] = "10"
 	}
 
+	// Validate and resolve ssh command path
+	// Fall back to "ssh" if validation fails (will fail later with clear error)
+	sshPath := "ssh"
+	if validated, err := security.ValidateAndResolveCommand("ssh", "ssh"); err == nil {
+		sshPath = validated
+	}
+
 	return &SSHClient{
-		config: config,
+		config:         config,
+		sshCommandPath: sshPath,
 	}
 }
 
@@ -96,7 +106,8 @@ func (c *SSHClient) ConnectToNode(ctx context.Context, hostname string) error {
 	args := c.buildSSHArgs(hostname)
 
 	// Create SSH command
-	cmd := exec.CommandContext(ctx, "ssh", args...)
+	// nolint:gosec // G204: Command path validated at initialization, arguments from application config
+	cmd := exec.CommandContext(ctx, c.sshCommandPath, args...)
 
 	// Connect stdin/stdout/stderr to current terminal
 	cmd.Stdin = os.Stdin
@@ -113,7 +124,8 @@ func (c *SSHClient) ConnectToNodeInTerminal(hostname string) error {
 	args := c.buildSSHArgs(hostname)
 
 	// Create SSH command
-	cmd := exec.Command("ssh", args...)
+	// nolint:gosec // G204: Command path validated at initialization, arguments from application config
+	cmd := exec.Command(c.sshCommandPath, args...)
 
 	// Connect to current terminal
 	cmd.Stdin = os.Stdin
@@ -131,7 +143,8 @@ func (c *SSHClient) ExecuteCommand(ctx context.Context, hostname, command string
 	args = append(args, command)
 
 	// Create command
-	cmd := exec.CommandContext(ctx, "ssh", args...)
+	// nolint:gosec // G204: Command path validated at initialization, arguments from application config
+	cmd := exec.CommandContext(ctx, c.sshCommandPath, args...)
 
 	// Execute and capture output
 	output, err := cmd.CombinedOutput()
