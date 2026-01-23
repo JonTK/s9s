@@ -214,3 +214,316 @@ func TestSaveToFile(t *testing.T) {
 	assert.Equal(t, cfg.CurrentContext, loadedCfg.CurrentContext)
 	assert.Equal(t, cfg.UI.Skin, loadedCfg.UI.Skin)
 }
+
+func TestDefaultConfig(t *testing.T) {
+	cfg := DefaultConfig()
+	require.NotNil(t, cfg)
+
+	// Test basic settings
+	assert.Equal(t, "5s", cfg.RefreshRate)
+	assert.Equal(t, 3, cfg.MaxRetries)
+	assert.Equal(t, "default", cfg.CurrentContext)
+
+	// Test UI defaults
+	assert.Equal(t, "default", cfg.UI.Skin)
+	assert.False(t, cfg.UI.Logoless)
+	assert.False(t, cfg.UI.Crumbsless)
+	assert.False(t, cfg.UI.Statusless)
+	assert.False(t, cfg.UI.Headless)
+	assert.False(t, cfg.UI.NoIcons)
+	assert.False(t, cfg.UI.EnableMouse)
+
+	// Test Views defaults
+	assert.NotNil(t, cfg.Views.Jobs)
+	assert.Equal(t, []string{"id", "name", "user", "account", "state", "partition", "nodes", "time"}, cfg.Views.Jobs.Columns)
+	assert.False(t, cfg.Views.Jobs.ShowOnlyActive)
+	assert.Equal(t, "id", cfg.Views.Jobs.DefaultSort)
+	assert.Equal(t, 100, cfg.Views.Jobs.MaxJobs)
+
+	assert.NotNil(t, cfg.Views.Nodes)
+	assert.Equal(t, "state", cfg.Views.Nodes.GroupBy)
+	assert.True(t, cfg.Views.Nodes.ShowUtilization)
+	assert.Equal(t, 100, cfg.Views.Nodes.MaxNodes)
+
+	assert.NotNil(t, cfg.Views.Partitions)
+	assert.True(t, cfg.Views.Partitions.ShowQueueDepth)
+	assert.True(t, cfg.Views.Partitions.ShowWaitTime)
+
+	// Test Features defaults
+	assert.False(t, cfg.Features.Streaming)
+	assert.False(t, cfg.Features.Pulseye)
+	assert.False(t, cfg.Features.Xray)
+
+	// Test Plugin Settings defaults
+	assert.False(t, cfg.PluginSettings.EnableAll)
+	assert.Empty(t, cfg.PluginSettings.PluginDir)
+	assert.True(t, cfg.PluginSettings.AutoDiscover)
+	assert.False(t, cfg.PluginSettings.SafeMode)
+	assert.Equal(t, 512, cfg.PluginSettings.MaxMemoryMB)
+	assert.Equal(t, 50.0, cfg.PluginSettings.MaxCPUPercent)
+
+	// Test Discovery defaults
+	assert.False(t, cfg.Discovery.Enabled)
+	assert.False(t, cfg.Discovery.EnableEndpoint)
+	assert.False(t, cfg.Discovery.EnableToken)
+	assert.Equal(t, "30s", cfg.Discovery.Timeout)
+	assert.Equal(t, 6820, cfg.Discovery.DefaultPort)
+	assert.Equal(t, "/usr/bin/scontrol", cfg.Discovery.ScontrolPath)
+
+	// Test collections are initialized
+	assert.NotNil(t, cfg.Contexts)
+	assert.Empty(t, cfg.Contexts)
+	assert.NotNil(t, cfg.Shortcuts)
+	assert.Empty(t, cfg.Shortcuts)
+	assert.NotNil(t, cfg.Aliases)
+	assert.Empty(t, cfg.Aliases)
+	assert.NotNil(t, cfg.Plugins)
+	assert.Empty(t, cfg.Plugins)
+
+	// Test mock client default
+	assert.False(t, cfg.UseMockClient)
+}
+
+func TestValidateMockUsage(t *testing.T) {
+	tests := []struct {
+		name          string
+		useMockClient bool
+		expectError   bool
+	}{
+		{
+			name:          "mock client disabled returns no error",
+			useMockClient: false,
+			expectError:   false,
+		},
+		{
+			name:          "mock client enabled returns no error (validation deferred to CLI)",
+			useMockClient: true,
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{
+				UseMockClient: tt.useMockClient,
+			}
+
+			err := cfg.ValidateMockUsage()
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestLoad(t *testing.T) {
+	// Save current environment
+	oldSlurmRestURL := os.Getenv("SLURM_REST_URL")
+	oldSlurmJWT := os.Getenv("SLURM_JWT")
+	defer func() {
+		if oldSlurmRestURL != "" {
+			os.Setenv("SLURM_REST_URL", oldSlurmRestURL)
+		} else {
+			os.Unsetenv("SLURM_REST_URL")
+		}
+		if oldSlurmJWT != "" {
+			os.Setenv("SLURM_JWT", oldSlurmJWT)
+		} else {
+			os.Unsetenv("SLURM_JWT")
+		}
+	}()
+
+	// Clear environment
+	os.Unsetenv("SLURM_REST_URL")
+	os.Unsetenv("SLURM_JWT")
+
+	// Test Load() function
+	cfg, err := Load()
+
+	// Should not error even if no config file exists
+	// It will return a config with defaults
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify some basic defaults are set
+	assert.NotEmpty(t, cfg.RefreshRate)
+	assert.NotZero(t, cfg.MaxRetries)
+}
+
+func TestLoadWithEmptyPath(t *testing.T) {
+	// Test that LoadWithPath("") works like Load()
+	cfg, err := LoadWithPath("")
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Should have some defaults
+	assert.NotEmpty(t, cfg.RefreshRate)
+	assert.NotZero(t, cfg.MaxRetries)
+}
+
+func TestLoadWithNonExistentFile(t *testing.T) {
+	// Test loading from a file that doesn't exist
+	cfg, err := LoadWithPath("/tmp/nonexistent-config-file-s9s.yaml")
+
+	// Should return an error when explicitly loading a non-existent file
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestConfigWithMultipleContexts(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "multi-context.yaml")
+
+	yamlContent := `
+currentContext: staging
+
+contexts:
+  - name: production
+    cluster:
+      endpoint: https://prod.example.com:6820
+      token: prod-token
+  - name: staging
+    cluster:
+      endpoint: https://staging.example.com:6820
+      token: staging-token
+  - name: development
+    cluster:
+      endpoint: https://dev.example.com:6820
+      token: dev-token
+`
+
+	err := os.WriteFile(configPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithPath(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify contexts
+	assert.Len(t, cfg.Contexts, 3)
+	assert.Equal(t, "staging", cfg.CurrentContext)
+
+	// Verify current cluster is set to staging
+	assert.Equal(t, "https://staging.example.com:6820", cfg.Cluster.Endpoint)
+	assert.Equal(t, "staging-token", cfg.Cluster.Token)
+
+	// Test GetContext for all contexts
+	prodCtx, err := cfg.GetContext("production")
+	require.NoError(t, err)
+	assert.Equal(t, "production", prodCtx.Name)
+	assert.Equal(t, "https://prod.example.com:6820", prodCtx.Cluster.Endpoint)
+
+	stagingCtx, err := cfg.GetContext("staging")
+	require.NoError(t, err)
+	assert.Equal(t, "staging", stagingCtx.Name)
+
+	devCtx, err := cfg.GetContext("development")
+	require.NoError(t, err)
+	assert.Equal(t, "development", devCtx.Name)
+}
+
+func TestConfigWithDiscoverySettings(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "discovery-config.yaml")
+
+	yamlContent := `
+currentContext: default
+
+contexts:
+  - name: default
+    cluster:
+      endpoint: https://cluster.example.com:6820
+      token: test-token
+
+discovery:
+  enabled: true
+  enableEndpoint: true
+  enableToken: true
+  timeout: 60s
+  defaultPort: 8080
+  scontrolPath: /opt/slurm/bin/scontrol
+`
+
+	err := os.WriteFile(configPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithPath(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify discovery settings
+	assert.True(t, cfg.Discovery.Enabled)
+	assert.True(t, cfg.Discovery.EnableEndpoint)
+	assert.True(t, cfg.Discovery.EnableToken)
+	assert.Equal(t, "60s", cfg.Discovery.Timeout)
+	assert.Equal(t, 8080, cfg.Discovery.DefaultPort)
+	assert.Equal(t, "/opt/slurm/bin/scontrol", cfg.Discovery.ScontrolPath)
+}
+
+func TestConfigWithPluginSettings(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "plugin-config.yaml")
+
+	yamlContent := `
+currentContext: default
+
+contexts:
+  - name: default
+    cluster:
+      endpoint: https://cluster.example.com:6820
+      token: test-token
+
+pluginSettings:
+  enableAll: true
+  pluginDir: /usr/local/s9s/plugins
+  autoDiscover: false
+  safeMode: true
+  maxMemoryMB: 1024
+  maxCPUPercent: 75.0
+
+plugins:
+  - name: observability
+    enabled: true
+    path: /usr/local/s9s/plugins/observability.so
+    config:
+      prometheusURL: http://prometheus:9090
+      refreshInterval: 10s
+`
+
+	err := os.WriteFile(configPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithPath(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify plugin settings
+	assert.True(t, cfg.PluginSettings.EnableAll)
+	assert.Equal(t, "/usr/local/s9s/plugins", cfg.PluginSettings.PluginDir)
+	assert.False(t, cfg.PluginSettings.AutoDiscover)
+	assert.True(t, cfg.PluginSettings.SafeMode)
+	assert.Equal(t, 1024, cfg.PluginSettings.MaxMemoryMB)
+	assert.Equal(t, 75.0, cfg.PluginSettings.MaxCPUPercent)
+
+	// Verify plugins
+	assert.Len(t, cfg.Plugins, 1)
+	assert.Equal(t, "observability", cfg.Plugins[0].Name)
+	assert.True(t, cfg.Plugins[0].Enabled)
+	assert.Equal(t, "/usr/local/s9s/plugins/observability.so", cfg.Plugins[0].Path)
+
+	// Check plugin config exists (viper converts keys to lowercase)
+	require.NotNil(t, cfg.Plugins[0].Config)
+	assert.Contains(t, cfg.Plugins[0].Config, "prometheusurl")
+	assert.Contains(t, cfg.Plugins[0].Config, "refreshinterval")
+
+	// Type assert the interface{} values
+	if prometheusURL, ok := cfg.Plugins[0].Config["prometheusurl"].(string); ok {
+		assert.Equal(t, "http://prometheus:9090", prometheusURL)
+	}
+	if refreshInterval, ok := cfg.Plugins[0].Config["refreshinterval"].(string); ok {
+		assert.Equal(t, "10s", refreshInterval)
+	}
+}
