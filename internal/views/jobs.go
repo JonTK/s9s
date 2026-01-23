@@ -237,6 +237,9 @@ func (v *JobsView) refreshInternal() error {
 
 // Stop stops the view
 func (v *JobsView) Stop() error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
 	if v.refreshTimer != nil {
 		v.refreshTimer.Stop()
 	}
