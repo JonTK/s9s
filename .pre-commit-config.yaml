@@ -1,0 +1,48 @@
+# Pre-commit hooks for s9s project
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General code quality checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  # Go formatting with gofumpt (stricter than gofmt)
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        name: gofumpt
+        entry: gofumpt
+        args: [-w]
+        language: golang
+        types: [go]
+        pass_filenames: true
+
+  # Go imports (organize imports with local prefix)
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-imports
+        args: [-local, github.com/jontk/s9s, -w]
+
+  # Go mod tidy
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-mod-tidy
+
+  # golangci-lint (incremental on changed files)
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.55.2
+    hooks:
+      - id: golangci-lint
+        args: [--new-from-rev=HEAD~1, --timeout=5m]
