@@ -382,6 +382,7 @@ func (c *SSHConfig) getKeyManagerAuth() ([]ssh.AuthMethod, error) {
 
 // getKeyFileAuthFromPath creates authentication from a specific key path
 func (c *SSHConfig) getKeyFileAuthFromPath(keyPath string) (ssh.AuthMethod, error) {
+	// nolint:gosec // G304: keyPath from KeyManager.GetKeys(), paths from user's ~/.ssh directory
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file: %w", err)

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jontk/s9s/internal/security"
 )
 
 // ExportFormat represents different output export formats
@@ -104,6 +106,20 @@ func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, cust
 		outputPath = filepath.Join(e.defaultPath, filename)
 	}
 
+	// Validate output path is within safe directory
+	// Allow writes within defaultPath or user's home directory
+	homeDir, _ := os.UserHomeDir()
+	validPath, validationErr := security.ValidatePathWithinBase(outputPath, e.defaultPath)
+	if validationErr != nil && homeDir != "" {
+		// Try validating against home directory as fallback
+		validPath, validationErr = security.ValidatePathWithinBase(outputPath, homeDir)
+	}
+	if validationErr != nil {
+		result.Error = fmt.Errorf("invalid export path %q: %w", outputPath, validationErr)
+		return result, result.Error
+	}
+	outputPath = validPath
+
 	result.FilePath = outputPath
 
 	// Ensure directory exists
@@ -146,6 +162,7 @@ func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, cust
 
 // exportText exports job output as plain text
 func (e *JobOutputExporter) exportText(data JobOutputData, outputPath string) error {
+	// nolint:gosec // G304: outputPath validated in Export() via security.ValidatePathWithinBase
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -181,6 +198,7 @@ func (e *JobOutputExporter) exportText(data JobOutputData, outputPath string) er
 
 // exportJSON exports job output as JSON
 func (e *JobOutputExporter) exportJSON(data JobOutputData, outputPath string) error {
+	// nolint:gosec // G304: outputPath validated in Export() via security.ValidatePathWithinBase
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -199,6 +217,7 @@ func (e *JobOutputExporter) exportJSON(data JobOutputData, outputPath string) er
 
 // exportCSV exports job output as CSV (useful for tabular data or logs)
 func (e *JobOutputExporter) exportCSV(data JobOutputData, outputPath string) error {
+	// nolint:gosec // G304: outputPath validated in Export() via security.ValidatePathWithinBase
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -255,6 +274,7 @@ func (e *JobOutputExporter) exportCSV(data JobOutputData, outputPath string) err
 
 // exportMarkdown exports job output as Markdown
 func (e *JobOutputExporter) exportMarkdown(data JobOutputData, outputPath string) error {
+	// nolint:gosec // G304: outputPath validated in Export() via security.ValidatePathWithinBase
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -394,6 +414,7 @@ func (e *JobOutputExporter) ExportSummary(results []*ExportResult) string {
 
 // exportHTML exports job output as HTML
 func (e *JobOutputExporter) exportHTML(data JobOutputData, outputPath string) error {
+	// nolint:gosec // G304: outputPath validated in Export() via security.ValidatePathWithinBase
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)

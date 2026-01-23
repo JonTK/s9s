@@ -268,6 +268,7 @@ func (al *AlertLogger) cleanOldLogs() {
 // Helper functions
 
 func loadConfig(path string) (*NotificationConfig, error) {
+	// nolint:gosec // G304: path is application-controlled config file path, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
