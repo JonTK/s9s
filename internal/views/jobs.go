@@ -167,7 +167,7 @@ func NewJobsView(client dao.SlurmClient) *JobsView {
 	v.container = tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(infoBar, 1, 0, false).
-		AddItem(v.table.Table, 0, 1, true)
+		AddItem(v.table, 0, 1, true)
 
 	return v
 }
@@ -1519,7 +1519,7 @@ func (v *JobsView) showAdvancedFilter() {
 	v.container.Clear()
 	v.container.
 		AddItem(v.filterBar, 5, 0, true).
-		AddItem(v.table.Table, 0, 1, false)
+		AddItem(v.table, 0, 1, false)
 
 	v.filterBar.Show()
 	// Note: Advanced filter status removed since individual view status bars are no longer used
@@ -1533,7 +1533,7 @@ func (v *JobsView) closeAdvancedFilter() {
 	v.container.Clear()
 	v.container.
 		AddItem(v.filterInput, 1, 0, false).
-		AddItem(v.table.Table, 0, 1, true)
+		AddItem(v.table, 0, 1, true)
 
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
