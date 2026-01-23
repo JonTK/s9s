@@ -324,20 +324,20 @@ func TestLoad(t *testing.T) {
 	oldSlurmJWT := os.Getenv("SLURM_JWT")
 	defer func() {
 		if oldSlurmRestURL != "" {
-			os.Setenv("SLURM_REST_URL", oldSlurmRestURL)
+			_ = os.Setenv("SLURM_REST_URL", oldSlurmRestURL)
 		} else {
-			os.Unsetenv("SLURM_REST_URL")
+			_ = os.Unsetenv("SLURM_REST_URL")
 		}
 		if oldSlurmJWT != "" {
-			os.Setenv("SLURM_JWT", oldSlurmJWT)
+			_ = os.Setenv("SLURM_JWT", oldSlurmJWT)
 		} else {
-			os.Unsetenv("SLURM_JWT")
+			_ = os.Unsetenv("SLURM_JWT")
 		}
 	}()
 
 	// Clear environment
-	os.Unsetenv("SLURM_REST_URL")
-	os.Unsetenv("SLURM_JWT")
+	_ = os.Unsetenv("SLURM_REST_URL")
+	_ = os.Unsetenv("SLURM_JWT")
 
 	// Test Load() function
 	cfg, err := Load()
