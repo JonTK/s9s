@@ -117,7 +117,7 @@ func TestS9sErrorIs(t *testing.T) {
 func TestS9sErrorWithContext(t *testing.T) {
 	err := New(ErrorTypeValidation, "test error")
 
-	err.WithContext("field", "username").WithContext("value", 42)
+	err = err.WithContext("field", "username").WithContext("value", 42)
 
 	require.NotNil(t, err.Context)
 	assert.Equal(t, "username", err.Context["field"])
