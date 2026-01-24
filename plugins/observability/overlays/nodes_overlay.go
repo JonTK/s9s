@@ -528,7 +528,7 @@ func formatBandwidth(bytesPerSec float64) string {
 }
 
 // generateTextSparkline creates a text representation of sparkline
-func generateTextSparkline(sparkline *widgets.TimeSeriesSparkline) string {
+func generateTextSparkline(_sparkline *widgets.TimeSeriesSparkline) string {
 	// Simplified text sparkline - in reality, you'd want proper sparkline rendering
 	// For now, just return a placeholder since we can't access internal fields
 	return "▂▃▅▇▆▄▂▁"

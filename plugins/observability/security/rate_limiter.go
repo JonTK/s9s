@@ -150,7 +150,7 @@ func (cl *ClientLimiter) refillTokens(now time.Time) {
 }
 
 // countRecentRequests counts requests from all clients in the last minute (for global limiting)
-func (rl *RateLimiter) countRecentRequests(now time.Time) int {
+func (rl *RateLimiter) countRecentRequests(_now time.Time) int {
 	count := 0
 
 	for _, client := range rl.clients {

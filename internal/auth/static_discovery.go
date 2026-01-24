@@ -83,7 +83,7 @@ func (s *StaticEndpointDiscoverer) parseEndpoints(config DiscoveryConfig) error 
 }
 
 // parseEndpoint parses a single endpoint configuration
-func (s *StaticEndpointDiscoverer) parseEndpoint(clusterID string, ep interface{}, index int) (*Endpoint, error) {
+func (s *StaticEndpointDiscoverer) parseEndpoint(clusterID string, ep interface{}, _index int) (*Endpoint, error) {
 	switch endpoint := ep.(type) {
 	case string:
 		// Simple string URL

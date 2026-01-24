@@ -366,7 +366,7 @@ func (e *Engine) evaluateQueryRule(ctx context.Context, rule Rule) []Alert {
 }
 
 // evaluateCompositeRule evaluates a composite rule
-func (e *Engine) evaluateCompositeRule(ctx context.Context, rule Rule) []Alert {
+func (e *Engine) evaluateCompositeRule(_ctx context.Context, _rule Rule) []Alert {
 	// TODO: Implement composite rule evaluation
 	return []Alert{}
 }
@@ -422,7 +422,7 @@ func (e *Engine) getJobMetricValue(job *models.JobMetrics, metric string) *float
 }
 
 // getClusterMetricValue gets a cluster-wide metric value
-func (e *Engine) getClusterMetricValue(ctx context.Context, metric string) *float64 {
+func (e *Engine) getClusterMetricValue(_ctx context.Context, metric string) *float64 {
 	// Get aggregate metrics
 	agg := e.nodeCollector.GetAggregateMetrics()
 	if agg == nil {
@@ -569,6 +569,7 @@ func (e *Engine) SetResolvedCallback(fn func(Alert)) {
 }
 
 // loadRules loads alert rules from configuration
+// nolint:unparam // Designed for future extensibility; currently always returns nil
 func (e *Engine) loadRules() error {
 	// Start with predefined rules (if enabled in config)
 	if e.config.LoadPredefinedRules {

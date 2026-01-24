@@ -577,6 +577,7 @@ func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 }
 
 // fetchJobMetrics fetches job metrics from Prometheus
+// nolint:unparam // Designed for future extensibility; currently always returns nil
 func (v *ObservabilityView) fetchJobMetrics(ctx context.Context) error {
 	// Get list of running jobs from Prometheus discovery
 	jobs := v.getJobList(ctx)
@@ -799,7 +800,7 @@ func (v *ObservabilityView) getJobList(ctx context.Context) []string {
 }
 
 // getJobDetailsFromSlurm fetches job details from SLURM for the given job IDs
-func (v *ObservabilityView) getJobDetailsFromSlurm(ctx context.Context, jobIDs []string) map[string]models.JobInfo {
+func (v *ObservabilityView) getJobDetailsFromSlurm(_ctx context.Context, jobIDs []string) map[string]models.JobInfo {
 	details := make(map[string]models.JobInfo)
 
 	logging.Debug("observability-view", "getJobDetailsFromSlurm called with jobs: %v", jobIDs)

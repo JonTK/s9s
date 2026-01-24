@@ -242,6 +242,7 @@ func (c *Client) Close() {
 }
 
 // doRequest performs an HTTP request with authentication
+// nolint:unparam // Method parameter allows for future extensibility beyond GET-only requests
 func (c *Client) doRequest(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
 	fullURL := c.endpoint + path
 

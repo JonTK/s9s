@@ -667,7 +667,7 @@ func (pd *PerformanceDashboard) updateAlerts(cpuUsage, memUsage, netUsage, opsRa
 }
 
 // performAutoOptimization applies automatic optimizations based on metrics
-func (pd *PerformanceDashboard) performAutoOptimization(cpuUsage, memUsage, netUsage, opsRate float64) {
+func (pd *PerformanceDashboard) performAutoOptimization(cpuUsage, memUsage, _netUsage, opsRate float64) {
 	if pd.optimizer == nil {
 		return
 	}

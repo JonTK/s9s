@@ -418,7 +418,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyLevel(score float64) E
 }
 
 // generateRecommendations generates optimization recommendations
-func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, score float64) []Recommendation {
+func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, _score float64) []Recommendation {
 	var recommendations []Recommendation
 
 	// Low utilization recommendations
@@ -539,7 +539,8 @@ func (rea *ResourceEfficiencyAnalyzer) calculateCostImpact(resourceType Resource
 }
 
 // analyzeClusterUtilization analyzes overall cluster utilization
-func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(ctx context.Context) (*ClusterUtilizationSummary, error) {
+// nolint:unparam // Designed for future extensibility; currently always returns nil
+func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(_ctx context.Context) (*ClusterUtilizationSummary, error) {
 	// This would typically query SLURM metrics for cluster-wide statistics
 	// For now, we'll return a simplified analysis
 
@@ -565,6 +566,7 @@ func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(ctx context.Con
 }
 
 // calculateCostOptimization calculates cost optimization summary
+// nolint:unparam // Designed for future extensibility; currently always returns nil
 func (rea *ResourceEfficiencyAnalyzer) calculateCostOptimization(analysis *ClusterEfficiencyAnalysis) (*CostOptimizationSummary, error) {
 	currentMonthlyCost := 10000.0 // This would be calculated from actual usage
 	totalSavingsPercentage := 0.0
