@@ -1170,7 +1170,7 @@ func (v *NodesView) showProgressDialog(message string) {
 }
 
 // showNotification shows a notification dialog
-func (v *NodesView) showNotification(title, message string) {
+func (v *NodesView) showNotification(_title, message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})

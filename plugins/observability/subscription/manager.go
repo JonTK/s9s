@@ -318,7 +318,7 @@ func (sm *SubscriptionManager) getPrometheusMetrics(ctx context.Context, params 
 }
 
 // getAlerts retrieves active alerts
-func (sm *SubscriptionManager) getAlerts(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (sm *SubscriptionManager) getAlerts(_ctx context.Context, _params map[string]interface{}) (interface{}, error) {
 	// For now, return mock alert data
 	// TODO: Implement actual alert retrieval from Prometheus Alertmanager
 	return map[string]interface{}{
