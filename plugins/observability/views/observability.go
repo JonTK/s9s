@@ -577,7 +577,7 @@ func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 }
 
 // fetchJobMetrics fetches job metrics from Prometheus
-// nolint:unparam // Designed for future extensibility; currently always returns nil
+	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (v *ObservabilityView) fetchJobMetrics(ctx context.Context) error {
 	// Get list of running jobs from Prometheus discovery
 	jobs := v.getJobList(ctx)

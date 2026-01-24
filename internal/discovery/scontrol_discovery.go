@@ -85,7 +85,7 @@ func (sd *ScontrolDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster
 	defer cancel()
 
 	// Execute scontrol ping
-	// nolint:gosec // G204: Command path is validated during initialization via security.ValidateAndResolveCommand
+	//nolint:gosec // G204: Command path is validated during initialization via security.ValidateAndResolveCommand
 	cmd := exec.CommandContext(ctxWithTimeout, sd.scontrolPath, "ping")
 	output, err := cmd.Output()
 	if err != nil {
