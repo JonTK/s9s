@@ -304,7 +304,7 @@ func defaultHeatmapColorFunc(value, min, max float64) tcell.Color {
 
 // InputHandler handles input events
 func (h *HeatmapWidget) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-	return h.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return h.WrapInputHandler(func(event *tcell.EventKey, _ func(p tview.Primitive)) {
 		if !h.selectable {
 			return
 		}
@@ -367,7 +367,7 @@ func NewNodeUtilizationHeatmap() *NodeUtilizationHeatmap {
 	h.SetCellSize(6, 1)
 
 	// Custom color function for utilization
-	h.colorFunc = func(value, min, max float64) tcell.Color {
+	h.colorFunc = func(value, _, _ float64) tcell.Color {
 		switch {
 		case value >= 90:
 			return tcell.ColorRed

@@ -16,14 +16,14 @@ type MockBatchClient struct {
 	queryResults map[string]*QueryResult
 }
 
-func (m *MockBatchClient) TestConnection(ctx context.Context) error {
+func (m *MockBatchClient) TestConnection(_ context.Context) error {
 	if m.shouldFail {
 		return errors.New("connection failed")
 	}
 	return nil
 }
 
-func (m *MockBatchClient) Query(ctx context.Context, query string, queryTime time.Time) (*QueryResult, error) {
+func (m *MockBatchClient) Query(ctx context.Context, query string, _ time.Time) (*QueryResult, error) {
 	m.callCount++
 
 	// Simulate query latency
@@ -60,7 +60,7 @@ func (m *MockBatchClient) Query(ctx context.Context, query string, queryTime tim
 	}, nil
 }
 
-func (m *MockBatchClient) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*QueryResult, error) {
+func (m *MockBatchClient) QueryRange(ctx context.Context, query string, start, _ time.Time, _ time.Duration) (*QueryResult, error) {
 	return m.Query(ctx, query, start)
 }
 
@@ -76,14 +76,14 @@ func (m *MockBatchClient) BatchQuery(ctx context.Context, queries map[string]str
 	return results, nil
 }
 
-func (m *MockBatchClient) Series(ctx context.Context, matches []string, start, end time.Time) ([]map[string]string, error) {
+func (m *MockBatchClient) Series(_ context.Context, _ []string, _, _ time.Time) ([]map[string]string, error) {
 	if m.shouldFail {
 		return nil, errors.New("series query failed")
 	}
 	return []map[string]string{{"__name__": "test_metric"}}, nil
 }
 
-func (m *MockBatchClient) Labels(ctx context.Context) ([]string, error) {
+func (m *MockBatchClient) Labels(_ context.Context) ([]string, error) {
 	if m.shouldFail {
 		return nil, errors.New("labels query failed")
 	}

@@ -79,7 +79,7 @@ func (w *BaseWidget) MaxSize() (int, int) {
 }
 
 // OnResize handles widget resizing
-func (w *BaseWidget) OnResize(width, height int) {
+func (w *BaseWidget) OnResize(_, _ int) {
 	// Default implementation - can be overridden
 }
 

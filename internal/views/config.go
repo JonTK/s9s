@@ -132,7 +132,7 @@ func (cv *ConfigView) showExitConfirmation() {
 	modal := tview.NewModal()
 	modal.SetText("You have unsaved configuration changes.\nWhat would you like to do?")
 	modal.AddButtons([]string{"Save & Exit", "Discard & Exit", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		cv.pages.RemovePage("exit-confirm")
 
 		switch buttonIndex {
@@ -188,7 +188,7 @@ Environment Variables:
 	modal := tview.NewModal()
 	modal.SetText(helpText)
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		cv.pages.RemovePage("config-help")
 		cv.app.SetFocus(cv.configManager)
 	})

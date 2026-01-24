@@ -362,7 +362,7 @@ func (h *InAppHandler) GetName() string {
 	return "In-App Notifications"
 }
 
-func (h *InAppHandler) Send(ctx context.Context, notification Notification) error {
+func (h *InAppHandler) Send(_ context.Context, notification Notification) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -422,7 +422,7 @@ func (h *LogHandler) GetName() string {
 	return "Log Handler"
 }
 
-func (h *LogHandler) Send(ctx context.Context, notification Notification) error {
+func (h *LogHandler) Send(_ context.Context, notification Notification) error {
 	if h.logger == nil {
 		return fmt.Errorf("logger not configured")
 	}

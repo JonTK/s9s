@@ -108,13 +108,13 @@ func (s *SparklineWidget) updateScale() {
 	}
 
 	// Add some padding to the scale
-	range_ := s.max - s.min
-	if range_ < 0.001 {
+	dataRange := s.max - s.min
+	if dataRange < 0.001 {
 		// Avoid division by zero for constant values
 		s.min -= 1
 		s.max += 1
 	} else {
-		padding := range_ * 0.1
+		padding := dataRange * 0.1
 		s.min -= padding
 		s.max += padding
 	}
@@ -164,9 +164,9 @@ func (s *SparklineWidget) drawSparkline(screen tcell.Screen, x, y, width, height
 	sparkChars := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
 	// Calculate scale
-	range_ := s.max - s.min
-	if range_ < 0.001 {
-		range_ = 1 // Avoid division by zero
+	dataRange := s.max - s.min
+	if dataRange < 0.001 {
+		dataRange = 1 // Avoid division by zero
 	}
 
 	// Draw each point
@@ -174,7 +174,7 @@ func (s *SparklineWidget) drawSparkline(screen tcell.Screen, x, y, width, height
 		value := s.values[startIdx+i]
 
 		// Normalize value to 0-1
-		normalized := (value - s.min) / range_
+		normalized := (value - s.min) / dataRange
 		normalized = math.Max(0, math.Min(1, normalized))
 
 		// Get color
@@ -250,7 +250,7 @@ func (s *SparklineWidget) drawValueLine(screen tcell.Screen, x, y, width int) {
 }
 
 // defaultSparklineColorFunc returns colors based on value
-func defaultSparklineColorFunc(value float64) tcell.Color {
+func defaultSparklineColorFunc(_ float64) tcell.Color {
 	// This should be customized based on the metric type
 	return tcell.ColorWhite
 }

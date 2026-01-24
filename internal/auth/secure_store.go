@@ -410,7 +410,7 @@ func NewFileTokenStore(storePath string) TokenStore {
 }
 
 // Store saves a token securely
-func (f *FileTokenStore) Store(ctx context.Context, clusterID string, token *Token) error {
+func (f *FileTokenStore) Store(_ context.Context, clusterID string, token *Token) error {
 	// Serialize token
 	tokenBytes, err := json.Marshal(token)
 	if err != nil {
@@ -428,7 +428,7 @@ func (f *FileTokenStore) Store(ctx context.Context, clusterID string, token *Tok
 }
 
 // Retrieve gets a token from storage
-func (f *FileTokenStore) Retrieve(ctx context.Context, clusterID string) (*Token, error) {
+func (f *FileTokenStore) Retrieve(_ context.Context, clusterID string) (*Token, error) {
 	key := fmt.Sprintf("token:%s", clusterID)
 
 	// Retrieve encrypted token
@@ -448,7 +448,7 @@ func (f *FileTokenStore) Retrieve(ctx context.Context, clusterID string) (*Token
 }
 
 // Delete removes a token from storage
-func (f *FileTokenStore) Delete(ctx context.Context, clusterID string) error {
+func (f *FileTokenStore) Delete(_ context.Context, clusterID string) error {
 	key := fmt.Sprintf("token:%s", clusterID)
 
 	if err := f.secureStore.Delete(key); err != nil {
@@ -460,7 +460,7 @@ func (f *FileTokenStore) Delete(ctx context.Context, clusterID string) error {
 }
 
 // List returns all stored cluster IDs
-func (f *FileTokenStore) List(ctx context.Context) ([]string, error) {
+func (f *FileTokenStore) List(_ context.Context) ([]string, error) {
 	keys, err := f.secureStore.List()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list keys: %w", err)
@@ -479,7 +479,7 @@ func (f *FileTokenStore) List(ctx context.Context) ([]string, error) {
 }
 
 // Clear removes all tokens from storage
-func (f *FileTokenStore) Clear(ctx context.Context) error {
+func (f *FileTokenStore) Clear(_ context.Context) error {
 	keys, err := f.secureStore.List()
 	if err != nil {
 		return fmt.Errorf("failed to list keys: %w", err)

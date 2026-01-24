@@ -52,7 +52,7 @@ func init() {
 }
 
 // runSetup executes the setup command
-func runSetup(cmd *cobra.Command, args []string) error {
+func runSetup(_ *cobra.Command, _ []string) error {
 	if setupFlagValues.validateOnly {
 		return runConfigValidation()
 	}

@@ -85,7 +85,7 @@ func initConfig() {
 }
 
 // runRoot executes the main s9s TUI application
-func runRoot(cmd *cobra.Command, args []string) error {
+func runRoot(cmd *cobra.Command, _ []string) error {
 	// Handle version flag
 	if showVersion {
 		info := version.Get()

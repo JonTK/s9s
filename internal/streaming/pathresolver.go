@@ -207,7 +207,7 @@ func (pr *PathResolver) expandNodeRange(nodeRange string) []string {
 }
 
 // ValidateOutputPath checks if an output path is accessible
-func (pr *PathResolver) ValidateOutputPath(filePath string, isRemote bool, nodeID string) error {
+func (pr *PathResolver) ValidateOutputPath(filePath string, _ bool, _ string) error {
 	if filePath == "" {
 		return fmt.Errorf("empty file path")
 	}

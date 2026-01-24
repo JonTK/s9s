@@ -245,7 +245,7 @@ func (v *SSHTerminalView) setupEventHandlers() {
 	})
 
 	// Handle session list selection
-	v.sessionList.SetSelectedFunc(func(index int, primaryText, secondaryText string, shortcut rune) {
+	v.sessionList.SetSelectedFunc(func(_ int, _, _ string, _ rune) {
 		v.connectToSelectedNode()
 	})
 }
@@ -569,7 +569,7 @@ func (v *SSHTerminalView) showErrorModal(message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("error-modal")
 	})
 	v.pages.AddPage("error-modal", modal, true, true)

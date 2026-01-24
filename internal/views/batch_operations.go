@@ -262,7 +262,7 @@ func (v *BatchOperationsView) confirmOperation(operation BatchOperation, onConfi
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Yes", "No"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("confirm")
 		if buttonIndex == 0 { // Yes
 			onConfirm()
@@ -323,7 +323,7 @@ func (v *BatchOperationsView) performBatchOperation(operation BatchOperation, pa
 
 		v.loadingWrapper.WithLoadingAsync(message, func() error {
 			return v.performBatchOperationInternal(operation, parameter)
-		}, func(err error) {
+		}, func(_ error) {
 			// Operation complete, close the batch operations modal
 			v.app.QueueUpdateDraw(func() {
 				v.close()
@@ -446,7 +446,7 @@ func (v *BatchOperationsView) showError(message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("error")
 	})
 
@@ -530,7 +530,7 @@ func (v *BatchOperationsView) confirmExportOperation(format export.ExportFormat)
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Export", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("export-confirm")
 		if buttonIndex == 0 { // Export
 			v.performBatchOperation(BatchExport, string(format))

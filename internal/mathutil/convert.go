@@ -1,3 +1,4 @@
+// Package mathutil provides mathematical utility functions and type conversions.
 package mathutil
 
 import (

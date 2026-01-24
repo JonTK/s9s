@@ -1,3 +1,4 @@
+// Package setup provides interactive setup wizard for s9s configuration.
 package setup
 
 import (

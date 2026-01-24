@@ -431,7 +431,7 @@ func (n *nodeManager) Resume(name string) error {
 	return err
 }
 
-func (n *nodeManager) SetState(name string, state string) error {
+func (n *nodeManager) SetState(_ string, _ string) error {
 	// Note: May need to implement if slurm-client supports it
 	return errors.Internal("set state operation not supported by slurm-client")
 }

@@ -128,7 +128,7 @@ func (ed *EnvironmentDiscovery) Priority() int {
 	return 10
 }
 
-func (ed *EnvironmentDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+func (ed *EnvironmentDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Check SLURM environment variables
@@ -249,7 +249,7 @@ func (cfd *ConfigFileDiscovery) Priority() int {
 	return 8
 }
 
-func (cfd *ConfigFileDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+func (cfd *ConfigFileDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Common SLURM configuration paths
@@ -424,7 +424,7 @@ func (dd *DNSDiscovery) Priority() int {
 	return 7
 }
 
-func (dd *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+func (dd *DNSDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Try common SLURM SRV records
@@ -498,7 +498,7 @@ func (pd *ProcessDiscovery) Priority() int {
 	return 4
 }
 
-func (pd *ProcessDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+func (pd *ProcessDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Check for running SLURM processes

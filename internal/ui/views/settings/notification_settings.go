@@ -1,3 +1,4 @@
+// Package settings provides settings views for configuring s9s options.
 package settings
 
 import (
@@ -191,7 +192,7 @@ func (v *NotificationSettingsView) showMessage(message string, color tcell.Color
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			v.pages.RemovePage("message")
 		})
 

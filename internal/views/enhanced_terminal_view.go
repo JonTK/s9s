@@ -263,7 +263,7 @@ func (etv *EnhancedTerminalView) showNodeSelectionDialog() {
 	copy(nodeOptions, etv.nodes)
 	nodeOptions = append(nodeOptions, "Custom...")
 
-	form.AddDropDown("Node", nodeOptions, 0, func(option string, optionIndex int) {
+	form.AddDropDown("Node", nodeOptions, 0, func(option string, _ int) {
 		selectedNode = option
 	})
 

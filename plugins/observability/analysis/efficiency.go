@@ -224,7 +224,7 @@ func (rea *ResourceEfficiencyAnalyzer) AnalyzeClusterEfficiency(ctx context.Cont
 }
 
 // AnalyzeResourceEfficiency analyzes efficiency for a specific resource type
-func (rea *ResourceEfficiencyAnalyzer) AnalyzeResourceEfficiency(ctx context.Context, resourceType ResourceType, analysisPeriod time.Duration) (*ResourceEfficiency, error) {
+func (rea *ResourceEfficiencyAnalyzer) AnalyzeResourceEfficiency(_ context.Context, resourceType ResourceType, analysisPeriod time.Duration) (*ResourceEfficiency, error) {
 	metricName := rea.getMetricName(resourceType)
 	if metricName == "" {
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
@@ -419,7 +419,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyLevel(score float64) E
 }
 
 // generateRecommendations generates optimization recommendations
-func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, _score float64) []Recommendation {
+func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, _ float64) []Recommendation {
 	var recommendations []Recommendation
 
 	// Low utilization recommendations
@@ -541,7 +541,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateCostImpact(resourceType Resource
 
 // analyzeClusterUtilization analyzes overall cluster utilization
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
-func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(_ctx context.Context) (*ClusterUtilizationSummary, error) {
+func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(_ context.Context) (*ClusterUtilizationSummary, error) {
 	// This would typically query SLURM metrics for cluster-wide statistics
 	// For now, we'll return a simplified analysis
 

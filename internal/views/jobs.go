@@ -410,7 +410,7 @@ func (v *JobsView) onSelectionChange(selectedCount int, allSelected bool) {
 }
 
 // onRowToggle handles individual row selection toggles
-func (v *JobsView) onRowToggle(row int, selected bool, data []string) {
+func (v *JobsView) onRowToggle(_ int, selected bool, data []string) {
 	if len(data) > 0 {
 		jobID := data[0] // First column is job ID
 		if selected {
@@ -552,7 +552,7 @@ func (v *JobsView) scheduleRefresh() {
 }
 
 // onJobSelect handles job selection
-func (v *JobsView) onJobSelect(row, col int) {
+func (v *JobsView) onJobSelect(_, _ int) {
 	// Get selected job data
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
@@ -564,7 +564,7 @@ func (v *JobsView) onJobSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *JobsView) onSort(col int, ascending bool) {
+func (v *JobsView) onSort(_ int, _ bool) {
 	// Sorting is handled by the table component
 	// Note: Sort feedback removed since individual view status bars are no longer used
 }
@@ -577,7 +577,7 @@ func (v *JobsView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *JobsView) onFilterDone(key tcell.Key) {
+func (v *JobsView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}
@@ -616,7 +616,7 @@ func (v *JobsView) cancelSelectedJob() {
 	modal := tview.NewModal().
 		SetText(confirmText).
 		AddButtons([]string{"Cancel Job", "Keep Running"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				go v.performCancelJob(jobID)
 			}
@@ -947,7 +947,7 @@ func (v *JobsView) requeueSelectedJob() {
 	modal := tview.NewModal().
 		SetText(confirmText).
 		AddButtons([]string{"Requeue", "Cancel"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				v.performRequeueJob(jobID)
 			}
@@ -991,7 +991,7 @@ func (v *JobsView) performRequeueJob(jobID string) {
 // showJobSubmissionForm shows job submission form using the wizard
 func (v *JobsView) showJobSubmissionForm() {
 	wizard := NewJobSubmissionWizard(v.client, v.app)
-	wizard.Show(v.pages, func(jobID string) {
+	wizard.Show(v.pages, func(_ string) {
 		// Success callback
 		// Note: Status bar update removed since individual view status bars are no longer used
 		go func() { _ = v.Refresh() }()

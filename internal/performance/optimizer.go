@@ -1,3 +1,4 @@
+// Package performance provides performance optimization and monitoring tools.
 package performance
 
 import (

@@ -601,7 +601,7 @@ func (v *NodesView) scheduleRefresh() {
 }
 
 // onNodeSelect handles node selection
-func (v *NodesView) onNodeSelect(row, col int) {
+func (v *NodesView) onNodeSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -612,7 +612,7 @@ func (v *NodesView) onNodeSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *NodesView) onSort(col int, ascending bool) {
+func (v *NodesView) onSort(_ int, _ bool) {
 	// Note: Status bar update removed since individual view status bars are no longer used
 }
 
@@ -624,7 +624,7 @@ func (v *NodesView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *NodesView) onFilterDone(key tcell.Key) {
+func (v *NodesView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}
@@ -680,7 +680,7 @@ func (v *NodesView) performDrainNode(nodeName, reason string) {
 			errorModal := tview.NewModal().
 				SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
 				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				SetDoneFunc(func(_ int, _ string) {
 					v.pages.RemovePage("error")
 					v.app.SetFocus(v.table.Table)
 				})
@@ -694,7 +694,7 @@ func (v *NodesView) performDrainNode(nodeName, reason string) {
 		successModal := tview.NewModal().
 			SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
 			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			SetDoneFunc(func(_ int, _ string) {
 				v.pages.RemovePage("success")
 				v.app.SetFocus(v.table.Table)
 			})
@@ -752,7 +752,7 @@ func (v *NodesView) resumeSelectedNode() {
 			errorModal := tview.NewModal().
 				SetText(fmt.Sprintf("Node %s is in state '%s' with no drain reason. Only drained nodes can be resumed.", nodeName, cleanState)).
 				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				SetDoneFunc(func(_ int, _ string) {
 					v.pages.RemovePage("error")
 					v.app.SetFocus(v.table.Table)
 				})
@@ -766,7 +766,7 @@ func (v *NodesView) resumeSelectedNode() {
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Resume node %s?", nodeName)).
 		AddButtons([]string{"Yes", "No"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				go v.performResumeNode(nodeName)
 			}
@@ -786,7 +786,7 @@ func (v *NodesView) performResumeNode(nodeName string) {
 			errorModal := tview.NewModal().
 				SetText(fmt.Sprintf("Failed to resume node %s: %v", nodeName, err)).
 				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				SetDoneFunc(func(_ int, _ string) {
 					v.pages.RemovePage("error")
 					v.app.SetFocus(v.table.Table)
 				})
@@ -800,7 +800,7 @@ func (v *NodesView) performResumeNode(nodeName string) {
 		successModal := tview.NewModal().
 			SetText(fmt.Sprintf("Node %s resumed successfully", nodeName)).
 			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			SetDoneFunc(func(_ int, _ string) {
 				v.pages.RemovePage("success")
 				v.app.SetFocus(v.table.Table)
 			})
@@ -988,7 +988,7 @@ func (v *NodesView) confirmSSH(nodeName, message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Yes", "No"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("ssh-confirm")
 		if buttonIndex == 0 { // Yes
 			v.performSSH(nodeName)
@@ -1172,11 +1172,11 @@ func (v *NodesView) showProgressDialog(message string) {
 }
 
 // showNotification shows a notification dialog
-func (v *NodesView) showNotification(_title, message string) {
+func (v *NodesView) showNotification(_, message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("notification")
 	})
 
@@ -1190,7 +1190,7 @@ func (v *NodesView) showError(message string) {
 	modal := tview.NewModal()
 	modal.SetText("[red]Error:[white] " + message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("error")
 	})
 

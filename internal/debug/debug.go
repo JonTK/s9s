@@ -1,3 +1,4 @@
+// Package debug provides debugging utilities and logging for development.
 package debug
 
 import (

@@ -115,7 +115,7 @@ func NewExternalAPI(
 }
 
 // Start starts the external API server
-func (api *ExternalAPI) Start(ctx context.Context) error {
+func (api *ExternalAPI) Start(_ context.Context) error {
 	if !api.enabled {
 		return nil
 	}
@@ -619,7 +619,7 @@ func (api *ExternalAPI) handleCreateSubscription(w http.ResponseWriter, r *http.
 	}
 
 	// Create a dummy callback for API subscriptions
-	callback := func(data interface{}, err error) {
+	callback := func(_ interface{}, _ error) {
 		// API subscriptions don't use callbacks directly
 	}
 
@@ -699,7 +699,7 @@ func (api *ExternalAPI) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleHealth handles health check requests
-func (api *ExternalAPI) handleHealth(w http.ResponseWriter, r *http.Request) {
+func (api *ExternalAPI) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{

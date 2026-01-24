@@ -1,3 +1,4 @@
+// Package monitoring provides cluster monitoring and alert management.
 package monitoring
 
 import (

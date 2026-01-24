@@ -1,3 +1,4 @@
+// Package ssh provides SSH authentication and connection utilities.
 package ssh
 
 import (

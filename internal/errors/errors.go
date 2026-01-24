@@ -1,3 +1,4 @@
+// Package errors provides structured error types and handling for s9s.
 package errors
 
 import (

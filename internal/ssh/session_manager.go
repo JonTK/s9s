@@ -545,7 +545,7 @@ func (sm *SessionManager) Shutdown() {
 }
 
 // TestNodeConnectivity tests SSH connectivity to multiple nodes
-func (sm *SessionManager) TestNodeConnectivity(hostnames []string, timeout time.Duration) map[string]error {
+func (sm *SessionManager) TestNodeConnectivity(hostnames []string, _ time.Duration) map[string]error {
 	results := make(map[string]error)
 	var wg sync.WaitGroup
 	var mu sync.Mutex

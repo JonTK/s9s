@@ -61,7 +61,7 @@ func (ed *ExportDialog) setupUI() {
 
 	// Format dropdown
 	formats := []string{"Text", "JSON", "CSV", "Markdown", "HTML"}
-	ed.form.AddDropDown("Format:", formats, 0, func(option string, index int) {
+	ed.form.AddDropDown("Format:", formats, 0, func(option string, _ int) {
 		switch option {
 		case "Text":
 			ed.selectedFormat = export.FormatText
@@ -290,7 +290,7 @@ func (bd *BatchExportDialog) setupBatchUI(items []string) {
 	}
 
 	// Handle selection
-	bd.list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	bd.list.SetSelectedFunc(func(index int, mainText, _ string, _ rune) {
 		bd.selectedItems[index] = !bd.selectedItems[index]
 
 		// Update display
@@ -311,7 +311,7 @@ func (bd *BatchExportDialog) setupBatchUI(items []string) {
 
 	// Format dropdown
 	formats := []string{"Text", "JSON", "CSV", "Markdown", "HTML"}
-	bd.form.AddDropDown("Format:", formats, 0, func(option string, index int) {
+	bd.form.AddDropDown("Format:", formats, 0, func(option string, _ int) {
 		switch option {
 		case "Text":
 			bd.selectedFormat = export.FormatText

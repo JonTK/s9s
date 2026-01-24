@@ -334,7 +334,7 @@ func (e *JobOutputExporter) BatchExport(jobs []JobOutputData, format ExportForma
 }
 
 // BatchExportWithCallback exports multiple job outputs with optional progress callback
-func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format ExportFormat, basePath string, progressCallback func(current, total int, jobID string)) ([]*ExportResult, error) {
+func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format ExportFormat, _ string, progressCallback func(current, total int, jobID string)) ([]*ExportResult, error) {
 	results := make([]*ExportResult, 0, len(jobs))
 
 	for i, job := range jobs {
@@ -357,7 +357,7 @@ func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format
 }
 
 // StreamingBatchExport exports jobs one at a time to minimize memory usage
-func (e *JobOutputExporter) StreamingBatchExport(jobProvider func() (JobOutputData, bool), format ExportFormat, basePath string, progressCallback func(current int, jobID string)) ([]*ExportResult, error) {
+func (e *JobOutputExporter) StreamingBatchExport(jobProvider func() (JobOutputData, bool), format ExportFormat, _ string, progressCallback func(current int, jobID string)) ([]*ExportResult, error) {
 	var results []*ExportResult
 	jobCount := 0
 

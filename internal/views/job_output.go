@@ -453,7 +453,7 @@ func (v *JobOutputView) showExportResult(message, filePath string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Open Folder", "Copy Path", "OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		switch buttonIndex {
 		case 0: // Open Folder
 			v.openExportFolder(filePath)
@@ -467,7 +467,7 @@ func (v *JobOutputView) showExportResult(message, filePath string) {
 }
 
 // openExportFolder opens the folder containing the exported file
-func (v *JobOutputView) openExportFolder(_filePath string) {
+func (v *JobOutputView) openExportFolder(_ string) {
 	// This is a platform-specific operation
 	// For now, just show the path
 	v.showNotification(fmt.Sprintf("Export folder:\n%s", v.exporter.GetDefaultPath()))
@@ -503,7 +503,7 @@ func (v *JobOutputView) showNotification(message string) {
 	notification := tview.NewModal()
 	notification.SetText(message)
 	notification.AddButtons([]string{"OK"})
-	notification.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	notification.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("notification")
 	})
 

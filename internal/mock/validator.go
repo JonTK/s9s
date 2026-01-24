@@ -1,3 +1,4 @@
+// Package mock provides mock client validation and mock mode utilities.
 package mock
 
 import (

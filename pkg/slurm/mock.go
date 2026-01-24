@@ -1,3 +1,4 @@
+// Package slurm provides SLURM client implementation and mock for testing.
 package slurm
 
 import (
@@ -760,7 +761,7 @@ func (m *mockJobManager) GetOutput(id string) (string, error) {
 	return fmt.Sprintf("Mock output for job %s\nLine 1: Starting simulation...\nLine 2: Processing data...\nLine 3: Simulation complete.", id), nil
 }
 
-func (m *mockJobManager) Notify(id string, message string) error {
+func (m *mockJobManager) Notify(id string, _ string) error {
 	m.client.simulateDelay()
 	m.client.mu.RLock()
 	defer m.client.mu.RUnlock()

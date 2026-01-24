@@ -1,3 +1,4 @@
+// Package components provides reusable UI components for the s9s interface.
 package components
 
 import (
@@ -362,7 +363,7 @@ func (av *AlertsView) getAlertColor(level AlertLevel) string {
 }
 
 // onAlertSelected handles alert selection
-func (av *AlertsView) onAlertSelected(index int, mainText, secondaryText string, shortcut rune) {
+func (av *AlertsView) onAlertSelected(index int, _, _ string, _ rune) {
 	alerts := av.manager.GetAlerts()
 	if index >= 0 && index < len(alerts) {
 		alert := alerts[index]
@@ -376,7 +377,7 @@ func (av *AlertsView) onAlertSelected(index int, mainText, secondaryText string,
 }
 
 // onAlertChanged handles cursor movement in the alerts list
-func (av *AlertsView) onAlertChanged(index int, mainText, secondaryText string, shortcut rune) {
+func (av *AlertsView) onAlertChanged(index int, _, _ string, _ rune) {
 	alerts := av.manager.GetAlerts()
 	if index >= 0 && index < len(alerts) {
 		av.showAlertDetails(alerts[index])
@@ -522,7 +523,7 @@ func NewAlertsBadge(manager *AlertsManager) *AlertsBadge {
 	badge.update()
 
 	// Listen for new alerts
-	manager.OnAlert(func(alert *Alert) {
+	manager.OnAlert(func(_ *Alert) {
 		badge.update()
 	})
 

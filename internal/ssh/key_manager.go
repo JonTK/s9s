@@ -380,7 +380,7 @@ func (km *KeyManager) generateRSAKey(keyPath, pubPath, comment string, bits int)
 }
 
 // generateEd25519Key generates an Ed25519 key pair using ssh-keygen
-func (km *KeyManager) generateEd25519Key(keyPath, _pubPath, comment string) error {
+func (km *KeyManager) generateEd25519Key(keyPath, _, comment string) error {
 	args := []string{
 		"-t", "ed25519",
 		"-f", keyPath,

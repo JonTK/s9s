@@ -72,7 +72,7 @@ func TestTerminalPaneCallbacks(t *testing.T) {
 		return nil
 	})
 
-	tp.SetOnTitleChange(func(id, title string) {
+	tp.SetOnTitleChange(func(id, _ string) {
 		assert.Equal(t, "callback-test", id)
 	})
 

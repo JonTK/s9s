@@ -1,3 +1,4 @@
+// Package plugins provides the plugin management system for s9s.
 package plugins
 
 import (

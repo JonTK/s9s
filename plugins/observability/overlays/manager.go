@@ -226,7 +226,7 @@ func (om *OverlayManager) periodicUpdater(ctx context.Context) {
 }
 
 // processViewUpdate processes updates for a specific view
-func (om *OverlayManager) processViewUpdate(_ctx context.Context, viewID string) {
+func (om *OverlayManager) processViewUpdate(_ context.Context, viewID string) {
 	overlays := om.GetOverlaysForView(viewID)
 	if len(overlays) == 0 {
 		return

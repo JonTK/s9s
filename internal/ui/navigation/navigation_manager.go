@@ -1,3 +1,4 @@
+// Package navigation provides navigation management and keyboard input handling.
 package navigation
 
 import (

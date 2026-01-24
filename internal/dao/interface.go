@@ -1,3 +1,4 @@
+// Package dao provides data access objects and interfaces for SLURM cluster management.
 package dao
 
 import (

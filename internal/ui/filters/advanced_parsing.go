@@ -1,3 +1,4 @@
+// Package filters provides advanced filtering and query parsing for UI views.
 package filters
 
 import (

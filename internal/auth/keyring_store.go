@@ -275,7 +275,7 @@ func NewKeyringTokenStore(serviceName string) TokenStore {
 }
 
 // Store saves a token securely in the keyring
-func (k *KeyringTokenStore) Store(ctx context.Context, clusterID string, token *Token) error {
+func (k *KeyringTokenStore) Store(_ context.Context, clusterID string, token *Token) error {
 	// Serialize token
 	tokenBytes, err := json.Marshal(token)
 	if err != nil {
@@ -293,7 +293,7 @@ func (k *KeyringTokenStore) Store(ctx context.Context, clusterID string, token *
 }
 
 // Retrieve gets a token from the keyring
-func (k *KeyringTokenStore) Retrieve(ctx context.Context, clusterID string) (*Token, error) {
+func (k *KeyringTokenStore) Retrieve(_ context.Context, clusterID string) (*Token, error) {
 	key := fmt.Sprintf("token:%s", clusterID)
 
 	// Retrieve from keyring
@@ -313,7 +313,7 @@ func (k *KeyringTokenStore) Retrieve(ctx context.Context, clusterID string) (*To
 }
 
 // Delete removes a token from the keyring
-func (k *KeyringTokenStore) Delete(ctx context.Context, clusterID string) error {
+func (k *KeyringTokenStore) Delete(_ context.Context, clusterID string) error {
 	key := fmt.Sprintf("token:%s", clusterID)
 
 	if err := k.secureStore.Delete(key); err != nil {
@@ -325,7 +325,7 @@ func (k *KeyringTokenStore) Delete(ctx context.Context, clusterID string) error 
 }
 
 // List returns all stored cluster IDs from the keyring
-func (k *KeyringTokenStore) List(ctx context.Context) ([]string, error) {
+func (k *KeyringTokenStore) List(_ context.Context) ([]string, error) {
 	keys, err := k.secureStore.List()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list keyring keys: %w", err)
@@ -344,7 +344,7 @@ func (k *KeyringTokenStore) List(ctx context.Context) ([]string, error) {
 }
 
 // Clear removes all tokens from the keyring
-func (k *KeyringTokenStore) Clear(ctx context.Context) error {
+func (k *KeyringTokenStore) Clear(_ context.Context) error {
 	keys, err := k.secureStore.List()
 	if err != nil {
 		return fmt.Errorf("failed to list keyring keys: %w", err)

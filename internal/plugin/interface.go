@@ -1,3 +1,4 @@
+// Package plugin provides the plugin system interface and base types.
 package plugin
 
 import (

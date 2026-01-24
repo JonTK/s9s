@@ -293,7 +293,7 @@ func (c *SSHConfig) WithAgent(useAgent bool) *SSHConfig {
 }
 
 // GetNativeClientConfig returns a native SSH client config
-func (c *SSHConfig) GetNativeClientConfig(hostname string) (*ssh.ClientConfig, error) {
+func (c *SSHConfig) GetNativeClientConfig(_ string) (*ssh.ClientConfig, error) {
 	if c.ClientConfig != nil {
 		return c.ClientConfig, nil
 	}

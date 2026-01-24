@@ -253,7 +253,7 @@ func (pv *PerformanceView) exportMetrics() {
 	exportDialog := widgets.NewPerformanceExportDialog(pv.profiler, pv.optimizer)
 
 	// Set export handler
-	exportDialog.SetExportHandler(func(format export.ExportFormat, path string) {
+	exportDialog.SetExportHandler(func(_ export.ExportFormat, _ string) {
 		// Close dialog
 		if pv.pages != nil {
 			pv.pages.RemovePage("export-dialog")
@@ -348,7 +348,7 @@ func (pv *PerformanceView) showModal(title, content string) {
 	modal.SetText(content)
 	modal.SetTitle(title)
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		if pv.pages != nil {
 			pv.pages.RemovePage("modal")
 		}

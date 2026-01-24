@@ -221,7 +221,7 @@ func (v *StreamingPreferencesView) resetToDefaults() {
 	modal := tview.NewModal()
 	modal.SetText("Are you sure you want to reset all streaming preferences to defaults?")
 	modal.AddButtons([]string{"Reset", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("reset-confirm")
 		if buttonIndex == 0 { // Reset
 			if err := v.prefsManager.Reset(); err != nil {
@@ -241,7 +241,7 @@ func (v *StreamingPreferencesView) showNotification(message string) {
 	notification := tview.NewModal()
 	notification.SetText(message)
 	notification.AddButtons([]string{"OK"})
-	notification.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	notification.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("notification")
 	})
 
@@ -425,7 +425,7 @@ func (v *HighlightPatternsView) removeSelectedPattern() {
 }
 
 // selectPattern handles pattern selection
-func (v *HighlightPatternsView) selectPattern(index int) {
+func (v *HighlightPatternsView) selectPattern(_ int) {
 	// Could be used to edit patterns in the future
 }
 
@@ -434,7 +434,7 @@ func (v *HighlightPatternsView) showNotification(message string) {
 	notification := tview.NewModal()
 	notification.SetText(message)
 	notification.AddButtons([]string{"OK"})
-	notification.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	notification.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("notification")
 	})
 

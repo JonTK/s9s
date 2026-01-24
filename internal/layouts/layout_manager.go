@@ -1,3 +1,4 @@
+// Package layouts provides layout management and dashboard widget organization.
 package layouts
 
 import (

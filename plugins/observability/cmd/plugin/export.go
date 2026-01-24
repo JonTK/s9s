@@ -1,3 +1,4 @@
+// Package main provides the observability plugin export functionality.
 package main
 
 import (
@@ -120,7 +121,7 @@ func (a *PluginAdapter) GetKeyBindings() []plugins.KeyBinding {
 }
 
 // OnEvent handles events
-func (a *PluginAdapter) OnEvent(event plugins.Event) error {
+func (a *PluginAdapter) OnEvent(_ plugins.Event) error {
 	// The observability plugin doesn't handle events currently
 	return nil
 }

@@ -1,3 +1,4 @@
+// Package main provides a test CLI for demonstrating s9s functionality.
 package main
 
 import (
@@ -40,7 +41,7 @@ Features:
   s9s config edit             # Edit configuration file
   s9s version                  # Show version information`,
 
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🚀 s9s - Terminal UI for SLURM")
 		fmt.Println("")
 		fmt.Println("This is a demo of the new CLI system.")
@@ -71,7 +72,7 @@ Run this command when you first install s9s or want to reconfigure your setup.`,
 	Example: `  s9s setup                    # Run interactive setup
   s9s setup --auto-discover     # Auto-discover clusters first
   s9s setup --validate-only     # Just validate current config`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🧙‍♂️ Starting s9s setup wizard...")
 		fmt.Println("")
 		fmt.Println("The setup wizard would guide you through:")
@@ -105,7 +106,7 @@ var configEditCmd = &cobra.Command{
 	Long: `Open the s9s configuration file in your default editor.
 
 If no configuration file exists, a new one will be created with default settings.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("📝 Opening configuration file for editing...")
 		fmt.Println("   Path: ~/.s9s/config.yaml")
 		fmt.Println("   (This is a demo - full implementation available in main app)")
@@ -118,7 +119,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
 	Long:  `Display version information for s9s including build details.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Printf("s9s version %s\n", Version)
 		fmt.Printf("Git commit: %s\n", CommitSHA)
 		fmt.Printf("Built: %s\n", BuildTime)

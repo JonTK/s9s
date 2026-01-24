@@ -354,7 +354,7 @@ func (v *FilteredJobOutputView) onSearchResult(result *streaming.SearchResult) {
 }
 
 // highlightLine highlights a specific line
-func (v *FilteredJobOutputView) highlightLine(lineNumber int) {
+func (v *FilteredJobOutputView) highlightLine(_ int) {
 	// This would require tracking line positions in the text view
 	// For now, just ensure we're not auto-scrolling
 	v.autoScroll = false
@@ -461,7 +461,7 @@ func (v *FilteredJobOutputView) exportOutput() {
 	exportDialog := widgets.NewJobOutputExportDialog(v.jobID, v.jobName, v.outputType, content)
 
 	// Set export handler
-	exportDialog.SetExportHandler(func(format export.ExportFormat, path string) {
+	exportDialog.SetExportHandler(func(_ export.ExportFormat, _ string) {
 		// Close dialog
 		if v.pages != nil {
 			v.pages.RemovePage("export-dialog")

@@ -1,3 +1,4 @@
+// Package discovery provides automatic discovery of SLURM cluster endpoints.
 package discovery
 
 import (

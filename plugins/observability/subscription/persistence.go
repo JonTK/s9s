@@ -145,7 +145,7 @@ func (sp *SubscriptionPersistence) LoadSubscriptions() error {
 	for _, persistentSub := range persistentSubs {
 		if persistentSub.AutoRestore && persistentSub.Active {
 			// Create a placeholder callback for restored subscriptions
-			callback := func(data interface{}, err error) {
+			callback := func(_ interface{}, _ error) {
 				// This is a placeholder callback for restored subscriptions
 				// The actual callback will need to be re-registered by the client
 			}
@@ -266,7 +266,7 @@ func (sp *SubscriptionPersistence) RestoreFromBackup(backupFile string) error {
 	restoredCount := 0
 	for _, persistentSub := range persistentSubs {
 		if persistentSub.Active {
-			callback := func(data interface{}, err error) {
+			callback := func(_ interface{}, _ error) {
 				// Placeholder callback for restored subscriptions
 			}
 
