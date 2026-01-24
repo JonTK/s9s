@@ -34,6 +34,15 @@ linters:
     # unused: Phase 3e - unused variables and code
     - unused        # Enabled: final phase to remove dead code
 
+    # Phase 4: Advanced linters
+    - cyclop        # Cyclomatic complexity checking
+    - gocognit      # Cognitive complexity checking
+    - nolintlint    # Validate nolint directives
+    - dupl          # Detect duplicated code
+    # - wsl_v5      # Whitespace linting - too many pre-existing issues (2600+), disabled for now
+    - containedctx  # Prevent context.Context in struct fields
+    # - revive      # Too many issues (460+), disabled to focus on complexity/duplication
+
   disable:
     # Temporarily disabled - will be fixed in follow-up PRs
     - noctx         # 7 issues - all in test/integration files where context is not required
@@ -98,6 +107,36 @@ linters-settings:
     # Correct spellings using locale preferences for US or UK
     locale: US
 
+  # Phase 4: Advanced Linters
+  cyclop:
+    # Cyclomatic complexity threshold
+    # Functions with higher complexity should be refactored
+    max-complexity: 20
+    package-average: 10.0
+    skip-tests: true
+
+  gocognit:
+    # Cognitive complexity threshold (different from cyclomatic)
+    # Measures how difficult code is to understand
+    min-complexity: 30
+    skip-tests: true
+
+  nolintlint:
+    # Check validity of nolint directives
+    allow-unused: false     # Disallow unused nolint directives
+    allow-leading-space: false  # Require //nolint without space
+    require-explanation: false  # Don't require explanation (too verbose)
+    require-specific: false  # Allow //nolint without specific rule name
+
+  dupl:
+    # Detect duplicated code blocks
+    threshold: 150  # Minimum lines to consider as duplication
+
+  containedctx:
+    # Prevent storing context.Context in struct fields
+    # Context should be passed as function parameter
+    skip-tests: true  # Allow in test helpers
+
 issues:
   exclude-files:
     - ".*\\.pb\\.go$"
@@ -154,6 +193,25 @@ issues:
     #   path: "internal/(views|ui|layouts|discovery|monitoring|ssh)/"
     # - linters:
     #     - prealloc
+
+    # Phase 4: containedctx - context fields in structs
+    # These are intentional patterns for managing lifecycle (will be refactored in future phase)
+    - linters:
+        - containedctx
+      path: "(internal/app/app\\.go|internal/dao|internal/plugin|internal/ui|internal/views|plugins/|test/)"
+
+    # Phase 4: dupl - code duplication
+    # Test files have intentional duplication (test data, similar test patterns)
+    - linters:
+        - dupl
+      path: ".*_test\\.go|test/"
+
+    # Phase 4: nolintlint - unused nolint directives
+    # Some directives reference rules excluded globally in gosec configuration
+    - text: "directive.*is unused"
+      linters:
+        - nolintlint
+        - gosec
 
   max-issues-per-linter: 0
   max-same-issues: 0
