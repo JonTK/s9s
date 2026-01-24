@@ -241,6 +241,7 @@ func (v *JobOutputView) loadOutput() {
 }
 
 // getJobOutput retrieves actual job output (placeholder for real implementation)
+// nolint:unparam // Designed for future extensibility; currently always returns nil
 func (v *JobOutputView) getJobOutput() (string, error) {
 	// This would be implemented to read actual SLURM output files
 	// For now, return a placeholder
@@ -466,7 +467,7 @@ func (v *JobOutputView) showExportResult(message, filePath string) {
 }
 
 // openExportFolder opens the folder containing the exported file
-func (v *JobOutputView) openExportFolder(filePath string) {
+func (v *JobOutputView) openExportFolder(_filePath string) {
 	// This is a platform-specific operation
 	// For now, just show the path
 	v.showNotification(fmt.Sprintf("Export folder:\n%s", v.exporter.GetDefaultPath()))

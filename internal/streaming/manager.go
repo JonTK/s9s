@@ -252,7 +252,7 @@ func (sm *StreamManager) startLocalFileWatching(stream *JobStream) error {
 }
 
 // startRemoteFileWatching uses SSH tail for remote file monitoring
-func (sm *StreamManager) startRemoteFileWatching(stream *JobStream) error {
+func (sm *StreamManager) startRemoteFileWatching(_stream *JobStream) error {
 	if sm.sshManager == nil {
 		return fmt.Errorf("SSH manager not available for remote streaming")
 	}

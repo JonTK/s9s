@@ -119,17 +119,17 @@ issues:
 
     # unparam: Functions that always return nil are acceptable if designed for future errors
     # These functions are intentionally designed to return errors for extensibility
-    - text: "result 0 \\(error\\) is always nil"
+    - text: "result .* \\(error\\) is always nil"
       linters:
         - unparam
-      path: "internal/app/app\\.go"
+      path: "internal/app/app.*\\.go"
 
     # Exclude certain linters from test files - tests have different patterns
     - linters:
         - unparam
         - prealloc
         - gocritic
-      path: "_test\\.go"
+      path: ".*_test\\.go"
 
     # noctx: Test HTTP requests don't need context
     - linters:

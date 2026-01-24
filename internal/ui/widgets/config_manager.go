@@ -898,7 +898,7 @@ func (cm *ConfigManager) HasChanges() bool {
 }
 
 // addContextField adds a context management field
-func (cm *ConfigManager) addContextField(field config.ConfigField) {
+func (cm *ConfigManager) addContextField(_field config.ConfigField) {
 	contextCount := len(cm.currentConfig.Contexts)
 	summary := fmt.Sprintf("Contexts: %d configured", contextCount)
 	if cm.currentConfig.CurrentContext != "" {
@@ -912,7 +912,7 @@ func (cm *ConfigManager) addContextField(field config.ConfigField) {
 }
 
 // addShortcutField adds a shortcut management field
-func (cm *ConfigManager) addShortcutField(field config.ConfigField) {
+func (cm *ConfigManager) addShortcutField(_field config.ConfigField) {
 	shortcutCount := len(cm.currentConfig.Shortcuts)
 	summary := fmt.Sprintf("Shortcuts: %d configured", shortcutCount)
 
@@ -923,7 +923,7 @@ func (cm *ConfigManager) addShortcutField(field config.ConfigField) {
 }
 
 // addAliasField adds an alias management field
-func (cm *ConfigManager) addAliasField(field config.ConfigField) {
+func (cm *ConfigManager) addAliasField(_field config.ConfigField) {
 	aliasCount := len(cm.currentConfig.Aliases)
 	summary := fmt.Sprintf("Aliases: %d configured", aliasCount)
 
@@ -934,7 +934,7 @@ func (cm *ConfigManager) addAliasField(field config.ConfigField) {
 }
 
 // addPluginField adds a plugin management field
-func (cm *ConfigManager) addPluginField(field config.ConfigField) {
+func (cm *ConfigManager) addPluginField(_field config.ConfigField) {
 	pluginCount := len(cm.currentConfig.Plugins)
 	summary := fmt.Sprintf("Plugins: %d configured", pluginCount)
 
