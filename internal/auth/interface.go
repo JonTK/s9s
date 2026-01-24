@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// AuthProvider defines the interface for authentication providers
-type AuthProvider interface {
+// Provider defines the interface for authentication providers
+type Provider interface {
 	// Authenticate performs authentication and returns a token
 	Authenticate(ctx context.Context, username, password string) (*Token, error)
 
@@ -20,6 +20,9 @@ type AuthProvider interface {
 	// Logout invalidates a token
 	Logout(ctx context.Context, token *Token) error
 }
+
+// AuthProvider is an alias for backward compatibility
+type AuthProvider = Provider
 
 // SlurmAuthProvider implements authentication against SLURM REST API
 type SlurmAuthProvider struct {
@@ -36,7 +39,7 @@ func NewSlurmAuthProvider(baseURL string, timeout time.Duration) *SlurmAuthProvi
 }
 
 // Authenticate performs authentication against SLURM REST API
-func (s *SlurmAuthProvider) Authenticate(ctx context.Context, username, password string) (*Token, error) {
+func (s *SlurmAuthProvider) Authenticate(_ context.Context, username, _ string) (*Token, error) {
 	// In a real implementation, this would:
 	// 1. Make an HTTP POST request to the SLURM REST API auth endpoint
 	// 2. Parse the response to extract the JWT token
@@ -47,7 +50,7 @@ func (s *SlurmAuthProvider) Authenticate(ctx context.Context, username, password
 }
 
 // RefreshToken refreshes an existing token
-func (s *SlurmAuthProvider) RefreshToken(ctx context.Context, token *Token) (*Token, error) {
+func (s *SlurmAuthProvider) RefreshToken(_ context.Context, token *Token) (*Token, error) {
 	// In a real implementation, this would use the refresh endpoint
 	// For now, just create a new token
 	// Extract username and cluster from token metadata
@@ -59,7 +62,7 @@ func (s *SlurmAuthProvider) RefreshToken(ctx context.Context, token *Token) (*To
 }
 
 // ValidateToken validates if a token is still valid
-func (s *SlurmAuthProvider) ValidateToken(ctx context.Context, token *Token) error {
+func (s *SlurmAuthProvider) ValidateToken(_ context.Context, token *Token) error {
 	if token.IsExpired() {
 		return ErrTokenExpired
 	}
@@ -71,7 +74,7 @@ func (s *SlurmAuthProvider) ValidateToken(ctx context.Context, token *Token) err
 }
 
 // Logout invalidates a token
-func (s *SlurmAuthProvider) Logout(ctx context.Context, token *Token) error {
+func (s *SlurmAuthProvider) Logout(_ context.Context, _ *Token) error {
 	// In a real implementation, this would call the logout endpoint
 	// to invalidate the token server-side
 	return nil

@@ -13,10 +13,14 @@ import (
 type MetricType string
 
 const (
-	MetricCPU       MetricType = "cpu"
-	MetricMemory    MetricType = "memory"
+	// MetricCPU is the metric type for CPU metrics.
+	MetricCPU MetricType = "cpu"
+	// MetricMemory is the metric type for memory metrics.
+	MetricMemory MetricType = "memory"
+	// MetricGoroutine is the metric type for goroutine metrics.
 	MetricGoroutine MetricType = "goroutine"
-	MetricLatency   MetricType = "latency"
+	// MetricLatency is the metric type for latency metrics.
+	MetricLatency MetricType = "latency"
 )
 
 // Metric represents a performance metric

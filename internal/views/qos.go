@@ -378,7 +378,7 @@ func (v *QoSView) scheduleRefresh() {
 }
 
 // onQoSSelect handles QoS selection
-func (v *QoSView) onQoSSelect(row, col int) {
+func (v *QoSView) onQoSSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -389,7 +389,7 @@ func (v *QoSView) onQoSSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *QoSView) onSort(col int, ascending bool) {
+func (v *QoSView) onSort(_ int, _ bool) {
 	// Note: Sort feedback removed since individual view status bars are no longer used
 }
 
@@ -401,7 +401,7 @@ func (v *QoSView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *QoSView) onFilterDone(key tcell.Key) {
+func (v *QoSView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}

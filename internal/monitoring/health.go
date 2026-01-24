@@ -12,10 +12,14 @@ import (
 type HealthStatus string
 
 const (
-	HealthStatusHealthy  HealthStatus = "healthy"
-	HealthStatusWarning  HealthStatus = "warning"
+	// HealthStatusHealthy indicates the component is healthy.
+	HealthStatusHealthy HealthStatus = "healthy"
+	// HealthStatusWarning indicates the component has warning conditions.
+	HealthStatusWarning HealthStatus = "warning"
+	// HealthStatusCritical indicates the component is in critical condition.
 	HealthStatusCritical HealthStatus = "critical"
-	HealthStatusUnknown  HealthStatus = "unknown"
+	// HealthStatusUnknown indicates the health status is unknown.
+	HealthStatusUnknown HealthStatus = "unknown"
 )
 
 // HealthCheck represents a single health check

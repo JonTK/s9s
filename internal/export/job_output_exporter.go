@@ -15,16 +15,24 @@ import (
 	"github.com/jontk/s9s/internal/security"
 )
 
-// ExportFormat represents different output export formats
-type ExportFormat string
+// Format represents different output export formats
+type Format string
 
 const (
-	FormatText     ExportFormat = "txt"
-	FormatJSON     ExportFormat = "json"
-	FormatCSV      ExportFormat = "csv"
-	FormatMarkdown ExportFormat = "md"
-	FormatHTML     ExportFormat = "html"
+	// FormatText is the text export format.
+	FormatText Format = "txt"
+	// FormatJSON is the JSON export format.
+	FormatJSON Format = "json"
+	// FormatCSV is the CSV export format.
+	FormatCSV Format = "csv"
+	// FormatMarkdown is the Markdown export format.
+	FormatMarkdown Format = "md"
+	// FormatHTML is the HTML export format.
+	FormatHTML Format = "html"
 )
+
+// ExportFormat is an alias for backward compatibility
+type ExportFormat = Format
 
 // JobOutputExporter handles exporting job output to various formats
 type JobOutputExporter struct {
@@ -58,15 +66,18 @@ type JobOutputData struct {
 	ContentSize int       `json:"content_size_bytes"`
 }
 
-// ExportResult contains information about the export operation
-type ExportResult struct {
+// Result contains information about the export operation
+type Result struct {
 	FilePath  string
-	Format    ExportFormat
+	Format    Format
 	Size      int64
 	Success   bool
 	Error     error
 	Timestamp time.Time
 }
+
+// ExportResult is an alias for backward compatibility
+type ExportResult = Result
 
 // ExportJobOutput exports job output to a file in the specified format
 func (e *JobOutputExporter) ExportJobOutput(jobID, jobName, outputType, content string) (string, error) {
@@ -91,7 +102,7 @@ func (e *JobOutputExporter) ExportJobOutput(jobID, jobName, outputType, content 
 
 // Export exports job output to a file in the specified format
 func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, customPath string) (*ExportResult, error) {
-	result := &ExportResult{
+	result := &Result{
 		Format:    format,
 		Timestamp: time.Now(),
 	}
@@ -334,7 +345,7 @@ func (e *JobOutputExporter) BatchExport(jobs []JobOutputData, format ExportForma
 }
 
 // BatchExportWithCallback exports multiple job outputs with optional progress callback
-func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format ExportFormat, basePath string, progressCallback func(current, total int, jobID string)) ([]*ExportResult, error) {
+func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format ExportFormat, _ string, progressCallback func(current, total int, jobID string)) ([]*ExportResult, error) {
 	results := make([]*ExportResult, 0, len(jobs))
 
 	for i, job := range jobs {
@@ -357,7 +368,7 @@ func (e *JobOutputExporter) BatchExportWithCallback(jobs []JobOutputData, format
 }
 
 // StreamingBatchExport exports jobs one at a time to minimize memory usage
-func (e *JobOutputExporter) StreamingBatchExport(jobProvider func() (JobOutputData, bool), format ExportFormat, basePath string, progressCallback func(current int, jobID string)) ([]*ExportResult, error) {
+func (e *JobOutputExporter) StreamingBatchExport(jobProvider func() (JobOutputData, bool), format ExportFormat, _ string, progressCallback func(current int, jobID string)) ([]*ExportResult, error) {
 	var results []*ExportResult
 	jobCount := 0
 

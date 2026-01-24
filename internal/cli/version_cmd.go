@@ -19,7 +19,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 }
 
-func runVersion(cmd *cobra.Command, args []string) error {
+func runVersion(_ *cobra.Command, _ []string) error {
 	info := version.Get()
 	fmt.Print(info.Full())
 	fmt.Println() // Add final newline

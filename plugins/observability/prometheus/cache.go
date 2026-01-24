@@ -94,7 +94,7 @@ func (mc *MetricCache) GetSeries(matches []string, start, end time.Time) ([]map[
 }
 
 // GetWithKey retrieves a cached query result using a specific cache key
-func (mc *MetricCache) GetWithKey(cacheKey, originalQuery string) (*QueryResult, bool) {
+func (mc *MetricCache) GetWithKey(cacheKey, _ string) (*QueryResult, bool) {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
 

@@ -36,7 +36,7 @@ func init() {
 	rootCmd.AddCommand(mockCmd)
 }
 
-func runMockStatus(cmd *cobra.Command, args []string) error {
+func runMockStatus(_ *cobra.Command, _ []string) error {
 	fmt.Println("🔍 Mock Mode Status")
 	fmt.Println("==================")
 	fmt.Println()

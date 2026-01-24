@@ -1,3 +1,4 @@
+// Package monitoring provides cluster monitoring and alert management.
 package monitoring
 
 import (
@@ -10,20 +11,29 @@ import (
 type AlertType string
 
 const (
-	AlertTypeHealth      AlertType = "health"
+	// AlertTypeHealth is the alert type for health-related alerts.
+	AlertTypeHealth AlertType = "health"
+	// AlertTypePerformance is the alert type for performance-related alerts.
 	AlertTypePerformance AlertType = "performance"
-	AlertTypeResource    AlertType = "resource"
-	AlertTypeJob         AlertType = "job"
-	AlertTypeNode        AlertType = "node"
-	AlertTypeSystem      AlertType = "system"
+	// AlertTypeResource is the alert type for resource-related alerts.
+	AlertTypeResource AlertType = "resource"
+	// AlertTypeJob is the alert type for job-related alerts.
+	AlertTypeJob AlertType = "job"
+	// AlertTypeNode is the alert type for node-related alerts.
+	AlertTypeNode AlertType = "node"
+	// AlertTypeSystem is the alert type for system-related alerts.
+	AlertTypeSystem AlertType = "system"
 )
 
 // AlertSeverity represents the severity level of an alert
 type AlertSeverity string
 
 const (
-	AlertSeverityInfo     AlertSeverity = "info"
-	AlertSeverityWarning  AlertSeverity = "warning"
+	// AlertSeverityInfo is the info severity level for alerts.
+	AlertSeverityInfo AlertSeverity = "info"
+	// AlertSeverityWarning is the warning severity level for alerts.
+	AlertSeverityWarning AlertSeverity = "warning"
+	// AlertSeverityCritical is the critical severity level for alerts.
 	AlertSeverityCritical AlertSeverity = "critical"
 )
 

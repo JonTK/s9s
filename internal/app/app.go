@@ -1,3 +1,4 @@
+// Package app provides the main application logic and lifecycle management for s9s.
 package app
 
 import (

@@ -1,3 +1,4 @@
+// Package auth provides authentication and authorization functionality for s9s.
 package auth
 
 import (
@@ -97,7 +98,7 @@ func (a *APIAuthenticator) GetConfigSchema() ConfigSchema {
 }
 
 // Initialize initializes the API authenticator
-func (a *APIAuthenticator) Initialize(ctx context.Context, config AuthConfig) error {
+func (a *APIAuthenticator) Initialize(_ context.Context, config AuthConfig) error {
 	a.config = config
 
 	// Set custom timeout if provided

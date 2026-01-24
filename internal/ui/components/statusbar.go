@@ -244,9 +244,13 @@ type StatusMessage struct {
 type StatusLevel int
 
 const (
+	// StatusLevelInfo is the info status level.
 	StatusLevelInfo StatusLevel = iota
+	// StatusLevelSuccess is the success status level.
 	StatusLevelSuccess
+	// StatusLevelWarning is the warning status level.
 	StatusLevelWarning
+	// StatusLevelError is the error status level.
 	StatusLevelError
 )
 

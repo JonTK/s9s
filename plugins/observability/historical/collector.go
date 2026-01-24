@@ -35,8 +35,8 @@ type MetricSeries struct {
 	UpdatedAt  time.Time         `json:"updated_at"`
 }
 
-// HistoricalDataCollector collects and stores historical metric data
-type HistoricalDataCollector struct {
+// DataCollector collects and stores historical metric data
+type DataCollector struct {
 	client          *prometheus.CachedClient
 	dataDir         string
 	retention       time.Duration
@@ -49,6 +49,9 @@ type HistoricalDataCollector struct {
 	running  bool
 	stopChan chan struct{}
 }
+
+// HistoricalDataCollector is an alias for backward compatibility
+type HistoricalDataCollector = DataCollector
 
 // CollectorConfig configuration for historical data collector
 type CollectorConfig struct {
@@ -236,22 +239,22 @@ func (hdc *HistoricalDataCollector) GetMetricStatistics(metricName string, durat
 	}
 
 	// Calculate statistics
-	var sum, min, max float64
+	var sum, minVal, maxVal float64
 	validPoints := 0
 	first := true
 
 	for _, dp := range series.DataPoints {
 		if val, ok := convertToFloat64(dp.Value); ok {
 			if first {
-				min = val
-				max = val
+				minVal = val
+				maxVal = val
 				first = false
 			} else {
-				if val < min {
-					min = val
+				if val < minVal {
+					minVal = val
 				}
-				if val > max {
-					max = val
+				if val > maxVal {
+					maxVal = val
 				}
 			}
 			sum += val
@@ -270,8 +273,8 @@ func (hdc *HistoricalDataCollector) GetMetricStatistics(metricName string, durat
 
 	return map[string]interface{}{
 		"count":    validPoints,
-		"min":      min,
-		"max":      max,
+		"min":      minVal,
+		"max":      maxVal,
 		"average":  avg,
 		"sum":      sum,
 		"timespan": duration.String(),

@@ -363,7 +363,7 @@ func (v *UsersView) scheduleRefresh() {
 }
 
 // onUserSelect handles user selection
-func (v *UsersView) onUserSelect(row, col int) {
+func (v *UsersView) onUserSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -374,7 +374,7 @@ func (v *UsersView) onUserSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *UsersView) onSort(col int, ascending bool) {
+func (v *UsersView) onSort(_ int, _ bool) {
 	// Note: Sort feedback removed since individual view status bars are no longer used
 }
 
@@ -386,7 +386,7 @@ func (v *UsersView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *UsersView) onFilterDone(key tcell.Key) {
+func (v *UsersView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}

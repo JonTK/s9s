@@ -220,7 +220,7 @@ func escapeRegex(s string) string {
 }
 */
 
-// Helper for testing template output
+// TestTemplateOutput is a helper function for testing query template output.
 func TestTemplateOutput() {
 	qb, _ := NewQueryBuilder()
 

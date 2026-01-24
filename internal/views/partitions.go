@@ -543,7 +543,7 @@ func (v *PartitionsView) scheduleRefresh() {
 }
 
 // onPartitionSelect handles partition selection
-func (v *PartitionsView) onPartitionSelect(row, col int) {
+func (v *PartitionsView) onPartitionSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -554,7 +554,7 @@ func (v *PartitionsView) onPartitionSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *PartitionsView) onSort(col int, ascending bool) {
+func (v *PartitionsView) onSort(_ int, _ bool) {
 	// Note: Status bar update removed since individual view status bars are no longer used
 }
 
@@ -566,7 +566,7 @@ func (v *PartitionsView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *PartitionsView) onFilterDone(key tcell.Key) {
+func (v *PartitionsView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}

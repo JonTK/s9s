@@ -36,7 +36,7 @@ func (s *StaticEndpointDiscoverer) GetInfo() DiscovererInfo {
 }
 
 // Initialize initializes the static endpoint discoverer
-func (s *StaticEndpointDiscoverer) Initialize(ctx context.Context, config DiscoveryConfig) error {
+func (s *StaticEndpointDiscoverer) Initialize(_ context.Context, config DiscoveryConfig) error {
 	s.config = config
 
 	// Parse static endpoints from configuration
@@ -83,7 +83,7 @@ func (s *StaticEndpointDiscoverer) parseEndpoints(config DiscoveryConfig) error 
 }
 
 // parseEndpoint parses a single endpoint configuration
-func (s *StaticEndpointDiscoverer) parseEndpoint(clusterID string, ep interface{}, _index int) (*Endpoint, error) {
+func (s *StaticEndpointDiscoverer) parseEndpoint(clusterID string, ep interface{}, _ int) (*Endpoint, error) {
 	switch endpoint := ep.(type) {
 	case string:
 		// Simple string URL
@@ -147,7 +147,7 @@ func (s *StaticEndpointDiscoverer) parseEndpoint(clusterID string, ep interface{
 }
 
 // DiscoverEndpoints returns the statically configured endpoints for a cluster
-func (s *StaticEndpointDiscoverer) DiscoverEndpoints(ctx context.Context, clusterID string) ([]Endpoint, error) {
+func (s *StaticEndpointDiscoverer) DiscoverEndpoints(_ context.Context, clusterID string) ([]Endpoint, error) {
 	endpoints, exists := s.endpoints[clusterID]
 	if !exists {
 		return nil, fmt.Errorf("no endpoints configured for cluster %s", clusterID)

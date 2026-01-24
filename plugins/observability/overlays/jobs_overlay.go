@@ -93,7 +93,7 @@ func (o *JobsOverlay) GetColumns() []plugin.ColumnDefinition {
 }
 
 // GetCellData returns data for a specific cell
-func (o *JobsOverlay) GetCellData(ctx context.Context, viewID string, rowID interface{}, columnID string) (string, error) {
+func (o *JobsOverlay) GetCellData(_ context.Context, _ string, rowID interface{}, columnID string) (string, error) {
 	// Extract job ID from row ID
 	jobID, ok := rowID.(string)
 	if !ok {
@@ -125,7 +125,7 @@ func (o *JobsOverlay) GetCellData(ctx context.Context, viewID string, rowID inte
 }
 
 // GetCellStyle returns styling for a specific cell
-func (o *JobsOverlay) GetCellStyle(ctx context.Context, viewID string, rowID interface{}, columnID string) plugin.CellStyle {
+func (o *JobsOverlay) GetCellStyle(_ context.Context, _ string, rowID interface{}, columnID string) plugin.CellStyle {
 	// Extract job ID from row ID
 	jobID, ok := rowID.(string)
 	if !ok {
@@ -250,7 +250,7 @@ func (o *JobsOverlay) HandleEvent(event plugin.OverlayEvent) error {
 }
 
 // Stop stops the overlay
-func (o *JobsOverlay) Stop(ctx context.Context) error {
+func (o *JobsOverlay) Stop(_ context.Context) error {
 	// Cleanup will be handled by context cancellation
 	return nil
 }

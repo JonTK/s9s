@@ -86,7 +86,7 @@ func (ls *LayoutSwitcher) buildUI() {
 // setupEventHandlers configures keyboard and selection handlers
 func (ls *LayoutSwitcher) setupEventHandlers() {
 	// Handle list selection
-	ls.list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	ls.list.SetSelectedFunc(func(index int, _, _ string, _ rune) {
 		layoutID := ls.getLayoutIDFromIndex(index)
 		if layoutID != "" {
 			ls.switchToLayout(layoutID)
@@ -94,7 +94,7 @@ func (ls *LayoutSwitcher) setupEventHandlers() {
 	})
 
 	// Handle list change for preview
-	ls.list.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	ls.list.SetChangedFunc(func(index int, _, _ string, _ rune) {
 		layoutID := ls.getLayoutIDFromIndex(index)
 		if layoutID != "" {
 			ls.showPreview(layoutID)
@@ -334,7 +334,7 @@ func (ls *LayoutSwitcher) showError(message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		ls.pages.RemovePage("error")
 	})
 

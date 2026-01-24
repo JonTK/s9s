@@ -77,50 +77,60 @@ func (s *S9s) registerPluginViews() error {
 	return nil
 }
 
-// PluginViewAdapter adapts a plugin view to the s9s view interface
+// PluginViewAdapter adapts a plugin view to the s9s view interface.
 type PluginViewAdapter struct {
 	pluginView plugins.View
 }
 
+// Name returns the name of the plugin view.
 func (p *PluginViewAdapter) Name() string {
 	return p.pluginView.GetName()
 }
 
+// Title returns the title of the plugin view.
 func (p *PluginViewAdapter) Title() string {
 	return p.pluginView.GetTitle()
 }
 
+// Hints returns keyboard hints for the plugin view.
 func (p *PluginViewAdapter) Hints() []string {
 	// Default hints for plugin views
 	return []string{"Tab=Switch", "F5=Refresh", "?=Help", "q=Quit"}
 }
 
+// Init initializes the plugin view with the provided context.
 func (p *PluginViewAdapter) Init(ctx context.Context) error {
 	return p.pluginView.Init(ctx)
 }
 
+// Render returns the tview.Primitive representation of the plugin view.
 func (p *PluginViewAdapter) Render() tview.Primitive {
 	return p.pluginView.Render()
 }
 
+// Refresh refreshes the plugin view.
 func (p *PluginViewAdapter) Refresh() error {
 	return p.pluginView.Refresh()
 }
 
+// OnKey handles keyboard events for the plugin view.
 func (p *PluginViewAdapter) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	return p.pluginView.OnKey(event)
 }
 
+// OnFocus handles focus events for the plugin view.
 func (p *PluginViewAdapter) OnFocus() error {
 	// Plugin views don't have OnFocus, so this is a no-op
 	return nil
 }
 
+// OnLoseFocus handles loss of focus events for the plugin view.
 func (p *PluginViewAdapter) OnLoseFocus() error {
 	// Plugin views don't have OnLoseFocus, so this is a no-op
 	return nil
 }
 
+// Stop stops the plugin view.
 func (p *PluginViewAdapter) Stop() error {
 	// Plugin views don't have Stop, so this is a no-op
 	return nil

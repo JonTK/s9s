@@ -10,10 +10,15 @@ import (
 type TrendDirection int
 
 const (
+	// TrendUnknown indicates the trend direction is unknown.
 	TrendUnknown TrendDirection = iota
+	// TrendIncreasing indicates the trend is increasing.
 	TrendIncreasing
+	// TrendDecreasing indicates the trend is decreasing.
 	TrendDecreasing
+	// TrendStable indicates the trend is stable.
 	TrendStable
+	// TrendVolatile indicates the trend is volatile.
 	TrendVolatile
 )
 
@@ -75,14 +80,17 @@ type SeasonalAnalysis struct {
 	LowTimes       []time.Time        `json:"low_times"`
 }
 
-// HistoricalAnalyzer provides analysis capabilities for historical data
-type HistoricalAnalyzer struct {
-	collector *HistoricalDataCollector
+// Analyzer provides analysis capabilities for historical data
+type Analyzer struct {
+	collector *DataCollector
 }
 
+// HistoricalAnalyzer is an alias for backward compatibility
+type HistoricalAnalyzer = Analyzer
+
 // NewHistoricalAnalyzer creates a new historical data analyzer
-func NewHistoricalAnalyzer(collector *HistoricalDataCollector) *HistoricalAnalyzer {
-	return &HistoricalAnalyzer{
+func NewHistoricalAnalyzer(collector *DataCollector) *Analyzer {
+	return &Analyzer{
 		collector: collector,
 	}
 }
@@ -353,8 +361,8 @@ func (ha *HistoricalAnalyzer) CompareMetrics(metricNames []string, duration time
 			"metric":   metricName,
 			"count":    len(values),
 			"mean":     average(values),
-			"min":      min(values),
-			"max":      max(values),
+			"min":      minimum(values),
+			"max":      maximum(values),
 			"std_dev":  standardDeviation(values),
 			"variance": variance(values),
 		}
@@ -443,9 +451,8 @@ func determineTrendDirection(slope, correlation, volatility float64) TrendDirect
 	if absCorr > 0.7 { // Strong correlation
 		if slope > 0 {
 			return TrendIncreasing
-		} else {
-			return TrendDecreasing
 		}
+		return TrendDecreasing
 	}
 
 	return TrendStable
@@ -498,7 +505,7 @@ func average(values []float64) float64 {
 	return sum(values) / float64(len(values))
 }
 
-func min(values []float64) float64 {
+func minimum(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}
@@ -512,7 +519,7 @@ func min(values []float64) float64 {
 	return minVal
 }
 
-func max(values []float64) float64 {
+func maximum(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}

@@ -26,7 +26,7 @@ func (m *mockOverlay) GetColumns() []plugin.ColumnDefinition {
 	return m.columns
 }
 
-func (m *mockOverlay) GetCellData(ctx context.Context, viewID string, rowID interface{}, columnID string) (string, error) {
+func (m *mockOverlay) GetCellData(_ context.Context, viewID string, _ interface{}, columnID string) (string, error) {
 	key := viewID + ":" + columnID
 	if data, exists := m.cellData[key]; exists {
 		return data, nil
@@ -34,7 +34,7 @@ func (m *mockOverlay) GetCellData(ctx context.Context, viewID string, rowID inte
 	return "", nil
 }
 
-func (m *mockOverlay) GetCellStyle(ctx context.Context, viewID string, rowID interface{}, columnID string) plugin.CellStyle {
+func (m *mockOverlay) GetCellStyle(_ context.Context, viewID string, _ interface{}, columnID string) plugin.CellStyle {
 	key := viewID + ":" + columnID
 	if style, exists := m.cellStyles[key]; exists {
 		return style

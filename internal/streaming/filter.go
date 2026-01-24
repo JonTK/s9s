@@ -11,22 +11,32 @@ import (
 type FilterType string
 
 const (
-	FilterTypeKeyword   FilterType = "keyword"
-	FilterTypeRegex     FilterType = "regex"
+	// FilterTypeKeyword is the filter type for keyword matching.
+	FilterTypeKeyword FilterType = "keyword"
+	// FilterTypeRegex is the filter type for regex matching.
+	FilterTypeRegex FilterType = "regex"
+	// FilterTypeTimeRange is the filter type for time range filtering.
 	FilterTypeTimeRange FilterType = "timerange"
-	FilterTypeLogLevel  FilterType = "loglevel"
-	FilterTypeInvert    FilterType = "invert"
+	// FilterTypeLogLevel is the filter type for log level filtering.
+	FilterTypeLogLevel FilterType = "loglevel"
+	// FilterTypeInvert is the filter type for inverted filtering.
+	FilterTypeInvert FilterType = "invert"
 )
 
 // LogLevel represents common log levels for filtering
 type LogLevel string
 
 const (
-	LogLevelDebug   LogLevel = "DEBUG"
-	LogLevelInfo    LogLevel = "INFO"
+	// LogLevelDebug is the debug log level.
+	LogLevelDebug LogLevel = "DEBUG"
+	// LogLevelInfo is the info log level.
+	LogLevelInfo LogLevel = "INFO"
+	// LogLevelWarning is the warning log level.
 	LogLevelWarning LogLevel = "WARNING"
-	LogLevelError   LogLevel = "ERROR"
-	LogLevelFatal   LogLevel = "FATAL"
+	// LogLevelError is the error log level.
+	LogLevelError LogLevel = "ERROR"
+	// LogLevelFatal is the fatal log level.
+	LogLevelFatal LogLevel = "FATAL"
 )
 
 // StreamFilter represents a filter that can be applied to streaming output
@@ -69,8 +79,10 @@ type FilterChain struct {
 type ChainMode string
 
 const (
-	ChainModeAND ChainMode = "AND" // All filters must match
-	ChainModeOR  ChainMode = "OR"  // Any filter must match
+	// ChainModeAND indicates all filters must match.
+	ChainModeAND ChainMode = "AND"
+	// ChainModeOR indicates any filter must match.
+	ChainModeOR ChainMode = "OR"
 )
 
 // FilterPreset represents a saved filter configuration
@@ -210,7 +222,7 @@ func (f *StreamFilter) matchLogLevel(line string) bool {
 	return false
 }
 
-// ApplyChain applies a filter chain to a line
+// Apply applies a filter chain to a line and returns whether the filter matches and match indices.
 func (fc *FilterChain) Apply(line string, timestamp time.Time) (bool, map[string][]int) {
 	if !fc.Active || len(fc.Filters) == 0 {
 		return true, nil
@@ -251,7 +263,7 @@ func GenerateFilterID() string {
 	return fmt.Sprintf("filter_%d", time.Now().UnixNano())
 }
 
-// Common filter presets
+// GetCommonPresets returns the common filter presets.
 func GetCommonPresets() []*FilterPreset {
 	return []*FilterPreset{
 		{

@@ -1,3 +1,4 @@
+// Package plugins provides the plugin management system for s9s.
 package plugins
 
 import (
@@ -88,10 +89,15 @@ type Event struct {
 type EventType int
 
 const (
+	// EventViewChanged is the event type for view changes.
 	EventViewChanged EventType = iota
+	// EventJobSubmitted is the event type for job submission.
 	EventJobSubmitted
+	// EventJobCompleted is the event type for job completion.
 	EventJobCompleted
+	// EventNodeStateChanged is the event type for node state changes.
 	EventNodeStateChanged
+	// EventClusterHealthChanged is the event type for cluster health changes.
 	EventClusterHealthChanged
 )
 

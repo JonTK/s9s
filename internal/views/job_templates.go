@@ -232,8 +232,8 @@ func (m *JobTemplateManager) createDefaultTemplates() {
 
 // Removed showJobTemplateSelector - moved to jobs.go to use new wizard
 
-// OLD_showJobTemplateSelector shows template selection dialog  - DEPRECATED
-func OLD_showJobTemplateSelector(v *JobsView) {
+// OLDShowJobTemplateSelector shows template selection dialog  - DEPRECATED
+func OLDShowJobTemplateSelector(v *JobsView) {
 	if v.templateManager == nil {
 		v.templateManager = NewJobTemplateManager()
 	}

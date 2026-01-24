@@ -578,7 +578,7 @@ func (pe *PerformanceExporter) BatchExportReports(profiler *performance.Profiler
 }
 
 // ExportComparison exports a comparison between two performance snapshots
-func (pe *PerformanceExporter) ExportComparison(before, after PerformanceReportData, format ExportFormat, customPath string) (*ExportResult, error) {
+func (pe *PerformanceExporter) ExportComparison(_, _ PerformanceReportData, _ ExportFormat, _ string) (*ExportResult, error) {
 	// This would implement comparison logic between two snapshots
 	// For now, we'll just return an error indicating it's not implemented
 	return nil, fmt.Errorf("comparison export not yet implemented")

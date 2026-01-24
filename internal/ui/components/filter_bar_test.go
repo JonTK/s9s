@@ -102,7 +102,7 @@ func TestFilterBarHide(t *testing.T) {
 	assert.True(t, callbackCalled)
 }
 
-func TestFilterBarHideWithoutCallback(t *testing.T) {
+func TestFilterBarHideWithoutCallback(_ *testing.T) {
 	app := tview.NewApplication()
 	fb := NewFilterBar("jobs", app)
 

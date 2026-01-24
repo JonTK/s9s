@@ -46,7 +46,7 @@ func TestPerformanceDashboard(t *testing.T) {
 		assert.False(t, dashboard.IsRunning())
 	})
 
-	t.Run("Configuration", func(t *testing.T) {
+	t.Run("Configuration", func(_ *testing.T) {
 		// Test update interval
 		dashboard.SetUpdateInterval(500 * time.Millisecond)
 

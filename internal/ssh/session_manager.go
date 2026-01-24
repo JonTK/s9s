@@ -18,11 +18,17 @@ import (
 type SessionState int
 
 const (
+	// SessionIdle is the idle session state.
 	SessionIdle SessionState = iota
+	// SessionConnecting is the connecting session state.
 	SessionConnecting
+	// SessionConnected is the connected session state.
 	SessionConnected
+	// SessionActive is the active session state.
 	SessionActive
+	// SessionDisconnected is the disconnected session state.
 	SessionDisconnected
+	// SessionError is the error session state.
 	SessionError
 )
 
@@ -45,8 +51,8 @@ func (s SessionState) String() string {
 	}
 }
 
-// SSHSession represents an active SSH session
-type SSHSession struct {
+// Session represents an active SSH session
+type Session struct {
 	ID           string
 	Hostname     string
 	Username     string
@@ -57,18 +63,24 @@ type SSHSession struct {
 	Process      *os.Process
 	ErrorMessage string
 	ControlPath  string // For connection multiplexing
-	Tunnels      []SSHTunnel
+	Tunnels      []Tunnel
 	mu           sync.RWMutex
 }
 
-// SSHTunnel represents an SSH port forwarding tunnel
-type SSHTunnel struct {
+// SSHSession is an alias for backward compatibility
+type SSHSession = Session
+
+// Tunnel represents an SSH port forwarding tunnel
+type Tunnel struct {
 	LocalPort  int
 	RemoteHost string
 	RemotePort int
 	Type       string // "local" or "remote"
 	Active     bool
 }
+
+// SSHTunnel is an alias for backward compatibility
+type SSHTunnel = Tunnel
 
 // SessionManager manages SSH sessions with advanced features
 type SessionManager struct {
@@ -113,7 +125,7 @@ func NewSessionManager(config *SSHConfig) (*SessionManager, error) {
 	}
 
 	sm := &SessionManager{
-		sessions:       make(map[string]*SSHSession),
+		sessions:       make(map[string]*Session),
 		config:         config,
 		controlDir:     controlDir,
 		cleanupDone:    make(chan struct{}),
@@ -545,7 +557,7 @@ func (sm *SessionManager) Shutdown() {
 }
 
 // TestNodeConnectivity tests SSH connectivity to multiple nodes
-func (sm *SessionManager) TestNodeConnectivity(hostnames []string, timeout time.Duration) map[string]error {
+func (sm *SessionManager) TestNodeConnectivity(hostnames []string, _ time.Duration) map[string]error {
 	results := make(map[string]error)
 	var wg sync.WaitGroup
 	var mu sync.Mutex

@@ -18,13 +18,20 @@ import (
 type BatchOperation string
 
 const (
-	BatchCancel   BatchOperation = "cancel"
-	BatchHold     BatchOperation = "hold"
-	BatchRelease  BatchOperation = "release"
-	BatchRequeue  BatchOperation = "requeue"
-	BatchDelete   BatchOperation = "delete"
+	// BatchCancel is the batch operation type for canceling jobs.
+	BatchCancel BatchOperation = "cancel"
+	// BatchHold is the batch operation type for holding jobs.
+	BatchHold BatchOperation = "hold"
+	// BatchRelease is the batch operation type for releasing jobs.
+	BatchRelease BatchOperation = "release"
+	// BatchRequeue is the batch operation type for requeuing jobs.
+	BatchRequeue BatchOperation = "requeue"
+	// BatchDelete is the batch operation type for deleting jobs.
+	BatchDelete BatchOperation = "delete"
+	// BatchPriority is the batch operation type for changing job priority.
 	BatchPriority BatchOperation = "priority"
-	BatchExport   BatchOperation = "export"
+	// BatchExport is the batch operation type for exporting job data.
+	BatchExport BatchOperation = "export"
 )
 
 // BatchOperationsView handles batch operations on multiple jobs
@@ -262,7 +269,7 @@ func (v *BatchOperationsView) confirmOperation(operation BatchOperation, onConfi
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Yes", "No"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("confirm")
 		if buttonIndex == 0 { // Yes
 			onConfirm()
@@ -323,7 +330,7 @@ func (v *BatchOperationsView) performBatchOperation(operation BatchOperation, pa
 
 		v.loadingWrapper.WithLoadingAsync(message, func() error {
 			return v.performBatchOperationInternal(operation, parameter)
-		}, func(err error) {
+		}, func(_ error) {
 			// Operation complete, close the batch operations modal
 			v.app.QueueUpdateDraw(func() {
 				v.close()
@@ -446,7 +453,7 @@ func (v *BatchOperationsView) showError(message string) {
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"OK"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("error")
 	})
 
@@ -530,7 +537,7 @@ func (v *BatchOperationsView) confirmExportOperation(format export.ExportFormat)
 	modal := tview.NewModal()
 	modal.SetText(message)
 	modal.AddButtons([]string{"Export", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(buttonIndex int, _ string) {
 		v.pages.RemovePage("export-confirm")
 		if buttonIndex == 0 { // Export
 			v.performBatchOperation(BatchExport, string(format))
