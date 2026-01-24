@@ -234,8 +234,7 @@ func (km *KeyManager) parseKey(path string) (*SSHKey, error) {
 	// If no public key file, try to derive from private key
 	if fingerprint == "" {
 		if privKey, err := ssh.ParseRawPrivateKey(keyData); err == nil {
-			switch k := privKey.(type) {
-			case *rsa.PrivateKey:
+			if k, ok := privKey.(*rsa.PrivateKey); ok {
 				pubKey, err := ssh.NewPublicKey(&k.PublicKey)
 				if err == nil {
 					fingerprint = ssh.FingerprintSHA256(pubKey)

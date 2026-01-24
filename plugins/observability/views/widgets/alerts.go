@@ -135,11 +135,12 @@ func (w *AlertsWidget) formatTime(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
 
-	if diff < time.Minute {
+	switch {
+	case diff < time.Minute:
 		return fmt.Sprintf("%ds ago", int(diff.Seconds()))
-	} else if diff < time.Hour {
+	case diff < time.Hour:
 		return fmt.Sprintf("%dm ago", int(diff.Minutes()))
-	} else if diff < 24*time.Hour {
+	case diff < 24*time.Hour:
 		return fmt.Sprintf("%dh ago", int(diff.Hours()))
 	}
 

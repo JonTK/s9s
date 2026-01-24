@@ -504,23 +504,25 @@ func (v *NodesView) createDualUsageBar(allocated, used, total int) string {
 
 	// Choose color based on allocation percentage
 	var allocColor string
-	if allocPercentage < 0.5 {
+	switch {
+	case allocPercentage < 0.5:
 		allocColor = "green"
-	} else if allocPercentage < 0.8 {
+	case allocPercentage < 0.8:
 		allocColor = "yellow"
-	} else {
+	default:
 		allocColor = "red"
 	}
 
 	// Build the bar using safe Unicode characters
 	for i := 0; i < barLength; i++ {
-		if i < usedFilled {
+		switch {
+		case i < usedFilled:
 			// Actual usage - solid block
 			bar.WriteString(fmt.Sprintf("[%s]■[white]", allocColor))
-		} else if i < allocFilled {
+		case i < allocFilled:
 			// Allocated but not used - outlined square
 			bar.WriteString(fmt.Sprintf("[%s]□[white]", allocColor))
-		} else {
+		default:
 			// Not allocated - middle dot
 			bar.WriteString("[gray]·[white]")
 		}

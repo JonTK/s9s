@@ -92,9 +92,7 @@ func TestValidateConfig(t *testing.T) {
 	}{
 		{
 			name: "valid default config",
-			config: func() *Config {
-				return DefaultConfig()
-			},
+			config: DefaultConfig,
 			wantErr: false,
 		},
 		{

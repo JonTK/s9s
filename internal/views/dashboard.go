@@ -231,8 +231,7 @@ func (v *DashboardView) Hints() []string {
 
 // OnKey handles keyboard events
 func (v *DashboardView) OnKey(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Key() {
-	case tcell.KeyRune:
+	if event.Key() == tcell.KeyRune {
 		switch event.Rune() {
 		case 'R':
 			go func() { _ = v.Refresh() }()
@@ -537,15 +536,16 @@ func (v *DashboardView) scheduleRefresh() {
 func (v *DashboardView) calculateHealthStatus() string {
 	score := v.calculateHealthScore()
 
-	if score >= 90 {
+	switch {
+	case score >= 90:
 		return "EXCELLENT"
-	} else if score >= 75 {
+	case score >= 75:
 		return "GOOD"
-	} else if score >= 60 {
+	case score >= 60:
 		return "FAIR"
-	} else if score >= 40 {
+	case score >= 40:
 		return "POOR"
-	} else {
+	default:
 		return "CRITICAL"
 	}
 }
@@ -640,11 +640,12 @@ func (v *DashboardView) createMiniBar(percentage float64, color string) string {
 }
 
 func getUtilizationColor(percentage float64) string {
-	if percentage < 50 {
+	switch {
+	case percentage < 50:
 		return "green"
-	} else if percentage < 80 {
+	case percentage < 80:
 		return "yellow"
-	} else {
+	default:
 		return "red"
 	}
 }
@@ -1082,13 +1083,14 @@ func (v *DashboardView) generateHealthCheck() string {
 // Helper functions for analytics
 
 func (v *DashboardView) getEfficiencyAssessment(percentage float64) string {
-	if percentage < 30 {
+	switch {
+	case percentage < 30:
 		return "[red](Under-utilized)[white]"
-	} else if percentage < 70 {
+	case percentage < 70:
 		return "[yellow](Moderate)[white]"
-	} else if percentage < 95 {
+	case percentage < 95:
 		return "[green](Well-utilized)[white]"
-	} else {
+	default:
 		return "[red](Over-utilized)[white]"
 	}
 }

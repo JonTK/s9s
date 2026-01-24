@@ -381,13 +381,14 @@ func (v *JobsView) showJobSubmissionFormWithTemplate(template *dao.JobSubmission
 		case tcell.KeyEnter:
 			// Check if we're on a button - if so, activate it
 			formIndex, buttonIndex := form.GetFocusedItemIndex()
-			if buttonIndex >= 0 {
+			switch {
+			case buttonIndex >= 0:
 				// We're on a button, let the form handle it
 				return event
-			} else if formIndex >= 10 {
+			case formIndex >= 10:
 				// We're past the input fields (unlikely but safe)
 				return event
-			} else {
+			default:
 				// We're on an input field, submit the form
 				// v.submitJobFromForm - removed, use wizard instead(form)
 				return nil

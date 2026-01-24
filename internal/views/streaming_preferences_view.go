@@ -132,8 +132,7 @@ func (v *StreamingPreferencesView) buildUI() {
 
 	// Set up keyboard shortcuts
 	v.form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEsc:
+		if event.Key() == tcell.KeyEsc {
 			v.close()
 			return nil
 		}
@@ -359,8 +358,7 @@ func (v *HighlightPatternsView) buildUI() {
 
 	// Set up keyboard shortcuts
 	v.modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEsc:
+		if event.Key() == tcell.KeyEsc {
 			v.close()
 			return nil
 		}
@@ -414,7 +412,9 @@ func (v *HighlightPatternsView) removeSelectedPattern() {
 	}
 
 	// Remove pattern at index
-	newPatterns := append(patterns[:index], patterns[index+1:]...)
+	newPatterns := make([]string, 0, len(patterns)-1)
+	newPatterns = append(newPatterns, patterns[:index]...)
+	newPatterns = append(newPatterns, patterns[index+1:]...)
 
 	if err := v.prefsManager.SetHighlightPatterns(newPatterns); err != nil {
 		v.showNotification(fmt.Sprintf("Failed to remove pattern: %v", err))

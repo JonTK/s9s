@@ -238,13 +238,14 @@ func FormatDuration(d string) string {
 
 // FormatTimeDuration formats a time.Duration for display
 func FormatTimeDuration(d time.Duration) string {
-	if d < time.Minute {
+	switch {
+	case d < time.Minute:
 		return fmt.Sprintf("%.0fs", d.Seconds())
-	} else if d < time.Hour {
+	case d < time.Hour:
 		return fmt.Sprintf("%.0fm", d.Minutes())
-	} else if d < 24*time.Hour {
+	case d < 24*time.Hour:
 		return fmt.Sprintf("%.1fh", d.Hours())
-	} else {
+	default:
 		days := int(d.Hours() / 24)
 		return fmt.Sprintf("%dd", days)
 	}

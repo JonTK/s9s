@@ -120,11 +120,12 @@ func (tm *TerminalManager) RemoveTerminal(nodeID string) error {
 	tm.order = newOrder
 
 	// Adjust current index if needed
-	if len(tm.order) == 0 {
+	switch {
+	case len(tm.order) == 0:
 		tm.current = -1
-	} else if tm.current >= len(tm.order) {
+	case tm.current >= len(tm.order):
 		tm.current = len(tm.order) - 1
-	} else if removedIndex < tm.current {
+	case removedIndex < tm.current:
 		tm.current--
 	}
 
