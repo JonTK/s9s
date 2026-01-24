@@ -40,7 +40,7 @@ linters:
     - nolintlint    # Validate nolint directives
     - dupl          # Detect duplicated code
     # - wsl_v5      # Whitespace linting - too many pre-existing issues (2600+), disabled for now
-    - containedctx  # Prevent context.Context in struct fields
+    # - containedctx # Prevent context.Context in struct fields - 22 pre-existing instances, requires architectural refactor
     # - revive      # Too many issues (460+), disabled to focus on complexity/duplication
 
   disable:
@@ -212,14 +212,6 @@ issues:
       linters:
         - nolintlint
         - gosec
-
-    # Phase 4: containedctx - Pre-existing context in struct patterns
-    # 22 instances found across lifecycle-managed components
-    # Refactoring would require extensive parameter passing through call chains
-    # Consider for future phase: lifecycle managers, context.Background + cancellation
-    - text: "found a struct"
-      linters:
-        - containedctx
 
   max-issues-per-linter: 0
   max-same-issues: 0
