@@ -137,14 +137,16 @@ func (g *GaugeWidget) formatValue() string {
 
 // defaultColorFunc returns colors based on percentage thresholds
 func defaultColorFunc(value float64) tcell.Color {
-	if value >= 90 {
+	switch {
+	case value >= 90:
 		return tcell.ColorRed
-	} else if value >= 75 {
+	case value >= 75:
 		return tcell.ColorYellow
-	} else if value >= 50 {
+	case value >= 50:
 		return tcell.ColorOrange
+	default:
+		return tcell.ColorGreen
 	}
-	return tcell.ColorGreen
 }
 
 // GaugeGroup manages multiple gauges with consistent sizing

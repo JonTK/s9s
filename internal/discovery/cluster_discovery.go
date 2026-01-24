@@ -192,11 +192,12 @@ func (ed *EnvironmentDiscovery) parseConfigFile(path string) *DiscoveredCluster 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		if strings.HasPrefix(line, "ClusterName=") {
+		switch {
+		case strings.HasPrefix(line, "ClusterName="):
 			cluster.Name = strings.TrimPrefix(line, "ClusterName=")
-		} else if strings.HasPrefix(line, "ControlMachine=") {
+		case strings.HasPrefix(line, "ControlMachine="):
 			cluster.Host = strings.TrimPrefix(line, "ControlMachine=")
-		} else if strings.HasPrefix(line, "SlurmctldHost=") {
+		case strings.HasPrefix(line, "SlurmctldHost="):
 			// Parse SlurmctldHost which might include port
 			hostLine := strings.TrimPrefix(line, "SlurmctldHost=")
 			if strings.Contains(hostLine, "(") {

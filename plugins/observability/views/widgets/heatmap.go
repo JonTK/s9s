@@ -268,11 +268,12 @@ func (h *HeatmapWidget) drawCell(screen tcell.Screen, x, y, width, height int, v
 
 // formatHeatmapValue formats a value for display in a cell
 func formatHeatmapValue(value float64) string {
-	if value >= 100 {
+	switch {
+	case value >= 100:
 		return fmt.Sprintf("%.0f", value)
-	} else if value >= 10 {
+	case value >= 10:
 		return fmt.Sprintf("%.1f", value)
-	} else {
+	default:
 		return fmt.Sprintf("%.2f", value)
 	}
 }
@@ -287,15 +288,16 @@ func defaultHeatmapColorFunc(value, min, max float64) tcell.Color {
 	normalized = math.Max(0, math.Min(1, normalized))
 
 	// Color gradient from blue (cold) to red (hot)
-	if normalized < 0.25 {
+	switch {
+	case normalized < 0.25:
 		return tcell.ColorBlue
-	} else if normalized < 0.5 {
+	case normalized < 0.5:
 		return tcell.ColorGreen
-	} else if normalized < 0.75 {
+	case normalized < 0.75:
 		return tcell.ColorYellow
-	} else if normalized < 0.9 {
+	case normalized < 0.9:
 		return tcell.ColorOrange
-	} else {
+	default:
 		return tcell.ColorRed
 	}
 }
@@ -366,15 +368,16 @@ func NewNodeUtilizationHeatmap() *NodeUtilizationHeatmap {
 
 	// Custom color function for utilization
 	h.colorFunc = func(value, min, max float64) tcell.Color {
-		if value >= 90 {
+		switch {
+		case value >= 90:
 			return tcell.ColorRed
-		} else if value >= 75 {
+		case value >= 75:
 			return tcell.ColorOrange
-		} else if value >= 50 {
+		case value >= 50:
 			return tcell.ColorYellow
-		} else if value >= 25 {
+		case value >= 25:
 			return tcell.ColorGreen
-		} else {
+		default:
 			return tcell.ColorBlue
 		}
 	}

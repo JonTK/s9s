@@ -143,11 +143,12 @@ func newLogger(config *Config) *Logger {
 
 	// Create multi-writer
 	var writer io.Writer
-	if len(writers) == 0 {
+	switch len(writers) {
+	case 0:
 		writer = os.Stderr
-	} else if len(writers) == 1 {
+	case 1:
 		writer = writers[0]
-	} else {
+	default:
 		writer = io.MultiWriter(writers...)
 	}
 

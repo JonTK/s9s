@@ -476,7 +476,9 @@ func (sm *SecretsManager) encryptValue(plaintext string) (string, error) {
 	ciphertext := aesGCM.Seal(nonce, nonce, []byte(plaintext), nil)
 
 	// Prepend salt to ciphertext
-	encrypted := append(salt, ciphertext...)
+	encrypted := make([]byte, 0, len(salt)+len(ciphertext))
+	encrypted = append(encrypted, salt...)
+	encrypted = append(encrypted, ciphertext...)
 
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }

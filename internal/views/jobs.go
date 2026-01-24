@@ -392,11 +392,12 @@ func (v *JobsView) onSelectionChange(selectedCount int, allSelected bool) {
 	// Update selection status text
 	if v.multiSelectMode {
 		var statusText string
-		if selectedCount == 0 {
+		switch {
+		case selectedCount == 0:
 			statusText = "[green]Multi-select: On[white] | [gray]0 selected[white]"
-		} else if allSelected {
+		case allSelected:
 			statusText = fmt.Sprintf("[green]Multi-select: On[white] | [yellow]%d selected (all)[white]", selectedCount)
-		} else {
+		default:
 			statusText = fmt.Sprintf("[green]Multi-select: On[white] | [yellow]%d selected[white]", selectedCount)
 		}
 		if v.selectionStatusText != nil {

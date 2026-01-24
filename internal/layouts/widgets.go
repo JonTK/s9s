@@ -636,13 +636,14 @@ func (w *LogsWidget) updateLogs() error {
 		}
 
 		// Color code based on log level
-		if contains(log, "[ERROR]") {
+		switch {
+		case contains(log, "[ERROR]"):
 			content += "[red]" + log + "[white]"
-		} else if contains(log, "[WARN]") {
+		case contains(log, "[WARN]"):
 			content += "[yellow]" + log + "[white]"
-		} else if contains(log, "[INFO]") {
+		case contains(log, "[INFO]"):
 			content += "[green]" + log + "[white]"
-		} else {
+		default:
 			content += log
 		}
 	}

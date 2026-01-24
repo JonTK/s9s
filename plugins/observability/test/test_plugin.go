@@ -52,11 +52,11 @@ func main() {
 	// Test Prometheus connectivity
 	fmt.Println("\nTesting Prometheus connectivity...")
 	testCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
 	// Query for available metrics
 	query := "up"
 	result, err := components.Client.Query(testCtx, query, time.Now())
+	cancel()
 	if err != nil {
 		log.Fatalf("Failed to query Prometheus: %v", err)
 	}

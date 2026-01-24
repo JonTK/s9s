@@ -108,8 +108,7 @@ func (ls *LayoutSwitcher) setupEventHandlers() {
 			ls.close()
 			return nil
 		case tcell.KeyRune:
-			switch event.Rune() {
-			case ' ':
+			if event.Rune() == ' ' {
 				// Preview current selection
 				currentIndex := ls.list.GetCurrentItem()
 				layoutID := ls.getLayoutIDFromIndex(currentIndex)

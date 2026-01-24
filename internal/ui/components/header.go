@@ -190,11 +190,12 @@ func createMiniBar(percentage float64) string {
 	filled := int(percentage / 100.0 * float64(barLength))
 
 	var color string
-	if percentage < 50 {
+	switch {
+	case percentage < 50:
 		color = "green"
-	} else if percentage < 80 {
+	case percentage < 80:
 		color = "yellow"
-	} else {
+	default:
 		color = "red"
 	}
 
@@ -216,13 +217,14 @@ func createMiniBar(percentage float64) string {
 
 // formatAge formats a duration as a readable age string
 func formatAge(d time.Duration) string {
-	if d < time.Minute {
+	switch {
+	case d < time.Minute:
 		return fmt.Sprintf("%ds", int(d.Seconds()))
-	} else if d < time.Hour {
+	case d < time.Hour:
 		return fmt.Sprintf("%dm", int(d.Minutes()))
-	} else if d < 24*time.Hour {
+	case d < 24*time.Hour:
 		return fmt.Sprintf("%dh", int(d.Hours()))
-	} else {
+	default:
 		return fmt.Sprintf("%dd", int(d.Hours()/24))
 	}
 }

@@ -141,11 +141,9 @@ func testBatchExportMemory(t *testing.T, useOptimized bool) {
 				// nolint:gosec // G115: memory metrics are bounded
 				formatBytes(int64(memoryPerJob)), formatBytes(int64(maxMemoryPerJobOptimized)))
 		}
-	} else {
+	} else if memoryPerJob < 100*1024 { // Less than 100KB seems too low for legacy
 		// Legacy version baseline - should use more memory
-		if memoryPerJob < 100*1024 { // Less than 100KB seems too low for legacy
-			t.Logf("Legacy export memory usage unexpectedly low: %s per job", formatBytes(int64(memoryPerJob)))
-		}
+		t.Logf("Legacy export memory usage unexpectedly low: %s per job", formatBytes(int64(memoryPerJob)))
 	}
 }
 

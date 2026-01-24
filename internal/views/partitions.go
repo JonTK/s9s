@@ -415,11 +415,12 @@ func (v *PartitionsView) createEfficiencyBar(percentage float64) string {
 
 	// Choose color based on efficiency
 	var color string
-	if percentage < 50 {
+	switch {
+	case percentage < 50:
 		color = "red" // Low efficiency
-	} else if percentage < 80 {
+	case percentage < 80:
 		color = "yellow" // Medium efficiency
-	} else {
+	default:
 		color = "green" // High efficiency
 	}
 
@@ -817,13 +818,14 @@ func (v *PartitionsView) formatPartitionAnalytics(partition *dao.Partition) stri
 
 			// Performance assessment
 			analytics.WriteString("\n[teal]Performance Assessment:[white]\n")
-			if utilizationPct < 30 {
+			switch {
+			case utilizationPct < 30:
 				analytics.WriteString("[yellow]  Status:[white] [red]Under-utilized[white] - Consider job promotion or resource reallocation\n")
-			} else if utilizationPct < 70 {
+			case utilizationPct < 70:
 				analytics.WriteString("[yellow]  Status:[white] [yellow]Moderate utilization[white] - Room for growth\n")
-			} else if utilizationPct < 95 {
+			case utilizationPct < 95:
 				analytics.WriteString("[yellow]  Status:[white] [green]Well-utilized[white] - Optimal performance\n")
-			} else {
+			default:
 				analytics.WriteString("[yellow]  Status:[white] [red]Over-subscribed[white] - Consider expanding capacity\n")
 			}
 		}
@@ -839,13 +841,14 @@ func (v *PartitionsView) formatPartitionAnalytics(partition *dao.Partition) stri
 
 				// Wait time assessment
 				hours := queueInfo.LongestWait.Hours()
-				if hours < 1 {
+				switch {
+				case hours < 1:
 					analytics.WriteString("[yellow]  Wait Assessment:[white] [green]Excellent[white] - Quick turnaround\n")
-				} else if hours < 6 {
+				case hours < 6:
 					analytics.WriteString("[yellow]  Wait Assessment:[white] [yellow]Good[white] - Reasonable wait times\n")
-				} else if hours < 24 {
+				case hours < 24:
 					analytics.WriteString("[yellow]  Wait Assessment:[white] [orange]Moderate[white] - Some delays expected\n")
-				} else {
+				default:
 					analytics.WriteString("[yellow]  Wait Assessment:[white] [red]Poor[white] - Long wait times detected\n")
 				}
 			}
@@ -1004,13 +1007,14 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 		// Status assessment
 		status := "OK"
 		statusColor := "green"
-		if info.LongestWait.Hours() > 24 {
+		switch {
+		case info.LongestWait.Hours() > 24:
 			status = "CRITICAL"
 			statusColor = "red"
-		} else if info.LongestWait.Hours() > 6 {
+		case info.LongestWait.Hours() > 6:
 			status = "WARNING"
 			statusColor = "yellow"
-		} else if info.PendingJobs > info.RunningJobs*2 {
+		case info.PendingJobs > info.RunningJobs*2:
 			status = "BACKLOG"
 			statusColor = "orange"
 		}
