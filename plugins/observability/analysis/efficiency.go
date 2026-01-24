@@ -350,13 +350,14 @@ func (rea *ResourceEfficiencyAnalyzer) calculateUtilizationStats(dataPoints []hi
 func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyScore(stats *UtilizationStats, resourceType ResourceType) float64 {
 	// Base score from utilization (optimal range: 70-85%)
 	var utilizationScore float64
-	if stats.Average < 20 {
+	switch {
+	case stats.Average < 20:
 		utilizationScore = stats.Average * 2 // Heavily penalize low utilization
-	} else if stats.Average < 70 {
+	case stats.Average < 70:
 		utilizationScore = 40 + (stats.Average-20)*1.2 // Gradual penalty
-	} else if stats.Average <= 85 {
+	case stats.Average <= 85:
 		utilizationScore = 100 // Optimal range
-	} else {
+	default:
 		utilizationScore = 100 - (stats.Average-85)*2 // Penalize over-utilization
 	}
 

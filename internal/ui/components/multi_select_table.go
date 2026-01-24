@@ -384,11 +384,12 @@ func (mst *MultiSelectTable) updateSelectAllState() {
 
 // updateSelectAllStateUnsafe updates the select all checkbox state without locking
 func (mst *MultiSelectTable) updateSelectAllStateUnsafe() {
-	if mst.selectionCount == 0 {
+	switch {
+	case mst.selectionCount == 0:
 		mst.selectAllState = 0 // None selected
-	} else if mst.selectionCount == len(mst.filteredData) {
+	case mst.selectionCount == len(mst.filteredData):
 		mst.selectAllState = 2 // All selected
-	} else {
+	default:
 		mst.selectAllState = 1 // Some selected
 	}
 }

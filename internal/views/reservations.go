@@ -534,13 +534,14 @@ func (v *ReservationsView) formatReservationDetails(res *dao.Reservation) string
 	details.WriteString(fmt.Sprintf("[yellow]  Duration:[white] %s\n", formatReservationDuration(res.Duration)))
 
 	// Time status
-	if now.Before(res.StartTime) {
+	switch {
+	case now.Before(res.StartTime):
 		timeUntil := res.StartTime.Sub(now)
 		details.WriteString(fmt.Sprintf("[yellow]  Status:[white] Starts in %s\n", formatReservationDuration(timeUntil)))
-	} else if now.After(res.EndTime) {
+	case now.After(res.EndTime):
 		timeSince := now.Sub(res.EndTime)
 		details.WriteString(fmt.Sprintf("[yellow]  Status:[white] Ended %s ago\n", formatReservationDuration(timeSince)))
-	} else {
+	default:
 		timeLeft := res.EndTime.Sub(now)
 		details.WriteString(fmt.Sprintf("[yellow]  Status:[white] Active, %s remaining\n", formatReservationDuration(timeLeft)))
 	}

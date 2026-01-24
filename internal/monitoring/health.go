@@ -201,13 +201,14 @@ func (hm *HealthMonitor) updateOverallStatus() {
 		}
 	}
 
-	if hasCritical {
+	switch {
+	case hasCritical:
 		hm.health.OverallStatus = HealthStatusCritical
-	} else if hasWarning {
+	case hasWarning:
 		hm.health.OverallStatus = HealthStatusWarning
-	} else if hasUnknown {
+	case hasUnknown:
 		hm.health.OverallStatus = HealthStatusUnknown
-	} else {
+	default:
 		hm.health.OverallStatus = HealthStatusHealthy
 	}
 }
@@ -269,15 +270,16 @@ func (hm *HealthMonitor) registerDefaultChecks() {
 
 		unavailablePercent := float64(downNodes+drainNodes) * 100.0 / float64(total)
 
-		if check.Threshold.CriticalMax != nil && unavailablePercent > *check.Threshold.CriticalMax {
+		switch {
+		case check.Threshold.CriticalMax != nil && unavailablePercent > *check.Threshold.CriticalMax:
 			check.Status = HealthStatusCritical
 			check.Message = fmt.Sprintf("%.1f%% of nodes unavailable (%d down, %d drain out of %d total)",
 				unavailablePercent, downNodes, drainNodes, total)
-		} else if check.Threshold.WarningMax != nil && unavailablePercent > *check.Threshold.WarningMax {
+		case check.Threshold.WarningMax != nil && unavailablePercent > *check.Threshold.WarningMax:
 			check.Status = HealthStatusWarning
 			check.Message = fmt.Sprintf("%.1f%% of nodes unavailable (%d down, %d drain out of %d total)",
 				unavailablePercent, downNodes, drainNodes, total)
-		} else {
+		default:
 			check.Status = HealthStatusHealthy
 			check.Message = fmt.Sprintf("All nodes healthy (%d total, %d down, %d drain)",
 				total, downNodes, drainNodes)
@@ -309,15 +311,16 @@ func (hm *HealthMonitor) registerDefaultChecks() {
 
 		pendingJobs := float64(len(jobList.Jobs))
 
-		if check.Threshold.CriticalMax != nil && pendingJobs > *check.Threshold.CriticalMax {
+		switch {
+		case check.Threshold.CriticalMax != nil && pendingJobs > *check.Threshold.CriticalMax:
 			check.Status = HealthStatusCritical
 			check.Message = fmt.Sprintf("%.0f pending jobs (critical threshold: %.0f)",
 				pendingJobs, *check.Threshold.CriticalMax)
-		} else if check.Threshold.WarningMax != nil && pendingJobs > *check.Threshold.WarningMax {
+		case check.Threshold.WarningMax != nil && pendingJobs > *check.Threshold.WarningMax:
 			check.Status = HealthStatusWarning
 			check.Message = fmt.Sprintf("%.0f pending jobs (warning threshold: %.0f)",
 				pendingJobs, *check.Threshold.WarningMax)
-		} else {
+		default:
 			check.Status = HealthStatusHealthy
 			check.Message = fmt.Sprintf("Queue healthy with %.0f pending jobs", pendingJobs)
 		}
@@ -352,15 +355,16 @@ func (hm *HealthMonitor) registerDefaultChecks() {
 				maxUtil = memUtil
 			}
 
-			if check.Threshold.CriticalMax != nil && maxUtil > *check.Threshold.CriticalMax {
+			switch {
+			case check.Threshold.CriticalMax != nil && maxUtil > *check.Threshold.CriticalMax:
 				check.Status = HealthStatusCritical
 				check.Message = fmt.Sprintf("High resource utilization: CPU %.1f%%, Memory %.1f%%",
 					cpuUtil, memUtil)
-			} else if check.Threshold.WarningMax != nil && maxUtil > *check.Threshold.WarningMax {
+			case check.Threshold.WarningMax != nil && maxUtil > *check.Threshold.WarningMax:
 				check.Status = HealthStatusWarning
 				check.Message = fmt.Sprintf("Elevated resource utilization: CPU %.1f%%, Memory %.1f%%",
 					cpuUtil, memUtil)
-			} else {
+			default:
 				check.Status = HealthStatusHealthy
 				check.Message = fmt.Sprintf("Resource utilization normal: CPU %.1f%%, Memory %.1f%%",
 					cpuUtil, memUtil)

@@ -277,11 +277,12 @@ func (v *QoSView) updateTable() {
 	for i, qos := range filteredQoS {
 		// Format priority with color
 		var priorityColor string
-		if qos.Priority > 1000 {
+		switch {
+		case qos.Priority > 1000:
 			priorityColor = "green"
-		} else if qos.Priority > 100 {
+		case qos.Priority > 100:
 			priorityColor = "yellow"
-		} else {
+		default:
 			priorityColor = "white"
 		}
 		priority := fmt.Sprintf("[%s]%d[white]", priorityColor, qos.Priority)
@@ -512,11 +513,12 @@ func formatMemoryLimit(mb int64) string {
 		return "unlimited"
 	}
 
-	if mb < 1024 {
+	switch {
+	case mb < 1024:
 		return fmt.Sprintf("%d MB", mb)
-	} else if mb < 1024*1024 {
+	case mb < 1024*1024:
 		return fmt.Sprintf("%.1f GB", float64(mb)/1024)
-	} else {
+	default:
 		return fmt.Sprintf("%.1f TB", float64(mb)/(1024*1024))
 	}
 }
