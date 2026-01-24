@@ -473,11 +473,12 @@ func (etv *EnhancedTerminalView) hideModal(name string) {
 	}
 }
 
-// BaseView interface implementation
+// Render returns the tview.Primitive for the enhanced terminal view.
 func (etv *EnhancedTerminalView) Render() tview.Primitive {
 	return etv.container
 }
 
+// Update updates the terminal view status and connections.
 func (etv *EnhancedTerminalView) Update() error {
 	// Update terminal status and connections
 	etv.mu.RLock()
@@ -490,16 +491,19 @@ func (etv *EnhancedTerminalView) Update() error {
 	return nil
 }
 
+// Refresh refreshes the node list and terminal states.
 func (etv *EnhancedTerminalView) Refresh() error {
 	// Refresh node list and terminal states
 	etv.loadNodes()
 	return etv.Update()
 }
 
+// OnKey handles keyboard events for the enhanced terminal view.
 func (etv *EnhancedTerminalView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	return etv.handleInput(event)
 }
 
+// Hints returns keyboard hints for the enhanced terminal view.
 func (etv *EnhancedTerminalView) Hints() []string {
 	return []string{
 		"Ctrl+T: New Terminal",
@@ -512,6 +516,7 @@ func (etv *EnhancedTerminalView) Hints() []string {
 	}
 }
 
+// Stop stops the enhanced terminal view and closes all terminals.
 func (etv *EnhancedTerminalView) Stop() {
 	// Close all terminals
 	etv.mu.Lock()

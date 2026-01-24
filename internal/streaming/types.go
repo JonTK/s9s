@@ -14,12 +14,18 @@ import (
 type StreamEventType string
 
 const (
-	StreamEventNewOutput   StreamEventType = "NEW_OUTPUT"
+	// StreamEventNewOutput is the stream event type for new output.
+	StreamEventNewOutput StreamEventType = "NEW_OUTPUT"
+	// StreamEventJobComplete is the stream event type for job completion.
 	StreamEventJobComplete StreamEventType = "JOB_COMPLETE"
-	StreamEventError       StreamEventType = "ERROR"
+	// StreamEventError is the stream event type for errors.
+	StreamEventError StreamEventType = "ERROR"
+	// StreamEventFileRotated is the stream event type for file rotation.
 	StreamEventFileRotated StreamEventType = "FILE_ROTATED"
+	// StreamEventStreamStart is the stream event type for stream start.
 	StreamEventStreamStart StreamEventType = "STREAM_START"
-	StreamEventStreamStop  StreamEventType = "STREAM_STOP"
+	// StreamEventStreamStop is the stream event type for stream stop.
+	StreamEventStreamStop StreamEventType = "STREAM_STOP"
 )
 
 // StreamEvent represents an event in the streaming system

@@ -13,11 +13,16 @@ import (
 type MemoryUnit int64
 
 const (
+	// Byte is the memory unit for bytes.
 	Byte MemoryUnit = 1
-	KB   MemoryUnit = 1024
-	MB   MemoryUnit = 1024 * 1024
-	GB   MemoryUnit = 1024 * 1024 * 1024
-	TB   MemoryUnit = 1024 * 1024 * 1024 * 1024
+	// KB is the memory unit for kilobytes.
+	KB MemoryUnit = 1024
+	// MB is the memory unit for megabytes.
+	MB MemoryUnit = 1024 * 1024
+	// GB is the memory unit for gigabytes.
+	GB MemoryUnit = 1024 * 1024 * 1024
+	// TB is the memory unit for terabytes.
+	TB MemoryUnit = 1024 * 1024 * 1024 * 1024
 )
 
 // DateRangeFilter represents date range filtering
@@ -89,7 +94,7 @@ func ParseMemorySize(sizeStr string) (int64, error) {
 	return int64(value * float64(multiplier)), nil
 }
 
-// ParseDuration parses duration strings like "2:30:00", "1-12:00:00", "90min"
+// ParseSlurmDuration parses SLURM duration strings like "2:30:00", "1-12:00:00", "90min".
 func ParseSlurmDuration(duration string) (time.Duration, error) {
 	duration = strings.TrimSpace(duration)
 

@@ -19,11 +19,16 @@ import (
 type ExportFormat string
 
 const (
-	FormatText     ExportFormat = "txt"
-	FormatJSON     ExportFormat = "json"
-	FormatCSV      ExportFormat = "csv"
+	// FormatText is the text export format.
+	FormatText ExportFormat = "txt"
+	// FormatJSON is the JSON export format.
+	FormatJSON ExportFormat = "json"
+	// FormatCSV is the CSV export format.
+	FormatCSV ExportFormat = "csv"
+	// FormatMarkdown is the Markdown export format.
 	FormatMarkdown ExportFormat = "md"
-	FormatHTML     ExportFormat = "html"
+	// FormatHTML is the HTML export format.
+	FormatHTML ExportFormat = "html"
 )
 
 // JobOutputExporter handles exporting job output to various formats

@@ -18,11 +18,17 @@ import (
 type SessionState int
 
 const (
+	// SessionIdle is the idle session state.
 	SessionIdle SessionState = iota
+	// SessionConnecting is the connecting session state.
 	SessionConnecting
+	// SessionConnected is the connected session state.
 	SessionConnected
+	// SessionActive is the active session state.
 	SessionActive
+	// SessionDisconnected is the disconnected session state.
 	SessionDisconnected
+	// SessionError is the error session state.
 	SessionError
 )
 

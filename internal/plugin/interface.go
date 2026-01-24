@@ -160,10 +160,14 @@ type CellStyle struct {
 type ColumnPosition string
 
 const (
+	// ColumnPositionBefore places the column before the target column.
 	ColumnPositionBefore ColumnPosition = "before"
-	ColumnPositionAfter  ColumnPosition = "after"
-	ColumnPositionStart  ColumnPosition = "start"
-	ColumnPositionEnd    ColumnPosition = "end"
+	// ColumnPositionAfter places the column after the target column.
+	ColumnPositionAfter ColumnPosition = "after"
+	// ColumnPositionStart places the column at the start.
+	ColumnPositionStart ColumnPosition = "start"
+	// ColumnPositionEnd places the column at the end.
+	ColumnPositionEnd ColumnPosition = "end"
 )
 
 // OverlayColumn defines a column added by an overlay (alias for ColumnDefinition)

@@ -504,7 +504,7 @@ func (mst *MultiSelectTable) getSelectAllIcon() string {
 	}
 }
 
-// Override SetData to maintain selections when data changes
+// SetData sets the table data and maintains selections when data changes.
 func (mst *MultiSelectTable) SetData(data [][]string) {
 	mst.mu.Lock()
 

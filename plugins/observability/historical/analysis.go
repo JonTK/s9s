@@ -10,10 +10,15 @@ import (
 type TrendDirection int
 
 const (
+	// TrendUnknown indicates the trend direction is unknown.
 	TrendUnknown TrendDirection = iota
+	// TrendIncreasing indicates the trend is increasing.
 	TrendIncreasing
+	// TrendDecreasing indicates the trend is decreasing.
 	TrendDecreasing
+	// TrendStable indicates the trend is stable.
 	TrendStable
+	// TrendVolatile indicates the trend is volatile.
 	TrendVolatile
 )
 

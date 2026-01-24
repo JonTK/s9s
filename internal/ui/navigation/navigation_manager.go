@@ -14,10 +14,14 @@ import (
 type NavigationMode string
 
 const (
-	NavigationModeNormal  NavigationMode = "normal"
-	NavigationModeQuick   NavigationMode = "quick"
+	// NavigationModeNormal is the normal navigation mode.
+	NavigationModeNormal NavigationMode = "normal"
+	// NavigationModeQuick is the quick access navigation mode.
+	NavigationModeQuick NavigationMode = "quick"
+	// NavigationModeCommand is the command palette navigation mode.
 	NavigationModeCommand NavigationMode = "command"
-	NavigationModeSearch  NavigationMode = "search"
+	// NavigationModeSearch is the search navigation mode.
+	NavigationModeSearch NavigationMode = "search"
 )
 
 // NavigationTarget represents a navigable target

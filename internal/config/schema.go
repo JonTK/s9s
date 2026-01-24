@@ -32,18 +32,30 @@ type ConfigField struct {
 type FieldType string
 
 const (
-	FieldTypeString   FieldType = "string"
-	FieldTypeInt      FieldType = "int"
-	FieldTypeFloat    FieldType = "float"
-	FieldTypeBool     FieldType = "bool"
+	// FieldTypeString is the field type for string fields.
+	FieldTypeString FieldType = "string"
+	// FieldTypeInt is the field type for integer fields.
+	FieldTypeInt FieldType = "int"
+	// FieldTypeFloat is the field type for float fields.
+	FieldTypeFloat FieldType = "float"
+	// FieldTypeBool is the field type for boolean fields.
+	FieldTypeBool FieldType = "bool"
+	// FieldTypeDuration is the field type for duration fields.
 	FieldTypeDuration FieldType = "duration"
-	FieldTypeSelect   FieldType = "select"
-	FieldTypeArray    FieldType = "array"
-	FieldTypeObject   FieldType = "object"
-	FieldTypeContext  FieldType = "context"  // Special type for contexts
-	FieldTypeShortcut FieldType = "shortcut" // Special type for shortcuts
-	FieldTypePlugin   FieldType = "plugin"   // Special type for plugins
-	FieldTypeAlias    FieldType = "alias"    // Special type for aliases
+	// FieldTypeSelect is the field type for select/enum fields.
+	FieldTypeSelect FieldType = "select"
+	// FieldTypeArray is the field type for array fields.
+	FieldTypeArray FieldType = "array"
+	// FieldTypeObject is the field type for object fields.
+	FieldTypeObject FieldType = "object"
+	// FieldTypeContext is the field type for context fields.
+	FieldTypeContext FieldType = "context"
+	// FieldTypeShortcut is the field type for shortcut fields.
+	FieldTypeShortcut FieldType = "shortcut"
+	// FieldTypePlugin is the field type for plugin fields.
+	FieldTypePlugin FieldType = "plugin"
+	// FieldTypeAlias is the field type for alias fields.
+	FieldTypeAlias FieldType = "alias"
 )
 
 // Dependency represents a field dependency

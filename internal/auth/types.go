@@ -104,9 +104,13 @@ type Endpoint struct {
 type EndpointStatus int
 
 const (
+	// EndpointStatusUnknown is the unknown endpoint status.
 	EndpointStatusUnknown EndpointStatus = iota
+	// EndpointStatusHealthy is the healthy endpoint status.
 	EndpointStatusHealthy
+	// EndpointStatusUnhealthy is the unhealthy endpoint status.
 	EndpointStatusUnhealthy
+	// EndpointStatusMaintenance is the maintenance endpoint status.
 	EndpointStatusMaintenance
 )
 

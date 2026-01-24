@@ -64,8 +64,11 @@ type Alert struct {
 type AlertState string
 
 const (
-	AlertStatePending  AlertState = "pending"
-	AlertStateFiring   AlertState = "firing"
+	// AlertStatePending is the pending state for alerts.
+	AlertStatePending AlertState = "pending"
+	// AlertStateFiring is the firing state for alerts.
+	AlertStateFiring AlertState = "firing"
+	// AlertStateResolved is the resolved state for alerts.
 	AlertStateResolved AlertState = "resolved"
 )
 

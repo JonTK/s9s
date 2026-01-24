@@ -19,22 +19,32 @@ import (
 type ResourceType string
 
 const (
-	ResourceCPU     ResourceType = "cpu"
-	ResourceMemory  ResourceType = "memory"
+	// ResourceCPU is the resource type for CPU resources.
+	ResourceCPU ResourceType = "cpu"
+	// ResourceMemory is the resource type for memory resources.
+	ResourceMemory ResourceType = "memory"
+	// ResourceStorage is the resource type for storage resources.
 	ResourceStorage ResourceType = "storage"
+	// ResourceNetwork is the resource type for network resources.
 	ResourceNetwork ResourceType = "network"
-	ResourceGPU     ResourceType = "gpu"
+	// ResourceGPU is the resource type for GPU resources.
+	ResourceGPU ResourceType = "gpu"
 )
 
 // EfficiencyLevel represents efficiency rating levels
 type EfficiencyLevel string
 
 const (
+	// EfficiencyExcellent is the excellent efficiency level.
 	EfficiencyExcellent EfficiencyLevel = "excellent"
-	EfficiencyGood      EfficiencyLevel = "good"
-	EfficiencyFair      EfficiencyLevel = "fair"
-	EfficiencyPoor      EfficiencyLevel = "poor"
-	EfficiencyCritical  EfficiencyLevel = "critical"
+	// EfficiencyGood is the good efficiency level.
+	EfficiencyGood EfficiencyLevel = "good"
+	// EfficiencyFair is the fair efficiency level.
+	EfficiencyFair EfficiencyLevel = "fair"
+	// EfficiencyPoor is the poor efficiency level.
+	EfficiencyPoor EfficiencyLevel = "poor"
+	// EfficiencyCritical is the critical efficiency level.
+	EfficiencyCritical EfficiencyLevel = "critical"
 )
 
 // ResourceEfficiency represents efficiency analysis for a resource type

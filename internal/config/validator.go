@@ -49,8 +49,11 @@ type ValidationFix struct {
 type ValidationSeverity int
 
 const (
+	// SeverityError is the error severity level.
 	SeverityError ValidationSeverity = iota
+	// SeverityWarning is the warning severity level.
 	SeverityWarning
+	// SeverityInfo is the info severity level.
 	SeverityInfo
 )
 

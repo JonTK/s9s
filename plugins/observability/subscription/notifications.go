@@ -13,9 +13,13 @@ import (
 type NotificationLevel string
 
 const (
-	LevelInfo     NotificationLevel = "info"
-	LevelWarning  NotificationLevel = "warning"
-	LevelError    NotificationLevel = "error"
+	// LevelInfo is the info notification level.
+	LevelInfo NotificationLevel = "info"
+	// LevelWarning is the warning notification level.
+	LevelWarning NotificationLevel = "warning"
+	// LevelError is the error notification level.
+	LevelError NotificationLevel = "error"
+	// LevelCritical is the critical notification level.
 	LevelCritical NotificationLevel = "critical"
 )
 
@@ -383,7 +387,7 @@ func dataToMap(data interface{}) (map[string]interface{}, error) {
 	return result, nil
 }
 
-// Enhanced subscription callback wrapper
+// EnhancedSubscriptionCallback wraps a callback with change detection and notification management.
 type EnhancedSubscriptionCallback struct {
 	callback        plugin.DataCallback
 	changeDetector  *DataChangeDetector

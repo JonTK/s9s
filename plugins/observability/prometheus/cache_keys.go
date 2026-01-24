@@ -39,9 +39,13 @@ type CacheKeyContext struct {
 type QueryType int
 
 const (
+	// QueryTypeInstant is the query type for instant queries.
 	QueryTypeInstant QueryType = iota
+	// QueryTypeRange is the query type for range queries.
 	QueryTypeRange
+	// QueryTypeSeries is the query type for series queries.
 	QueryTypeSeries
+	// QueryTypeLabels is the query type for label queries.
 	QueryTypeLabels
 )
 
@@ -260,7 +264,7 @@ func (g *CacheKeyGenerator) BatchGenerateKeys(queries map[string]string, queryTi
 	return keys
 }
 
-// EstimateCacheEfficiency analyzes query patterns to estimate cache effectiveness
+// CacheEfficiencyStats holds statistics about cache effectiveness for query patterns.
 type CacheEfficiencyStats struct {
 	TotalQueries     int
 	UniqueNormalized int

@@ -16,7 +16,9 @@ import (
 type ExportType string
 
 const (
-	ExportTypeJobOutput   ExportType = "job_output"
+	// ExportTypeJobOutput is the export type for job output.
+	ExportTypeJobOutput ExportType = "job_output"
+	// ExportTypePerformance is the export type for performance data.
 	ExportTypePerformance ExportType = "performance"
 )
 

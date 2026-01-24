@@ -76,14 +76,22 @@ type Widget interface {
 type WidgetType string
 
 const (
-	WidgetTypeView       WidgetType = "view"       // Jobs, Nodes, etc.
-	WidgetTypeMetrics    WidgetType = "metrics"    // Resource usage charts
-	WidgetTypeAlerts     WidgetType = "alerts"     // System alerts
-	WidgetTypeStatus     WidgetType = "status"     // Cluster status
-	WidgetTypeTerminal   WidgetType = "terminal"   // Command terminal
-	WidgetTypeQuickStart WidgetType = "quickstart" // Quick action buttons
-	WidgetTypeClock      WidgetType = "clock"      // Time display
-	WidgetTypeLogs       WidgetType = "logs"       // Log viewer
+	// WidgetTypeView is the widget type for view widgets like jobs and nodes.
+	WidgetTypeView WidgetType = "view"
+	// WidgetTypeMetrics is the widget type for resource usage charts.
+	WidgetTypeMetrics WidgetType = "metrics"
+	// WidgetTypeAlerts is the widget type for system alerts.
+	WidgetTypeAlerts WidgetType = "alerts"
+	// WidgetTypeStatus is the widget type for cluster status.
+	WidgetTypeStatus WidgetType = "status"
+	// WidgetTypeTerminal is the widget type for command terminal.
+	WidgetTypeTerminal WidgetType = "terminal"
+	// WidgetTypeQuickStart is the widget type for quick action buttons.
+	WidgetTypeQuickStart WidgetType = "quickstart"
+	// WidgetTypeClock is the widget type for time display.
+	WidgetTypeClock WidgetType = "clock"
+	// WidgetTypeLogs is the widget type for log viewer.
+	WidgetTypeLogs WidgetType = "logs"
 )
 
 // NewLayoutManager creates a new layout manager

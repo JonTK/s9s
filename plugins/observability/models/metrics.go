@@ -13,13 +13,20 @@ import (
 type MetricType string
 
 const (
-	MetricTypeCPU         MetricType = "cpu"
-	MetricTypeMemory      MetricType = "memory"
-	MetricTypeDisk        MetricType = "disk"
-	MetricTypeNetwork     MetricType = "network"
-	MetricTypeLoad        MetricType = "load"
+	// MetricTypeCPU is the metric type for CPU metrics.
+	MetricTypeCPU MetricType = "cpu"
+	// MetricTypeMemory is the metric type for memory metrics.
+	MetricTypeMemory MetricType = "memory"
+	// MetricTypeDisk is the metric type for disk metrics.
+	MetricTypeDisk MetricType = "disk"
+	// MetricTypeNetwork is the metric type for network metrics.
+	MetricTypeNetwork MetricType = "network"
+	// MetricTypeLoad is the metric type for load metrics.
+	MetricTypeLoad MetricType = "load"
+	// MetricTypeTemperature is the metric type for temperature metrics.
 	MetricTypeTemperature MetricType = "temperature"
-	MetricTypeCustom      MetricType = "custom"
+	// MetricTypeCustom is the metric type for custom metrics.
+	MetricTypeCustom MetricType = "custom"
 )
 
 // MetricValue represents a single metric measurement

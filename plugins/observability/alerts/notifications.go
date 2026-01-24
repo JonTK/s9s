@@ -40,9 +40,12 @@ type Notification struct {
 type NotificationType string
 
 const (
-	NotificationTypeAlert    NotificationType = "alert"
+	// NotificationTypeAlert is the notification type for new alerts.
+	NotificationTypeAlert NotificationType = "alert"
+	// NotificationTypeResolved is the notification type for resolved alerts.
 	NotificationTypeResolved NotificationType = "resolved"
-	NotificationTypeTest     NotificationType = "test"
+	// NotificationTypeTest is the notification type for test notifications.
+	NotificationTypeTest NotificationType = "test"
 )
 
 // AlertSubscription defines a subscription to alert notifications
@@ -354,14 +357,17 @@ func NewInAppHandler() *InAppHandler {
 	}
 }
 
+// GetID returns the unique identifier of the in-app handler.
 func (h *InAppHandler) GetID() string {
 	return "in-app"
 }
 
+// GetName returns the name of the in-app handler.
 func (h *InAppHandler) GetName() string {
 	return "In-App Notifications"
 }
 
+// Send sends a notification to the in-app notification queue.
 func (h *InAppHandler) Send(_ context.Context, notification Notification) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -376,6 +382,7 @@ func (h *InAppHandler) Send(_ context.Context, notification Notification) error 
 	return nil
 }
 
+// IsEnabled returns whether the in-app handler is enabled.
 func (h *InAppHandler) IsEnabled() bool {
 	return h.enabled
 }
@@ -414,14 +421,17 @@ func NewLogHandler(logger func(string)) *LogHandler {
 	}
 }
 
+// GetID returns the unique identifier of the log handler.
 func (h *LogHandler) GetID() string {
 	return "log"
 }
 
+// GetName returns the name of the log handler.
 func (h *LogHandler) GetName() string {
 	return "Log Handler"
 }
 
+// Send sends a notification to the configured logger.
 func (h *LogHandler) Send(_ context.Context, notification Notification) error {
 	if h.logger == nil {
 		return fmt.Errorf("logger not configured")
@@ -439,6 +449,7 @@ func (h *LogHandler) Send(_ context.Context, notification Notification) error {
 	return nil
 }
 
+// IsEnabled returns whether the log handler is enabled.
 func (h *LogHandler) IsEnabled() bool {
 	return h.enabled
 }

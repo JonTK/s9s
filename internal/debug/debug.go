@@ -9,6 +9,7 @@ import (
 	"github.com/jontk/s9s/internal/logging"
 )
 
+// Logger is the debug logger instance used for debug output.
 var Logger *log.Logger
 
 func init() {

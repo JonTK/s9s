@@ -13,9 +13,13 @@ import (
 type OptimizationLevel int
 
 const (
+	// OptimizationNone indicates no optimization.
 	OptimizationNone OptimizationLevel = iota
+	// OptimizationLight indicates light optimization level.
 	OptimizationLight
+	// OptimizationModerate indicates moderate optimization level.
 	OptimizationModerate
+	// OptimizationAggressive indicates aggressive optimization level.
 	OptimizationAggressive
 )
 

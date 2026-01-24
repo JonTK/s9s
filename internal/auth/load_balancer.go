@@ -475,9 +475,7 @@ type EndpointStats struct {
 	CircuitBreakerUntil time.Time
 }
 
-// Health Checker implementation
-
-// StartHealthChecking starts periodic health checks
+// Start starts periodic health checks for the health checker.
 func (h *HealthChecker) Start(ctx context.Context) {
 	h.wg.Add(1)
 	go h.healthCheckLoop(ctx)

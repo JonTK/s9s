@@ -18,13 +18,20 @@ import (
 type BatchOperation string
 
 const (
-	BatchCancel   BatchOperation = "cancel"
-	BatchHold     BatchOperation = "hold"
-	BatchRelease  BatchOperation = "release"
-	BatchRequeue  BatchOperation = "requeue"
-	BatchDelete   BatchOperation = "delete"
+	// BatchCancel is the batch operation type for canceling jobs.
+	BatchCancel BatchOperation = "cancel"
+	// BatchHold is the batch operation type for holding jobs.
+	BatchHold BatchOperation = "hold"
+	// BatchRelease is the batch operation type for releasing jobs.
+	BatchRelease BatchOperation = "release"
+	// BatchRequeue is the batch operation type for requeuing jobs.
+	BatchRequeue BatchOperation = "requeue"
+	// BatchDelete is the batch operation type for deleting jobs.
+	BatchDelete BatchOperation = "delete"
+	// BatchPriority is the batch operation type for changing job priority.
 	BatchPriority BatchOperation = "priority"
-	BatchExport   BatchOperation = "export"
+	// BatchExport is the batch operation type for exporting job data.
+	BatchExport BatchOperation = "export"
 )
 
 // BatchOperationsView handles batch operations on multiple jobs

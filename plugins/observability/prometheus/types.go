@@ -26,9 +26,13 @@ type ResultData struct {
 type ResultType string
 
 const (
+	// ResultTypeMatrix is the result type for matrix results.
 	ResultTypeMatrix ResultType = "matrix"
+	// ResultTypeVector is the result type for vector results.
 	ResultTypeVector ResultType = "vector"
+	// ResultTypeScalar is the result type for scalar results.
 	ResultTypeScalar ResultType = "scalar"
+	// ResultTypeString is the result type for string results.
 	ResultTypeString ResultType = "string"
 )
 
@@ -167,8 +171,11 @@ type Alert struct {
 type AlertState string
 
 const (
-	AlertStatePending  AlertState = "pending"
-	AlertStateFiring   AlertState = "firing"
+	// AlertStatePending is the pending alert state.
+	AlertStatePending AlertState = "pending"
+	// AlertStateFiring is the firing alert state.
+	AlertStateFiring AlertState = "firing"
+	// AlertStateInactive is the inactive alert state.
 	AlertStateInactive AlertState = "inactive"
 )
 

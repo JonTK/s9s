@@ -15,9 +15,13 @@ import (
 type AlertLevel int
 
 const (
+	// AlertInfo is the info alert level.
 	AlertInfo AlertLevel = iota
+	// AlertWarning is the warning alert level.
 	AlertWarning
+	// AlertError is the error alert level.
 	AlertError
+	// AlertCritical is the critical alert level.
 	AlertCritical
 )
 

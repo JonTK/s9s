@@ -103,7 +103,7 @@ func (k *KeyringSecureStore) Cleanup() error {
 	return nil
 }
 
-// Linux implementation using Secret Service API
+// LinuxKeyringBackend implements KeyringBackend using the system's Secret Service API.
 type LinuxKeyringBackend struct {
 	// Linux keyring implementation would use libsecret or similar
 	// For now, we'll use a simplified implementation
@@ -184,7 +184,7 @@ func (l *LinuxKeyringBackend) List(service string) ([]string, error) {
 	return users, nil
 }
 
-// macOS implementation using Keychain Services
+// MacOSKeyringBackend implements KeyringBackend using Keychain Services.
 type MacOSKeyringBackend struct {
 	// macOS keyring implementation would use Keychain Services API
 	fallback SecureStore
