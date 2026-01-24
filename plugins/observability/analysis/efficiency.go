@@ -19,22 +19,32 @@ import (
 type ResourceType string
 
 const (
-	ResourceCPU     ResourceType = "cpu"
-	ResourceMemory  ResourceType = "memory"
+	// ResourceCPU is the resource type for CPU resources.
+	ResourceCPU ResourceType = "cpu"
+	// ResourceMemory is the resource type for memory resources.
+	ResourceMemory ResourceType = "memory"
+	// ResourceStorage is the resource type for storage resources.
 	ResourceStorage ResourceType = "storage"
+	// ResourceNetwork is the resource type for network resources.
 	ResourceNetwork ResourceType = "network"
-	ResourceGPU     ResourceType = "gpu"
+	// ResourceGPU is the resource type for GPU resources.
+	ResourceGPU ResourceType = "gpu"
 )
 
 // EfficiencyLevel represents efficiency rating levels
 type EfficiencyLevel string
 
 const (
+	// EfficiencyExcellent is the excellent efficiency level.
 	EfficiencyExcellent EfficiencyLevel = "excellent"
-	EfficiencyGood      EfficiencyLevel = "good"
-	EfficiencyFair      EfficiencyLevel = "fair"
-	EfficiencyPoor      EfficiencyLevel = "poor"
-	EfficiencyCritical  EfficiencyLevel = "critical"
+	// EfficiencyGood is the good efficiency level.
+	EfficiencyGood EfficiencyLevel = "good"
+	// EfficiencyFair is the fair efficiency level.
+	EfficiencyFair EfficiencyLevel = "fair"
+	// EfficiencyPoor is the poor efficiency level.
+	EfficiencyPoor EfficiencyLevel = "poor"
+	// EfficiencyCritical is the critical efficiency level.
+	EfficiencyCritical EfficiencyLevel = "critical"
 )
 
 // ResourceEfficiency represents efficiency analysis for a resource type
@@ -224,7 +234,7 @@ func (rea *ResourceEfficiencyAnalyzer) AnalyzeClusterEfficiency(ctx context.Cont
 }
 
 // AnalyzeResourceEfficiency analyzes efficiency for a specific resource type
-func (rea *ResourceEfficiencyAnalyzer) AnalyzeResourceEfficiency(ctx context.Context, resourceType ResourceType, analysisPeriod time.Duration) (*ResourceEfficiency, error) {
+func (rea *ResourceEfficiencyAnalyzer) AnalyzeResourceEfficiency(_ context.Context, resourceType ResourceType, analysisPeriod time.Duration) (*ResourceEfficiency, error) {
 	metricName := rea.getMetricName(resourceType)
 	if metricName == "" {
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
@@ -419,7 +429,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateEfficiencyLevel(score float64) E
 }
 
 // generateRecommendations generates optimization recommendations
-func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, _score float64) []Recommendation {
+func (rea *ResourceEfficiencyAnalyzer) generateRecommendations(resourceType ResourceType, stats *UtilizationStats, _ float64) []Recommendation {
 	var recommendations []Recommendation
 
 	// Low utilization recommendations
@@ -541,7 +551,7 @@ func (rea *ResourceEfficiencyAnalyzer) calculateCostImpact(resourceType Resource
 
 // analyzeClusterUtilization analyzes overall cluster utilization
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
-func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(_ctx context.Context) (*ClusterUtilizationSummary, error) {
+func (rea *ResourceEfficiencyAnalyzer) analyzeClusterUtilization(_ context.Context) (*ClusterUtilizationSummary, error) {
 	// This would typically query SLURM metrics for cluster-wide statistics
 	// For now, we'll return a simplified analysis
 

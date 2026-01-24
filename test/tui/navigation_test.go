@@ -33,7 +33,7 @@ func TestNumberKeyNavigation(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.expected, func(t *testing.T) {
+		t.Run(tc.expected, func(_ *testing.T) {
 			h.SendRune(tc.key)
 			time.Sleep(100 * time.Millisecond)
 

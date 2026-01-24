@@ -55,7 +55,7 @@ func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 		ReadyToTrip: func(counts Counts) bool {
 			return counts.ConsecutiveFailures >= 5
 		},
-		OnStateChange: func(name string, from CircuitState, to CircuitState) {
+		OnStateChange: func(_ string, _ CircuitState, _ CircuitState) {
 			// Default: do nothing
 		},
 	}
@@ -140,7 +140,7 @@ func (cb *CircuitBreaker) Counts() Counts {
 }
 
 // Execute wraps a function call with circuit breaker logic
-func (cb *CircuitBreaker) Execute(ctx context.Context, req func() (interface{}, error)) (interface{}, error) {
+func (cb *CircuitBreaker) Execute(_ context.Context, req func() (interface{}, error)) (interface{}, error) {
 	generation, err := cb.beforeRequest()
 	if err != nil {
 		return nil, err

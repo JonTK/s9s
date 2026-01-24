@@ -16,7 +16,7 @@ type MockPrometheusClient struct {
 	connectionCount int
 }
 
-func (m *MockPrometheusClient) TestConnection(ctx context.Context) error {
+func (m *MockPrometheusClient) TestConnection(_ context.Context) error {
 	m.connectionCount++
 	if m.shouldFail {
 		return errors.New("mock connection failure")
@@ -25,35 +25,35 @@ func (m *MockPrometheusClient) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockPrometheusClient) Query(ctx context.Context, query string, time time.Time) (*prometheus.QueryResult, error) {
+func (m *MockPrometheusClient) Query(_ context.Context, _ string, _ time.Time) (*prometheus.QueryResult, error) {
 	if m.shouldFail {
 		return nil, errors.New("mock query failure")
 	}
 	return &prometheus.QueryResult{Status: "success"}, nil
 }
 
-func (m *MockPrometheusClient) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*prometheus.QueryResult, error) {
+func (m *MockPrometheusClient) QueryRange(_ context.Context, _ string, _, _ time.Time, _ time.Duration) (*prometheus.QueryResult, error) {
 	if m.shouldFail {
 		return nil, errors.New("mock query range failure")
 	}
 	return &prometheus.QueryResult{Status: "success"}, nil
 }
 
-func (m *MockPrometheusClient) Series(ctx context.Context, matches []string, start, end time.Time) ([]map[string]string, error) {
+func (m *MockPrometheusClient) Series(_ context.Context, _ []string, _, _ time.Time) ([]map[string]string, error) {
 	if m.shouldFail {
 		return nil, errors.New("mock series failure")
 	}
 	return []map[string]string{{"__name__": "test_metric"}}, nil
 }
 
-func (m *MockPrometheusClient) Labels(ctx context.Context) ([]string, error) {
+func (m *MockPrometheusClient) Labels(_ context.Context) ([]string, error) {
 	if m.shouldFail {
 		return nil, errors.New("mock labels failure")
 	}
 	return []string{"__name__", "job", "instance"}, nil
 }
 
-func (m *MockPrometheusClient) BatchQuery(ctx context.Context, queries map[string]string, ts time.Time) (map[string]*prometheus.QueryResult, error) {
+func (m *MockPrometheusClient) BatchQuery(_ context.Context, queries map[string]string, _ time.Time) (map[string]*prometheus.QueryResult, error) {
 	if m.shouldFail {
 		return nil, errors.New("mock batch query failure")
 	}

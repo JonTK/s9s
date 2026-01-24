@@ -245,7 +245,7 @@ func (t *SSHTerminal) SendCommand(command string) error {
 }
 
 // Resize resizes the terminal
-func (t *SSHTerminal) Resize(width, height int) error {
+func (t *SSHTerminal) Resize(_, _ int) error {
 	// SSH doesn't easily support resize through the command interface
 	// This would require using a PTY library for full terminal emulation
 	// For now, we'll just resize the text view
@@ -337,7 +337,7 @@ func (t *SSHTerminal) GetBuffer() []string {
 }
 
 // SetInputCapture sets up keyboard input handling
-func (t *SSHTerminal) SetInputCapture(app *tview.Application) {
+func (t *SSHTerminal) SetInputCapture(_ *tview.Application) {
 	t.TextView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Handle special keys
 		switch event.Key() {

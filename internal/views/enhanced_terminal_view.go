@@ -26,7 +26,7 @@ type EnhancedTerminalView struct {
 
 	// UI Components
 	paneManager *components.MultiPaneManager
-	navManager  *navigation.NavigationManager
+	navManager  *navigation.Manager
 	container   *tview.Flex
 
 	// Terminal Panes
@@ -76,7 +76,7 @@ func (etv *EnhancedTerminalView) Init(ctx context.Context) error {
 
 	// Initialize UI components
 	etv.paneManager = components.NewMultiPaneManager(etv.app)
-	etv.navManager = navigation.NewNavigationManager(etv.app)
+	etv.navManager = navigation.NewManager(etv.app)
 
 	// Setup callbacks
 	etv.setupCallbacks()
@@ -263,7 +263,7 @@ func (etv *EnhancedTerminalView) showNodeSelectionDialog() {
 	copy(nodeOptions, etv.nodes)
 	nodeOptions = append(nodeOptions, "Custom...")
 
-	form.AddDropDown("Node", nodeOptions, 0, func(option string, optionIndex int) {
+	form.AddDropDown("Node", nodeOptions, 0, func(option string, _ int) {
 		selectedNode = option
 	})
 
@@ -473,11 +473,12 @@ func (etv *EnhancedTerminalView) hideModal(name string) {
 	}
 }
 
-// BaseView interface implementation
+// Render returns the tview.Primitive for the enhanced terminal view.
 func (etv *EnhancedTerminalView) Render() tview.Primitive {
 	return etv.container
 }
 
+// Update updates the terminal view status and connections.
 func (etv *EnhancedTerminalView) Update() error {
 	// Update terminal status and connections
 	etv.mu.RLock()
@@ -490,16 +491,19 @@ func (etv *EnhancedTerminalView) Update() error {
 	return nil
 }
 
+// Refresh refreshes the node list and terminal states.
 func (etv *EnhancedTerminalView) Refresh() error {
 	// Refresh node list and terminal states
 	etv.loadNodes()
 	return etv.Update()
 }
 
+// OnKey handles keyboard events for the enhanced terminal view.
 func (etv *EnhancedTerminalView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	return etv.handleInput(event)
 }
 
+// Hints returns keyboard hints for the enhanced terminal view.
 func (etv *EnhancedTerminalView) Hints() []string {
 	return []string{
 		"Ctrl+T: New Terminal",
@@ -512,6 +516,7 @@ func (etv *EnhancedTerminalView) Hints() []string {
 	}
 }
 
+// Stop stops the enhanced terminal view and closes all terminals.
 func (etv *EnhancedTerminalView) Stop() {
 	// Close all terminals
 	etv.mu.Lock()

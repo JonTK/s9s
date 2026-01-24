@@ -1,3 +1,4 @@
+// Package streaming provides streaming buffer and output management.
 package streaming
 
 import (

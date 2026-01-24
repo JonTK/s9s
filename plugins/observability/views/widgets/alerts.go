@@ -1,3 +1,4 @@
+// Package widgets provides UI widgets for the observability plugin.
 package widgets
 
 import (
@@ -241,7 +242,7 @@ func NewAlertHistoryWidget() *AlertHistoryWidget {
 		w.SetCell(0, i, cell)
 	}
 
-	w.SetSelectionChangedFunc(func(row, col int) {
+	w.SetSelectionChangedFunc(func(row, _ int) {
 		w.selectedRow = row - 1 // Adjust for header
 	})
 

@@ -68,7 +68,7 @@ func (d *DNSEndpointDiscoverer) GetInfo() DiscovererInfo {
 }
 
 // Initialize initializes the DNS endpoint discoverer
-func (d *DNSEndpointDiscoverer) Initialize(ctx context.Context, config DiscoveryConfig) error {
+func (d *DNSEndpointDiscoverer) Initialize(_ context.Context, config DiscoveryConfig) error {
 	d.config = config
 
 	// Validate required configuration
@@ -89,7 +89,7 @@ func (d *DNSEndpointDiscoverer) Initialize(ctx context.Context, config Discovery
 			if len(serverList) > 0 {
 				d.resolver = &net.Resolver{
 					PreferGo: true,
-					Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+					Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 						// Use first DNS server from the list
 						dnsAddr := serverList[0]
 						if !strings.Contains(dnsAddr, ":") {

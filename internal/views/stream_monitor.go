@@ -537,7 +537,7 @@ func (v *StreamMonitorView) showNotification(message string) {
 	notification := tview.NewModal()
 	notification.SetText(message)
 	notification.AddButtons([]string{"OK"})
-	notification.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	notification.SetDoneFunc(func(_ int, _ string) {
 		v.pages.RemovePage("notification")
 	})
 

@@ -406,30 +406,30 @@ func (pd *PerformanceDashboard) calculateOpsRate(stats map[string]performance.Op
 
 // updateCPUChart updates the CPU usage chart
 func (pd *PerformanceDashboard) updateCPUChart() {
-	chart := pd.generateAsciiChart(pd.cpuHistory, "CPU", "%", pd.thresholds.CPUWarning, pd.thresholds.CPUCritical)
+	chart := pd.generateASCIIChart(pd.cpuHistory, "CPU", "%", pd.thresholds.CPUWarning, pd.thresholds.CPUCritical)
 	pd.cpuChart.SetText(chart)
 }
 
 // updateMemoryChart updates the memory usage chart
 func (pd *PerformanceDashboard) updateMemoryChart() {
-	chart := pd.generateAsciiChart(pd.memoryHistory, "Memory", "%", pd.thresholds.MemoryWarning, pd.thresholds.MemoryCritical)
+	chart := pd.generateASCIIChart(pd.memoryHistory, "Memory", "%", pd.thresholds.MemoryWarning, pd.thresholds.MemoryCritical)
 	pd.memoryChart.SetText(chart)
 }
 
 // updateNetworkChart updates the network usage chart
 func (pd *PerformanceDashboard) updateNetworkChart() {
-	chart := pd.generateAsciiChart(pd.networkHistory, "Network", "MB/s", pd.thresholds.NetworkWarning, pd.thresholds.NetworkCritical)
+	chart := pd.generateASCIIChart(pd.networkHistory, "Network", "MB/s", pd.thresholds.NetworkWarning, pd.thresholds.NetworkCritical)
 	pd.networkChart.SetText(chart)
 }
 
 // updateOpsChart updates the operations rate chart
 func (pd *PerformanceDashboard) updateOpsChart() {
-	chart := pd.generateAsciiChart(pd.opsHistory, "Ops", "/sec", pd.thresholds.OpsWarning, pd.thresholds.OpsCritical)
+	chart := pd.generateASCIIChart(pd.opsHistory, "Ops", "/sec", pd.thresholds.OpsWarning, pd.thresholds.OpsCritical)
 	pd.opsChart.SetText(chart)
 }
 
-// generateAsciiChart creates a simple ASCII chart from data
-func (pd *PerformanceDashboard) generateAsciiChart(data []float64, name, unit string, warningThreshold, criticalThreshold float64) string {
+// generateASCIIChart creates a simple ASCII chart from data
+func (pd *PerformanceDashboard) generateASCIIChart(data []float64, name, unit string, warningThreshold, criticalThreshold float64) string {
 	if len(data) == 0 {
 		return fmt.Sprintf("[gray]No %s data[white]", name)
 	}
@@ -437,7 +437,7 @@ func (pd *PerformanceDashboard) generateAsciiChart(data []float64, name, unit st
 	// Get current and summary values
 	current := data[len(data)-1]
 	avg := pd.calculateAverage(data)
-	max := pd.calculateMax(data)
+	maxVal := pd.calculateMax(data)
 
 	// Determine color based on thresholds
 	color := "green"
@@ -450,7 +450,7 @@ func (pd *PerformanceDashboard) generateAsciiChart(data []float64, name, unit st
 	// Create simple bar chart
 	chart := fmt.Sprintf("[%s]Current: %.1f%s[white]\n", color, current, unit)
 	chart += fmt.Sprintf("Average: %.1f%s\n", avg, unit)
-	chart += fmt.Sprintf("Peak: %.1f%s\n\n", max, unit)
+	chart += fmt.Sprintf("Peak: %.1f%s\n\n", maxVal, unit)
 
 	// Add simple trend line
 	trend := pd.generateTrendLine(data, 20)
@@ -465,9 +465,9 @@ func (pd *PerformanceDashboard) generateTrendLine(data []float64, width int) str
 		return "[gray]Insufficient data[white]"
 	}
 
-	max := pd.calculateMax(data)
-	if max == 0 {
-		max = 1
+	maxVal := pd.calculateMax(data)
+	if maxVal == 0 {
+		maxVal = 1
 	}
 
 	line := ""
@@ -478,7 +478,7 @@ func (pd *PerformanceDashboard) generateTrendLine(data []float64, width int) str
 
 	for i := 0; i < len(data); i += step {
 		value := data[i]
-		height := int((value / max) * 8)
+		height := int((value / maxVal) * 8)
 
 		switch height {
 		case 0:
@@ -529,14 +529,14 @@ func (pd *PerformanceDashboard) calculateMax(data []float64) float64 {
 		return 0
 	}
 
-	max := data[0]
+	maxVal := data[0]
 	for _, v := range data {
-		if v > max {
-			max = v
+		if v > maxVal {
+			maxVal = v
 		}
 	}
 
-	return max
+	return maxVal
 }
 
 // updateMetricsTable updates the detailed metrics table
@@ -667,7 +667,7 @@ func (pd *PerformanceDashboard) updateAlerts(cpuUsage, memUsage, netUsage, opsRa
 }
 
 // performAutoOptimization applies automatic optimizations based on metrics
-func (pd *PerformanceDashboard) performAutoOptimization(cpuUsage, memUsage, _netUsage, opsRate float64) {
+func (pd *PerformanceDashboard) performAutoOptimization(cpuUsage, memUsage, _, opsRate float64) {
 	if pd.optimizer == nil {
 		return
 	}

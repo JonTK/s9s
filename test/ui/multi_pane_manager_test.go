@@ -192,11 +192,11 @@ func TestPaneCallbacks(t *testing.T) {
 		Title:   "Callback Test",
 		Type:    components.PaneTypeView,
 		Content: content,
-		OnClose: func(id string) error {
+		OnClose: func(_ string) error {
 			closeCalled = true
 			return nil
 		},
-		OnActivate: func(id string) {
+		OnActivate: func(_ string) {
 			activateCalled = true
 		},
 	}

@@ -1,3 +1,4 @@
+// Package preferences provides user preference management and persistence.
 package preferences
 
 import (

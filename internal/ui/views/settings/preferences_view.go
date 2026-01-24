@@ -363,7 +363,7 @@ func (pv *PreferencesView) showViewSettings(viewName string) {
 // save saves the preferences
 func (pv *PreferencesView) save() {
 	// Extract values from form and update preferences
-	err := pv.prefs.Update(func(p *preferences.UserPreferences) error {
+	err := pv.prefs.Update(func(_ *preferences.UserPreferences) error {
 		// This is simplified - in production you'd extract all form values
 		// and update the preferences structure
 		return nil
@@ -392,7 +392,7 @@ func (pv *PreferencesView) cancel() {
 		modal := tview.NewModal().
 			SetText("Discard unsaved changes?").
 			AddButtons([]string{"Yes", "No"}).
-			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			SetDoneFunc(func(buttonIndex int, _ string) {
 				if buttonIndex == 0 {
 					pv.pages.RemovePage("confirm")
 					if pv.onCancel != nil {
@@ -419,7 +419,7 @@ func (pv *PreferencesView) reset() {
 	modal := tview.NewModal().
 		SetText("Reset all preferences to defaults?").
 		AddButtons([]string{"Yes", "No"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				if err := pv.prefs.Reset(); err != nil {
 					pv.showError(fmt.Sprintf("Failed to reset preferences: %v", err))
@@ -536,7 +536,7 @@ func (pv *PreferencesView) showError(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			pv.pages.RemovePage("error")
 		})
 	modal.SetTextColor(tcell.ColorRed)

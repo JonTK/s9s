@@ -33,7 +33,7 @@ func (l *LogFileChannel) IsEnabled() bool {
 }
 
 // Notify logs the alert (actual logging is handled by AlertLogger in NotificationManager)
-func (l *LogFileChannel) Notify(alert *components.Alert) error {
+func (l *LogFileChannel) Notify(_ *components.Alert) error {
 	// The actual logging is handled by the AlertLogger in NotificationManager
 	// This channel just needs to be enabled for logging to occur
 	return nil

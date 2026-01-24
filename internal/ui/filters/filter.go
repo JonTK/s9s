@@ -12,17 +12,28 @@ import (
 type FilterOperator string
 
 const (
-	OpEquals      FilterOperator = "="
-	OpNotEquals   FilterOperator = "!="
-	OpContains    FilterOperator = "~"
+	// OpEquals is the equals comparison operator.
+	OpEquals FilterOperator = "="
+	// OpNotEquals is the not equals comparison operator.
+	OpNotEquals FilterOperator = "!="
+	// OpContains is the contains comparison operator.
+	OpContains FilterOperator = "~"
+	// OpNotContains is the not contains comparison operator.
 	OpNotContains FilterOperator = "!~"
-	OpGreater     FilterOperator = ">"
-	OpLess        FilterOperator = "<"
-	OpGreaterEq   FilterOperator = ">="
-	OpLessEq      FilterOperator = "<="
-	OpRegex       FilterOperator = "=~"
-	OpIn          FilterOperator = "in"
-	OpNotIn       FilterOperator = "not in"
+	// OpGreater is the greater than comparison operator.
+	OpGreater FilterOperator = ">"
+	// OpLess is the less than comparison operator.
+	OpLess FilterOperator = "<"
+	// OpGreaterEq is the greater than or equal comparison operator.
+	OpGreaterEq FilterOperator = ">="
+	// OpLessEq is the less than or equal comparison operator.
+	OpLessEq FilterOperator = "<="
+	// OpRegex is the regex matching operator.
+	OpRegex FilterOperator = "=~"
+	// OpIn is the in list operator.
+	OpIn FilterOperator = "in"
+	// OpNotIn is the not in list operator.
+	OpNotIn FilterOperator = "not in"
 )
 
 // FilterExpression represents a single filter condition
@@ -378,7 +389,7 @@ func toFloat64(v interface{}) (float64, bool) {
 	return 0, false
 }
 
-// splitRespectingQuotes splits a string by spaces while respecting quotes
+// SplitRespectingQuotes splits a string by spaces while respecting quotes.
 func SplitRespectingQuotes(s string) []string {
 	var result []string
 	var current strings.Builder

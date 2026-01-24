@@ -128,7 +128,7 @@ func (o *NodesOverlay) GetColumns() []plugin.ColumnDefinition {
 }
 
 // GetCellData returns data for a specific cell
-func (o *NodesOverlay) GetCellData(ctx context.Context, viewID string, rowID interface{}, columnID string) (string, error) {
+func (o *NodesOverlay) GetCellData(_ context.Context, _ string, rowID interface{}, columnID string) (string, error) {
 	// Extract node name from row ID
 	nodeName, ok := rowID.(string)
 	if !ok {
@@ -181,7 +181,7 @@ func (o *NodesOverlay) GetCellData(ctx context.Context, viewID string, rowID int
 }
 
 // GetCellStyle returns styling for a specific cell
-func (o *NodesOverlay) GetCellStyle(ctx context.Context, viewID string, rowID interface{}, columnID string) plugin.CellStyle {
+func (o *NodesOverlay) GetCellStyle(_ context.Context, _ string, rowID interface{}, columnID string) plugin.CellStyle {
 	// Extract node name from row ID
 	nodeName, ok := rowID.(string)
 	if !ok {
@@ -339,7 +339,7 @@ func (o *NodesOverlay) HandleEvent(event plugin.OverlayEvent) error {
 }
 
 // Stop stops the overlay
-func (o *NodesOverlay) Stop(ctx context.Context) error {
+func (o *NodesOverlay) Stop(_ context.Context) error {
 	// Cleanup will be handled by context cancellation
 	return nil
 }
@@ -528,7 +528,7 @@ func formatBandwidth(bytesPerSec float64) string {
 }
 
 // generateTextSparkline creates a text representation of sparkline
-func generateTextSparkline(_sparkline *widgets.TimeSeriesSparkline) string {
+func generateTextSparkline(_ *widgets.TimeSeriesSparkline) string {
 	// Simplified text sparkline - in reality, you'd want proper sparkline rendering
 	// For now, just return a placeholder since we can't access internal fields
 	return "▂▃▅▇▆▄▂▁"

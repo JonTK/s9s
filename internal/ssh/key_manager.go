@@ -22,8 +22,8 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// SSHKey represents an SSH key pair
-type SSHKey struct {
+// Key represents an SSH key pair
+type Key struct {
 	Name        string
 	Path        string
 	PublicPath  string
@@ -35,12 +35,18 @@ type SSHKey struct {
 	LastUsed    time.Time
 }
 
-// SSHAgent represents an SSH agent connection
-type SSHAgent struct {
+// SSHKey is an alias for backward compatibility
+type SSHKey = Key
+
+// Agent represents an SSH agent connection
+type Agent struct {
 	conn   net.Conn
 	client agent.Agent
 	mu     sync.RWMutex
 }
+
+// SSHAgent is an alias for backward compatibility
+type SSHAgent = Agent
 
 // KeyManager manages SSH keys and agent integration
 type KeyManager struct {
@@ -380,7 +386,7 @@ func (km *KeyManager) generateRSAKey(keyPath, pubPath, comment string, bits int)
 }
 
 // generateEd25519Key generates an Ed25519 key pair using ssh-keygen
-func (km *KeyManager) generateEd25519Key(keyPath, _pubPath, comment string) error {
+func (km *KeyManager) generateEd25519Key(keyPath, _, comment string) error {
 	args := []string{
 		"-t", "ed25519",
 		"-f", keyPath,

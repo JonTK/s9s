@@ -154,7 +154,7 @@ func (sm *StreamManager) Subscribe(jobID, outputType string) <-chan StreamEvent 
 }
 
 // Unsubscribe removes a subscriber
-func (sm *StreamManager) Unsubscribe(jobID, outputType string, ch <-chan StreamEvent) {
+func (sm *StreamManager) Unsubscribe(jobID, outputType string, _ <-chan StreamEvent) {
 	// Note: This is a limitation of Go's type system
 	// In practice, the channel would be stored internally and managed properly
 	// For now, we'll use UnsubscribeAll as a workaround
@@ -252,7 +252,7 @@ func (sm *StreamManager) startLocalFileWatching(stream *JobStream) error {
 }
 
 // startRemoteFileWatching uses SSH tail for remote file monitoring
-func (sm *StreamManager) startRemoteFileWatching(_stream *JobStream) error {
+func (sm *StreamManager) startRemoteFileWatching(_ *JobStream) error {
 	if sm.sshManager == nil {
 		return fmt.Errorf("SSH manager not available for remote streaming")
 	}
@@ -376,7 +376,7 @@ func (sm *StreamManager) handleFileEvent(event fsnotify.Event) {
 }
 
 // handleFileError processes file watcher errors
-func (sm *StreamManager) handleFileError(err error) {
+func (sm *StreamManager) handleFileError(_ error) {
 	// Log error and potentially notify relevant streams
 	// In a production system, you'd want proper logging here
 }

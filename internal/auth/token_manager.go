@@ -244,7 +244,7 @@ func (tm *TokenManager) removeFromFile(clusterName string) error {
 // ValidateJWT validates a JWT token and extracts claims
 func ValidateJWT(tokenString string) (*jwt.RegisteredClaims, error) {
 	// Parse the token
-	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(_ *jwt.Token) (interface{}, error) {
 		// This is where you would verify the signing key
 		// For now, we'll accept any valid JWT structure
 		// In production, you should verify against the cluster's public key

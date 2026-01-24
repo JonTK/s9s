@@ -74,7 +74,7 @@ func testBatchExportMemory(t *testing.T, useOptimized bool) {
 
 	if useOptimized {
 		// Use the optimized batch export with callback
-		results, err = exporter.BatchExportWithCallback(exportData, export.FormatJSON, "", func(current, total int, jobID string) {
+		results, err = exporter.BatchExportWithCallback(exportData, export.FormatJSON, "", func(_, _ int, _ string) {
 			// Progress callback - in real implementation this would update UI
 		})
 	} else {

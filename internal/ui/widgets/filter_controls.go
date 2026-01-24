@@ -54,7 +54,7 @@ func (fc *FilterControls) buildUI() {
 		"Regex",
 		"Log Level",
 		"Time Range",
-	}, func(option string, index int) {
+	}, func(_ string, index int) {
 		switch index {
 		case 0:
 			fc.currentType = streaming.FilterTypeKeyword

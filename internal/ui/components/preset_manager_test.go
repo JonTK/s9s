@@ -61,7 +61,7 @@ func TestPresetManagerUIClose(t *testing.T) {
 	assert.True(t, onDoneCalled)
 }
 
-func TestPresetManagerUICloseWithoutCallback(t *testing.T) {
+func TestPresetManagerUICloseWithoutCallback(_ *testing.T) {
 	app := tview.NewApplication()
 	presetManager := filters.NewPresetManager()
 	pm := NewPresetManagerUI(app, presetManager, "jobs")
@@ -132,7 +132,7 @@ func TestPresetManagerUIShowInfo(t *testing.T) {
 	assert.Equal(t, 1, pages.GetPageCount())
 }
 
-func TestPresetManagerUITestPreset(t *testing.T) {
+func TestPresetManagerUITestPreset(_ *testing.T) {
 	app := tview.NewApplication()
 	presetManager := filters.NewPresetManager()
 	pm := NewPresetManagerUI(app, presetManager, "jobs")
@@ -149,7 +149,7 @@ func TestPresetManagerUITestPreset(t *testing.T) {
 	pm.testPreset(preset)
 }
 
-func TestPresetManagerUIShowImportDialog(t *testing.T) {
+func TestPresetManagerUIShowImportDialog(_ *testing.T) {
 	app := tview.NewApplication()
 	presetManager := filters.NewPresetManager()
 	pm := NewPresetManagerUI(app, presetManager, "jobs")
@@ -161,7 +161,7 @@ func TestPresetManagerUIShowImportDialog(t *testing.T) {
 	pm.showImportDialog()
 }
 
-func TestPresetManagerUIShowExportDialog(t *testing.T) {
+func TestPresetManagerUIShowExportDialog(_ *testing.T) {
 	app := tview.NewApplication()
 	presetManager := filters.NewPresetManager()
 	pm := NewPresetManagerUI(app, presetManager, "jobs")

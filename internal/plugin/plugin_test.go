@@ -30,16 +30,16 @@ func (m *mockPlugin) GetInfo() Info {
 	}
 }
 
-func (m *mockPlugin) Init(ctx context.Context, config map[string]interface{}) error {
+func (m *mockPlugin) Init(_ context.Context, _ map[string]interface{}) error {
 	return nil
 }
 
-func (m *mockPlugin) Start(ctx context.Context) error {
+func (m *mockPlugin) Start(_ context.Context) error {
 	m.started = true
 	return nil
 }
 
-func (m *mockPlugin) Stop(ctx context.Context) error {
+func (m *mockPlugin) Stop(_ context.Context) error {
 	m.stopped = true
 	return nil
 }

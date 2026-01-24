@@ -123,7 +123,7 @@ func (o *OAuth2Authenticator) GetConfigSchema() ConfigSchema {
 }
 
 // Initialize initializes the OAuth2 authenticator
-func (o *OAuth2Authenticator) Initialize(ctx context.Context, config AuthConfig) error {
+func (o *OAuth2Authenticator) Initialize(_ context.Context, config AuthConfig) error {
 	o.config = config
 
 	// Set custom timeout if provided
@@ -600,7 +600,7 @@ func (o *OAuth2Authenticator) RefreshToken(ctx context.Context, token *Token) (*
 }
 
 // ValidateToken validates an OAuth2 token
-func (o *OAuth2Authenticator) ValidateToken(ctx context.Context, token *Token) error {
+func (o *OAuth2Authenticator) ValidateToken(_ context.Context, token *Token) error {
 	if token == nil {
 		return fmt.Errorf("token is nil")
 	}
@@ -618,7 +618,7 @@ func (o *OAuth2Authenticator) ValidateToken(ctx context.Context, token *Token) e
 }
 
 // RevokeToken revokes an OAuth2 token
-func (o *OAuth2Authenticator) RevokeToken(ctx context.Context, token *Token) error {
+func (o *OAuth2Authenticator) RevokeToken(_ context.Context, token *Token) error {
 	// Try to discover revocation endpoint
 	discoveryURL := o.config.GetString("discovery_url")
 	var revocationEndpoint string

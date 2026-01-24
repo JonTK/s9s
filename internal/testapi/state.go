@@ -1,3 +1,4 @@
+// Package testapi provides test utilities and application state export for testing.
 package testapi
 
 import (

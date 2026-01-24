@@ -1,3 +1,4 @@
+// Package main provides the entry point for the s9s command-line interface.
 package main
 
 import (

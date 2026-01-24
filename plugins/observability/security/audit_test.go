@@ -297,7 +297,7 @@ func TestAuditMiddleware(t *testing.T) {
 	logger.writer = &buffer
 
 	// Create test handler
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("success"))
 	}
@@ -347,7 +347,7 @@ func TestAuditMiddlewareDisabled(t *testing.T) {
 	defer func() { _ = logger.Close() }()
 
 	// Create test handler
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 

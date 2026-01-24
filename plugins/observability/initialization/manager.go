@@ -186,7 +186,7 @@ func (m *Manager) initCaching(components *Components) error {
 	// Check if circuit breaker should be enabled (add this to config later)
 	// For now, we'll enable it by default with sensible defaults
 	circuitConfig := prometheus.DefaultCircuitBreakerConfig()
-	circuitConfig.OnStateChange = func(name string, from, to prometheus.CircuitState) {
+	circuitConfig.OnStateChange = func(_ string, _, _ prometheus.CircuitState) {
 		// Log state changes (in real implementation, use proper logging)
 		// fmt.Printf("Circuit breaker %s changed from %s to %s\n", name, from, to)
 	}

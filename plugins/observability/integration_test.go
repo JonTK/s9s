@@ -1,3 +1,4 @@
+// Package observability provides observability and monitoring plugin for s9s.
 package observability
 
 import (
@@ -142,7 +143,7 @@ func MockPrometheusServer() *httptest.Server {
 	})
 
 	// Mock label values endpoint (used for connection testing)
-	mux.HandleFunc("/api/v1/label/__name__/values", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/v1/label/__name__/values", func(w http.ResponseWriter, _ *http.Request) {
 		response := map[string]interface{}{
 			"status": "success",
 			"data":   []string{"up", "node_cpu", "node_memory"},
@@ -152,7 +153,7 @@ func MockPrometheusServer() *httptest.Server {
 	})
 
 	// Mock health endpoint
-	mux.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/-/healthy", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("Prometheus is Healthy.\n"))
 	})
@@ -373,7 +374,7 @@ func TestSubscriptionIntegration(t *testing.T) {
 
 	// Test subscription
 	callbackCalled := false
-	callback := func(data interface{}, err error) {
+	callback := func(_ interface{}, err error) {
 		callbackCalled = true
 		if err != nil {
 			t.Errorf("Callback received error: %v", err)

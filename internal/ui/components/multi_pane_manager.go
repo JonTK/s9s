@@ -13,11 +13,16 @@ import (
 type PaneType string
 
 const (
-	PaneTypeView     PaneType = "view"
+	// PaneTypeView is the pane type for view content.
+	PaneTypeView PaneType = "view"
+	// PaneTypeTerminal is the pane type for terminal content.
 	PaneTypeTerminal PaneType = "terminal"
-	PaneTypeLog      PaneType = "log"
-	PaneTypeMonitor  PaneType = "monitor"
-	PaneTypeEditor   PaneType = "editor"
+	// PaneTypeLog is the pane type for log content.
+	PaneTypeLog PaneType = "log"
+	// PaneTypeMonitor is the pane type for monitor content.
+	PaneTypeMonitor PaneType = "monitor"
+	// PaneTypeEditor is the pane type for editor content.
+	PaneTypeEditor PaneType = "editor"
 )
 
 // Pane represents a single pane in the multi-pane interface
@@ -42,10 +47,14 @@ type Pane struct {
 type PaneLayout string
 
 const (
+	// LayoutHorizontal is the horizontal pane layout.
 	LayoutHorizontal PaneLayout = "horizontal"
-	LayoutVertical   PaneLayout = "vertical"
-	LayoutGrid       PaneLayout = "grid"
-	LayoutTabs       PaneLayout = "tabs"
+	// LayoutVertical is the vertical pane layout.
+	LayoutVertical PaneLayout = "vertical"
+	// LayoutGrid is the grid pane layout.
+	LayoutGrid PaneLayout = "grid"
+	// LayoutTabs is the tabs pane layout.
+	LayoutTabs PaneLayout = "tabs"
 )
 
 // MultiPaneManager manages multiple panes in a flexible layout

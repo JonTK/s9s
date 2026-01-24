@@ -9,8 +9,11 @@ import (
 type RuleType string
 
 const (
+	// RuleTypeThreshold is the threshold rule type for alerts.
 	RuleTypeThreshold RuleType = "threshold"
-	RuleTypeQuery     RuleType = "query"
+	// RuleTypeQuery is the query rule type for alerts.
+	RuleTypeQuery RuleType = "query"
+	// RuleTypeComposite is the composite rule type for alerts.
 	RuleTypeComposite RuleType = "composite"
 )
 

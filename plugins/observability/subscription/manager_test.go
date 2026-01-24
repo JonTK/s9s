@@ -61,7 +61,7 @@ func TestSubscriptionManagerStartStop(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 	manager := NewSubscriptionManager(nil)
 
-	callback := func(data interface{}, err error) {
+	callback := func(_ interface{}, _ error) {
 		// Callback for testing
 	}
 
@@ -100,7 +100,7 @@ func TestSubscribe(t *testing.T) {
 func TestUnsubscribe(t *testing.T) {
 	manager := NewSubscriptionManager(nil)
 
-	callback := func(data interface{}, err error) {}
+	callback := func(_ interface{}, _ error) {}
 	params := map[string]interface{}{}
 
 	subscriptionID, err := manager.Subscribe("prometheus-metrics", params, callback)
@@ -135,7 +135,7 @@ func TestUnsubscribe(t *testing.T) {
 
 func TestListSubscriptions(t *testing.T) {
 	manager := NewSubscriptionManager(nil)
-	callback := func(data interface{}, err error) {}
+	callback := func(_ interface{}, _ error) {}
 
 	// Initially should be empty
 	subscriptions := manager.ListSubscriptions()
@@ -171,7 +171,7 @@ func TestListSubscriptions(t *testing.T) {
 
 func TestGetStats(t *testing.T) {
 	manager := NewSubscriptionManager(nil)
-	callback := func(data interface{}, err error) {}
+	callback := func(_ interface{}, _ error) {}
 
 	// Initial stats
 	stats := manager.GetStats()
@@ -281,7 +281,7 @@ func TestValidateProviderID(t *testing.T) {
 
 func TestIncrementErrorCount(t *testing.T) {
 	manager := NewSubscriptionManager(nil)
-	callback := func(data interface{}, err error) {}
+	callback := func(_ interface{}, _ error) {}
 
 	subscriptionID, err := manager.Subscribe("prometheus-metrics", map[string]interface{}{}, callback)
 	if err != nil {
@@ -322,21 +322,21 @@ func TestIncrementErrorCount(t *testing.T) {
 // MockCachedClient for testing
 type MockCachedClient struct{}
 
-func (m *MockCachedClient) Query(ctx context.Context, query string, ts time.Time) (interface{}, error) {
+func (m *MockCachedClient) Query(_ context.Context, query string, _ time.Time) (interface{}, error) {
 	return map[string]interface{}{
 		"query":  query,
 		"result": "mock_result",
 	}, nil
 }
 
-func (m *MockCachedClient) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (interface{}, error) {
+func (m *MockCachedClient) QueryRange(_ context.Context, query string, _, _ time.Time, _ time.Duration) (interface{}, error) {
 	return map[string]interface{}{
 		"query": query,
 		"range": "mock_range_result",
 	}, nil
 }
 
-func (m *MockCachedClient) BatchQuery(ctx context.Context, queries map[string]string, ts time.Time) (map[string]interface{}, error) {
+func (m *MockCachedClient) BatchQuery(_ context.Context, queries map[string]string, _ time.Time) (map[string]interface{}, error) {
 	results := make(map[string]interface{})
 	for key, query := range queries {
 		results[key] = map[string]interface{}{
@@ -373,7 +373,7 @@ func TestConcurrentSubscriptions(t *testing.T) {
 		go func(workerID int) {
 			defer func() { done <- true }()
 
-			callback := func(data interface{}, err error) {}
+			callback := func(_ interface{}, _ error) {}
 			params := map[string]interface{}{
 				"worker_id": workerID,
 			}

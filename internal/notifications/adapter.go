@@ -1,3 +1,4 @@
+// Package notifications provides notification management and alert handling.
 package notifications
 
 import (

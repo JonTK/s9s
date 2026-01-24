@@ -332,7 +332,7 @@ func (w *JobSubmissionWizard) showError(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			w.pages.RemovePage("job-error")
 		})
 
@@ -347,7 +347,7 @@ func (w *JobSubmissionWizard) showSuccess(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			w.pages.RemovePage("job-success")
 		})
 

@@ -127,7 +127,7 @@ func (sb *SearchBar) buildUI() {
 		sb.options.Reverse = checked
 	})
 	sb.searchOptions.AddInputField("Context lines", fmt.Sprintf("%d", sb.options.ContextLines), 10,
-		func(textToCheck string, lastChar rune) bool {
+		func(_ string, lastChar rune) bool {
 			return lastChar >= '0' && lastChar <= '9'
 		}, func(text string) {
 			var lines int

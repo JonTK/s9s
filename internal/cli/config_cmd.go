@@ -1,3 +1,4 @@
+// Package cli provides command-line interface command handlers and execution.
 package cli
 
 import (
@@ -73,7 +74,7 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 }
 
-func runConfigEdit(cmd *cobra.Command, args []string) error {
+func runConfigEdit(_ *cobra.Command, _ []string) error {
 	configPath := getConfigPath()
 
 	// Create directory if it doesn't exist
@@ -112,7 +113,7 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 	return execCmd.Run()
 }
 
-func runConfigValidate(cmd *cobra.Command, args []string) error {
+func runConfigValidate(_ *cobra.Command, _ []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
@@ -139,7 +140,7 @@ func runConfigValidate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runConfigShow(cmd *cobra.Command, args []string) error {
+func runConfigShow(_ *cobra.Command, _ []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)

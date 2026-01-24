@@ -37,12 +37,15 @@ type DiscoveredCluster struct {
 	Metadata         map[string]string
 }
 
-// DiscoveryMethod represents a cluster discovery method
-type DiscoveryMethod interface {
+// Method represents a cluster discovery method
+type Method interface {
 	Name() string
 	Discover(ctx context.Context) ([]*DiscoveredCluster, error)
 	Priority() int
 }
+
+// DiscoveryMethod is an alias for backward compatibility
+type DiscoveryMethod = Method
 
 // NewClusterDiscovery creates a new cluster discovery instance
 func NewClusterDiscovery() *ClusterDiscovery {
@@ -113,22 +116,26 @@ func (cd *ClusterDiscovery) DiscoverClusters(ctx context.Context) ([]*Discovered
 	return mergedClusters, nil
 }
 
-// Environment Variable Discovery
+// EnvironmentDiscovery discovers SLURM clusters through environment variables.
 type EnvironmentDiscovery struct{}
 
+// NewEnvironmentDiscovery creates a new environment variable discovery method.
 func NewEnvironmentDiscovery() DiscoveryMethod {
 	return &EnvironmentDiscovery{}
 }
 
+// Name returns the name of the environment discovery method.
 func (ed *EnvironmentDiscovery) Name() string {
 	return "environment"
 }
 
+// Priority returns the priority of the environment discovery method.
 func (ed *EnvironmentDiscovery) Priority() int {
 	return 10
 }
 
-func (ed *EnvironmentDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+// Discover discovers SLURM clusters by checking environment variables.
+func (ed *EnvironmentDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Check SLURM environment variables
@@ -234,22 +241,26 @@ func (ed *EnvironmentDiscovery) parseConfigFile(path string) *DiscoveredCluster 
 	return cluster
 }
 
-// Config File Discovery
+// ConfigFileDiscovery discovers SLURM clusters through configuration files.
 type ConfigFileDiscovery struct{}
 
+// NewConfigFileDiscovery creates a new configuration file discovery method.
 func NewConfigFileDiscovery() DiscoveryMethod {
 	return &ConfigFileDiscovery{}
 }
 
+// Name returns the name of the config file discovery method.
 func (cfd *ConfigFileDiscovery) Name() string {
 	return "config-files"
 }
 
+// Priority returns the priority of the config file discovery method.
 func (cfd *ConfigFileDiscovery) Priority() int {
 	return 8
 }
 
-func (cfd *ConfigFileDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+// Discover discovers SLURM clusters by scanning configuration files.
+func (cfd *ConfigFileDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Common SLURM configuration paths
@@ -272,23 +283,27 @@ func (cfd *ConfigFileDiscovery) Discover(ctx context.Context) ([]*DiscoveredClus
 	return clusters, nil
 }
 
-// Network Discovery
+// NetworkDiscovery discovers SLURM clusters through network scanning.
 type NetworkDiscovery struct {
 	client *http.Client
 }
 
+// NewNetworkDiscovery creates a new network discovery method.
 func NewNetworkDiscovery(client *http.Client) DiscoveryMethod {
 	return &NetworkDiscovery{client: client}
 }
 
+// Name returns the name of the network discovery method.
 func (nd *NetworkDiscovery) Name() string {
 	return "network"
 }
 
+// Priority returns the priority of the network discovery method.
 func (nd *NetworkDiscovery) Priority() int {
 	return 6
 }
 
+// Discover discovers SLURM clusters by scanning the network.
 func (nd *NetworkDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
@@ -409,22 +424,26 @@ func (nd *NetworkDiscovery) scanSubnet(ctx context.Context, ipNet *net.IPNet, ma
 	return clusters
 }
 
-// DNS Discovery
+// DNSDiscovery discovers SLURM clusters through DNS SRV records.
 type DNSDiscovery struct{}
 
+// NewDNSDiscovery creates a new DNS discovery method.
 func NewDNSDiscovery() DiscoveryMethod {
 	return &DNSDiscovery{}
 }
 
+// Name returns the name of the DNS discovery method.
 func (dd *DNSDiscovery) Name() string {
 	return "dns"
 }
 
+// Priority returns the priority of the DNS discovery method.
 func (dd *DNSDiscovery) Priority() int {
 	return 7
 }
 
-func (dd *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+// Discover discovers SLURM clusters by querying DNS SRV records.
+func (dd *DNSDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Try common SLURM SRV records
@@ -483,22 +502,26 @@ func (dd *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, err
 	return clusters, nil
 }
 
-// Process Discovery
+// ProcessDiscovery discovers SLURM clusters through running processes.
 type ProcessDiscovery struct{}
 
+// NewProcessDiscovery creates a new process discovery method.
 func NewProcessDiscovery() DiscoveryMethod {
 	return &ProcessDiscovery{}
 }
 
+// Name returns the name of the process discovery method.
 func (pd *ProcessDiscovery) Name() string {
 	return "process"
 }
 
+// Priority returns the priority of the process discovery method.
 func (pd *ProcessDiscovery) Priority() int {
 	return 4
 }
 
-func (pd *ProcessDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster, error) {
+// Discover discovers SLURM clusters by checking for running processes.
+func (pd *ProcessDiscovery) Discover(_ context.Context) ([]*DiscoveredCluster, error) {
 	var clusters []*DiscoveredCluster
 
 	// Check for running SLURM processes

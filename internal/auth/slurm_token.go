@@ -69,7 +69,7 @@ func (s *SlurmTokenAuthenticator) GetConfigSchema() ConfigSchema {
 }
 
 // Initialize initializes the SLURM token authenticator
-func (s *SlurmTokenAuthenticator) Initialize(ctx context.Context, config AuthConfig) error {
+func (s *SlurmTokenAuthenticator) Initialize(_ context.Context, config AuthConfig) error {
 	s.config = config
 
 	// Get username from config or environment
@@ -165,7 +165,7 @@ func (s *SlurmTokenAuthenticator) parseTokenOutput(output string, lifetime int) 
 }
 
 // RefreshToken generates a new token (SLURM tokens cannot be refreshed, only regenerated)
-func (s *SlurmTokenAuthenticator) RefreshToken(ctx context.Context, token *Token) (*Token, error) {
+func (s *SlurmTokenAuthenticator) RefreshToken(ctx context.Context, _ *Token) (*Token, error) {
 	debug.Logger.Printf("Refreshing SLURM token (regenerating)")
 
 	// For SLURM tokens, refresh means generating a new token
@@ -173,7 +173,7 @@ func (s *SlurmTokenAuthenticator) RefreshToken(ctx context.Context, token *Token
 }
 
 // ValidateToken validates a SLURM token by checking expiration
-func (s *SlurmTokenAuthenticator) ValidateToken(ctx context.Context, token *Token) error {
+func (s *SlurmTokenAuthenticator) ValidateToken(_ context.Context, token *Token) error {
 	if token == nil {
 		return fmt.Errorf("token is nil")
 	}
@@ -191,7 +191,7 @@ func (s *SlurmTokenAuthenticator) ValidateToken(ctx context.Context, token *Toke
 }
 
 // RevokeToken revokes a SLURM token (not supported by SLURM, token will expire naturally)
-func (s *SlurmTokenAuthenticator) RevokeToken(ctx context.Context, token *Token) error {
+func (s *SlurmTokenAuthenticator) RevokeToken(_ context.Context, _ *Token) error {
 	debug.Logger.Printf("SLURM token revocation requested - tokens will expire naturally")
 
 	// SLURM doesn't support token revocation, tokens expire based on their lifetime

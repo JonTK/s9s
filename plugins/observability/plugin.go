@@ -18,8 +18,8 @@ import (
 	"github.com/jontk/s9s/plugins/observability/views"
 )
 
-// ObservabilityPlugin implements the observability plugin
-type ObservabilityPlugin struct {
+// Plugin implements the observability plugin
+type Plugin struct {
 	config      *config.Config
 	components  *initialization.Components
 	app         *tview.Application
@@ -29,9 +29,12 @@ type ObservabilityPlugin struct {
 	slurmClient interface{} // Store SLURM client for job queries
 }
 
+// ObservabilityPlugin is an alias for backward compatibility
+type ObservabilityPlugin = Plugin
+
 // New creates a new observability plugin instance
-func New() *ObservabilityPlugin {
-	return &ObservabilityPlugin{
+func New() *Plugin {
+	return &Plugin{
 		config: config.DefaultConfig(),
 	}
 }
@@ -101,7 +104,7 @@ func (p *ObservabilityPlugin) GetInfo() plugin.Info {
 }
 
 // Init initializes the plugin with configuration
-func (p *ObservabilityPlugin) Init(ctx context.Context, configMap map[string]interface{}) error {
+func (p *ObservabilityPlugin) Init(_ context.Context, configMap map[string]interface{}) error {
 	// Parse configuration from map into Config struct
 	parser := config.NewParser(configMap)
 	parsedConfig, err := parser.ParseConfig()
@@ -547,7 +550,7 @@ func (p *ObservabilityPlugin) Query(ctx context.Context, providerID string, para
 }
 
 // Subscribe allows other plugins to subscribe to data updates
-func (p *ObservabilityPlugin) Subscribe(ctx context.Context, providerID string, callback plugin.DataCallback) (plugin.SubscriptionID, error) {
+func (p *ObservabilityPlugin) Subscribe(_ context.Context, providerID string, callback plugin.DataCallback) (plugin.SubscriptionID, error) {
 	if p.components.SubscriptionMgr == nil {
 		return "", fmt.Errorf("subscription manager not initialized")
 	}
@@ -577,7 +580,7 @@ func (p *ObservabilityPlugin) Subscribe(ctx context.Context, providerID string, 
 }
 
 // Unsubscribe removes a data subscription
-func (p *ObservabilityPlugin) Unsubscribe(ctx context.Context, subscriptionID plugin.SubscriptionID) error {
+func (p *ObservabilityPlugin) Unsubscribe(_ context.Context, subscriptionID plugin.SubscriptionID) error {
 	if p.components.SubscriptionMgr == nil {
 		return fmt.Errorf("subscription manager not initialized")
 	}
@@ -597,13 +600,13 @@ func (p *ObservabilityPlugin) Unsubscribe(ctx context.Context, subscriptionID pl
 // ConfigurablePlugin interface implementation
 
 // ValidateConfig validates configuration changes
-func (p *ObservabilityPlugin) ValidateConfig(config map[string]interface{}) error {
+func (p *ObservabilityPlugin) ValidateConfig(_ map[string]interface{}) error {
 	// TODO: Implement configuration validation
 	return nil
 }
 
 // UpdateConfig updates the plugin configuration at runtime
-func (p *ObservabilityPlugin) UpdateConfig(ctx context.Context, config map[string]interface{}) error {
+func (p *ObservabilityPlugin) UpdateConfig(_ context.Context, _ map[string]interface{}) error {
 	// TODO: Implement configuration update
 	return fmt.Errorf("configuration update not yet implemented")
 }

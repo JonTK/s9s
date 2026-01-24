@@ -14,12 +14,18 @@ import (
 type StreamEventType string
 
 const (
-	StreamEventNewOutput   StreamEventType = "NEW_OUTPUT"
+	// StreamEventNewOutput is the stream event type for new output.
+	StreamEventNewOutput StreamEventType = "NEW_OUTPUT"
+	// StreamEventJobComplete is the stream event type for job completion.
 	StreamEventJobComplete StreamEventType = "JOB_COMPLETE"
-	StreamEventError       StreamEventType = "ERROR"
+	// StreamEventError is the stream event type for errors.
+	StreamEventError StreamEventType = "ERROR"
+	// StreamEventFileRotated is the stream event type for file rotation.
 	StreamEventFileRotated StreamEventType = "FILE_ROTATED"
+	// StreamEventStreamStart is the stream event type for stream start.
 	StreamEventStreamStart StreamEventType = "STREAM_START"
-	StreamEventStreamStop  StreamEventType = "STREAM_STOP"
+	// StreamEventStreamStop is the stream event type for stream stop.
+	StreamEventStreamStop StreamEventType = "STREAM_STOP"
 )
 
 // StreamEvent represents an event in the streaming system
@@ -96,8 +102,8 @@ type StreamConfig struct {
 	ExportFormat         string        `json:"export_format"`          // Default: "txt"
 }
 
-// StreamingStats contains statistics about streaming operations
-type StreamingStats struct {
+// Stats contains statistics about streaming operations
+type Stats struct {
 	ActiveStreams int           `json:"active_streams"`
 	TotalStreams  int           `json:"total_streams"`
 	MemoryUsage   int64         `json:"memory_usage_bytes"`
@@ -107,6 +113,9 @@ type StreamingStats struct {
 	LastError     error         `json:"last_error,omitempty"`
 	LastErrorTime time.Time     `json:"last_error_time,omitempty"`
 }
+
+// StreamingStats is an alias for backward compatibility
+type StreamingStats = Stats
 
 // FileWatcher handles individual file watching operations
 type FileWatcher struct {

@@ -298,7 +298,7 @@ func (pm *PresetManagerUI) showDeleteConfirmation(preset filters.FilterPreset) {
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Are you sure you want to delete the preset '%s'?\n\nThis action cannot be undone.", preset.Name)).
 		AddButtons([]string{"Delete", "Cancel"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, buttonLabel string) {
 			pm.pages.RemovePage("delete-confirmation")
 			if buttonLabel == "Delete" {
 				err := pm.presetManager.RemovePreset(preset.Name, preset.ViewType)
@@ -340,7 +340,7 @@ func (pm *PresetManagerUI) showResetConfirmation() {
 	modal := tview.NewModal().
 		SetText("Reset all presets to default values?\n\nThis will remove all custom presets and restore the original defaults.").
 		AddButtons([]string{"Reset", "Cancel"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, buttonLabel string) {
 			pm.pages.RemovePage("reset-confirmation")
 			if buttonLabel == "Reset" {
 				// TODO: Implement reset to defaults functionality
@@ -355,7 +355,7 @@ func (pm *PresetManagerUI) showError(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			pm.pages.RemovePage("error-modal")
 		})
 
@@ -369,7 +369,7 @@ func (pm *PresetManagerUI) showSuccess(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			pm.pages.RemovePage("success-modal")
 		})
 
@@ -383,7 +383,7 @@ func (pm *PresetManagerUI) showInfo(message string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			pm.pages.RemovePage("info-modal")
 		})
 

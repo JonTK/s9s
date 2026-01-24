@@ -1,3 +1,4 @@
+// Package views provides display views for various s9s data types.
 package views
 
 import (
@@ -362,7 +363,7 @@ func (v *AccountsView) scheduleRefresh() {
 }
 
 // onAccountSelect handles account selection
-func (v *AccountsView) onAccountSelect(row, col int) {
+func (v *AccountsView) onAccountSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -373,7 +374,7 @@ func (v *AccountsView) onAccountSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *AccountsView) onSort(col int, ascending bool) {
+func (v *AccountsView) onSort(_ int, _ bool) {
 	// Note: Sort feedback removed since individual view status bars are no longer used
 }
 
@@ -385,7 +386,7 @@ func (v *AccountsView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *AccountsView) onFilterDone(key tcell.Key) {
+func (v *AccountsView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}

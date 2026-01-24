@@ -201,7 +201,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 	})
 
 	// Node table selection handler
-	v.nodeTable.SetSelectionChangedFunc(func(row, col int) {
+	v.nodeTable.SetSelectionChangedFunc(func(row, _ int) {
 		if row > 0 && row <= v.nodeTable.GetRowCount()-1 {
 			cell := v.nodeTable.GetCell(row, 0)
 			if cell != nil {
@@ -211,7 +211,7 @@ func (v *ObservabilityView) setupKeyboardShortcuts() {
 	})
 
 	// Job table selection handler
-	v.jobTable.SetSelectionChangedFunc(func(row, col int) {
+	v.jobTable.SetSelectionChangedFunc(func(row, _ int) {
 		if row > 0 && row <= v.jobTable.GetRowCount()-1 {
 			cell := v.jobTable.GetCell(row, 0)
 			if cell != nil {
@@ -308,7 +308,7 @@ func (v *ObservabilityView) Start(ctx context.Context) error {
 }
 
 // Stop stops the view refresh loop and alert engine
-func (v *ObservabilityView) Stop(ctx context.Context) error {
+func (v *ObservabilityView) Stop(_ context.Context) error {
 	close(v.stopChan)
 	if v.refreshTicker != nil {
 		v.refreshTicker.Stop()
@@ -765,7 +765,7 @@ func (v *ObservabilityView) getJobList(ctx context.Context) []string {
 }
 
 // getJobDetailsFromSlurm fetches job details from SLURM for the given job IDs
-func (v *ObservabilityView) getJobDetailsFromSlurm(_ctx context.Context, jobIDs []string) map[string]models.JobInfo {
+func (v *ObservabilityView) getJobDetailsFromSlurm(_ context.Context, jobIDs []string) map[string]models.JobInfo {
 	details := make(map[string]models.JobInfo)
 
 	logging.Debug("observability-view", "getJobDetailsFromSlurm called with jobs: %v", jobIDs)
@@ -1235,7 +1235,7 @@ Display:
 	modal := tview.NewModal().
 		SetText(helpText).
 		AddButtons([]string{"Close"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			v.app.SetRoot(v.root, true)
 		})
 
@@ -1243,13 +1243,13 @@ Display:
 }
 
 // showError displays an error message
-func (v *ObservabilityView) showError(message string) {
+func (v *ObservabilityView) showError(_ string) {
 	// TODO: Implement error display
 	// For now, could log or show in a status bar
 }
 
 // showNotification displays a notification message
-func (v *ObservabilityView) showNotification(message string) {
+func (v *ObservabilityView) showNotification(_ string) {
 	// TODO: Implement notification display
 	// For now, could show a temporary toast or status message
 	// This could be integrated with the alerts panel or a separate notification system

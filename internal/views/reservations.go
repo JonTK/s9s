@@ -409,7 +409,7 @@ func (v *ReservationsView) scheduleRefresh() {
 }
 
 // onReservationSelect handles reservation selection
-func (v *ReservationsView) onReservationSelect(row, col int) {
+func (v *ReservationsView) onReservationSelect(_, _ int) {
 	data := v.table.GetSelectedData()
 	if len(data) == 0 {
 		return
@@ -420,7 +420,7 @@ func (v *ReservationsView) onReservationSelect(row, col int) {
 }
 
 // onSort handles column sorting
-func (v *ReservationsView) onSort(col int, ascending bool) {
+func (v *ReservationsView) onSort(_ int, _ bool) {
 	// Note: Sort feedback removed since individual view status bars are no longer used
 }
 
@@ -432,7 +432,7 @@ func (v *ReservationsView) onFilterChange(text string) {
 }
 
 // onFilterDone handles filter input completion
-func (v *ReservationsView) onFilterDone(key tcell.Key) {
+func (v *ReservationsView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {
 		v.app.SetFocus(v.table.Table)
 	}

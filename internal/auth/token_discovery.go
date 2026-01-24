@@ -283,7 +283,7 @@ func (td *TokenDiscovery) GetTokenExpiresIn() time.Duration {
 	return time.Until(td.cachedToken.ExpiresAt)
 }
 
-// TokenToAuthToken converts a DiscoveredToken to an auth.Token
+// ToAuthToken converts a DiscoveredToken to an auth.Token.
 func (dt *DiscoveredToken) ToAuthToken(clusterID string) *Token {
 	return &Token{
 		AccessToken: dt.Token,

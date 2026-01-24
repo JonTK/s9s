@@ -1,3 +1,4 @@
+// Package widgets provides specialized UI widgets for s9s interface.
 package widgets
 
 import (
@@ -31,7 +32,7 @@ type ConfigManager struct {
 	selectedGroup    string
 	configPath       string
 	hasChanges       bool
-	validationErrors map[string]config.ValidationResult
+	validationErrors map[string]config.FieldValidationResult
 
 	// Callbacks
 	onSave   func(*config.Config) error
@@ -46,7 +47,7 @@ func NewConfigManager(app *tview.Application, configPath string) *ConfigManager 
 		app:              app,
 		schema:           config.GetConfigSchema(),
 		configPath:       configPath,
-		validationErrors: make(map[string]config.ValidationResult),
+		validationErrors: make(map[string]config.FieldValidationResult),
 	}
 
 	cm.initializeUI()
@@ -71,7 +72,7 @@ func (cm *ConfigManager) initializeUI() {
 	}
 
 	// Set sidebar selection handler
-	cm.sidebar.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	cm.sidebar.SetSelectedFunc(func(index int, _, _ string, _ rune) {
 		if index < len(cm.schema.Groups) {
 			cm.selectGroup(cm.schema.Groups[index].ID)
 		}
@@ -264,7 +265,7 @@ func (cm *ConfigManager) addIntField(label string, field config.ConfigField) {
 		initialValue = fmt.Sprintf("%v", currentValue)
 	}
 
-	cm.form.AddInputField(label, initialValue, 0, func(textToCheck string, lastChar rune) bool {
+	cm.form.AddInputField(label, initialValue, 0, func(_ string, lastChar rune) bool {
 		return lastChar >= '0' && lastChar <= '9' || lastChar == '-'
 	}, func(text string) {
 		if text != "" {
@@ -312,7 +313,7 @@ func (cm *ConfigManager) addSelectField(label string, field config.ConfigField) 
 		}
 	}
 
-	cm.form.AddDropDown(label, field.Options, currentIndex, func(text string, index int) {
+	cm.form.AddDropDown(label, field.Options, currentIndex, func(text string, _ int) {
 		cm.setConfigValue(field.Key, text)
 		cm.validateField(field, text)
 	})
@@ -809,7 +810,7 @@ func (cm *ConfigManager) copyConfig(original *config.Config) *config.Config {
 	}
 
 	// Create a new config and copy values
-	copy := &config.Config{
+	copied := &config.Config{
 		RefreshRate:    original.RefreshRate,
 		MaxRetries:     original.MaxRetries,
 		CurrentContext: original.CurrentContext,
@@ -821,32 +822,26 @@ func (cm *ConfigManager) copyConfig(original *config.Config) *config.Config {
 	}
 
 	// Copy contexts slice
-	copy.Contexts = make([]config.ContextConfig, len(original.Contexts))
-	for i, ctx := range original.Contexts {
-		copy.Contexts[i] = ctx
-	}
+	copied.Contexts = make([]config.ContextConfig, len(original.Contexts))
+	copy(copied.Contexts, original.Contexts)
 
 	// Copy shortcuts slice
-	copy.Shortcuts = make([]config.ShortcutConfig, len(original.Shortcuts))
-	for i, shortcut := range original.Shortcuts {
-		copy.Shortcuts[i] = shortcut
-	}
+	copied.Shortcuts = make([]config.ShortcutConfig, len(original.Shortcuts))
+	copy(copied.Shortcuts, original.Shortcuts)
 
 	// Copy aliases map
 	if original.Aliases != nil {
-		copy.Aliases = make(map[string]string)
+		copied.Aliases = make(map[string]string)
 		for k, v := range original.Aliases {
-			copy.Aliases[k] = v
+			copied.Aliases[k] = v
 		}
 	}
 
 	// Copy plugins slice
-	copy.Plugins = make([]config.PluginConfig, len(original.Plugins))
-	for i, plugin := range original.Plugins {
-		copy.Plugins[i] = plugin
-	}
+	copied.Plugins = make([]config.PluginConfig, len(original.Plugins))
+	copy(copied.Plugins, original.Plugins)
 
-	return copy
+	return copied
 }
 
 // updateStatusBar updates the status bar text
@@ -913,7 +908,7 @@ func (cm *ConfigManager) HasChanges() bool {
 }
 
 // addContextField adds a context management field
-func (cm *ConfigManager) addContextField(_field config.ConfigField) {
+func (cm *ConfigManager) addContextField(_ config.ConfigField) {
 	contextCount := len(cm.currentConfig.Contexts)
 	summary := fmt.Sprintf("Contexts: %d configured", contextCount)
 	if cm.currentConfig.CurrentContext != "" {
@@ -927,7 +922,7 @@ func (cm *ConfigManager) addContextField(_field config.ConfigField) {
 }
 
 // addShortcutField adds a shortcut management field
-func (cm *ConfigManager) addShortcutField(_field config.ConfigField) {
+func (cm *ConfigManager) addShortcutField(_ config.ConfigField) {
 	shortcutCount := len(cm.currentConfig.Shortcuts)
 	summary := fmt.Sprintf("Shortcuts: %d configured", shortcutCount)
 
@@ -938,7 +933,7 @@ func (cm *ConfigManager) addShortcutField(_field config.ConfigField) {
 }
 
 // addAliasField adds an alias management field
-func (cm *ConfigManager) addAliasField(_field config.ConfigField) {
+func (cm *ConfigManager) addAliasField(_ config.ConfigField) {
 	aliasCount := len(cm.currentConfig.Aliases)
 	summary := fmt.Sprintf("Aliases: %d configured", aliasCount)
 
@@ -949,7 +944,7 @@ func (cm *ConfigManager) addAliasField(_field config.ConfigField) {
 }
 
 // addPluginField adds a plugin management field
-func (cm *ConfigManager) addPluginField(_field config.ConfigField) {
+func (cm *ConfigManager) addPluginField(_ config.ConfigField) {
 	pluginCount := len(cm.currentConfig.Plugins)
 	summary := fmt.Sprintf("Plugins: %d configured", pluginCount)
 
@@ -969,7 +964,7 @@ func (cm *ConfigManager) showContextManager() {
 	modal := tview.NewModal()
 	modal.SetText("Context Manager\n(Implementation pending)")
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		cm.pages.RemovePage("context-modal")
 		cm.app.SetFocus(cm)
 	})
@@ -987,7 +982,7 @@ func (cm *ConfigManager) showShortcutManager() {
 	modal := tview.NewModal()
 	modal.SetText("Shortcut Manager\n(Implementation pending)")
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		cm.pages.RemovePage("shortcut-modal")
 		cm.app.SetFocus(cm)
 	})
@@ -1005,7 +1000,7 @@ func (cm *ConfigManager) showAliasManager() {
 	modal := tview.NewModal()
 	modal.SetText("Alias Manager\n(Implementation pending)")
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		cm.pages.RemovePage("alias-modal")
 		cm.app.SetFocus(cm)
 	})
@@ -1023,7 +1018,7 @@ func (cm *ConfigManager) showPluginManager() {
 	modal := tview.NewModal()
 	modal.SetText("Plugin Manager\n(Implementation pending)")
 	modal.AddButtons([]string{"Close"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	modal.SetDoneFunc(func(_ int, _ string) {
 		cm.pages.RemovePage("plugin-modal")
 		cm.app.SetFocus(cm)
 	})

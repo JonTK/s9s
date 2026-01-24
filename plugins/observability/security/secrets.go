@@ -27,12 +27,19 @@ import (
 type SecretType string
 
 const (
-	SecretTypeAPIToken      SecretType = "api_token"
-	SecretTypeBasicAuth     SecretType = "basic_auth"
-	SecretTypeBearerToken   SecretType = "bearer_token"
-	SecretTypeTLSCert       SecretType = "tls_cert"
-	SecretTypeTLSKey        SecretType = "tls_key"
-	SecretTypeDatabase      SecretType = "database"
+	// SecretTypeAPIToken is the secret type for API tokens.
+	SecretTypeAPIToken SecretType = "api_token"
+	// SecretTypeBasicAuth is the secret type for basic authentication.
+	SecretTypeBasicAuth SecretType = "basic_auth"
+	// SecretTypeBearerToken is the secret type for bearer tokens.
+	SecretTypeBearerToken SecretType = "bearer_token"
+	// SecretTypeTLSCert is the secret type for TLS certificates.
+	SecretTypeTLSCert SecretType = "tls_cert"
+	// SecretTypeTLSKey is the secret type for TLS private keys.
+	SecretTypeTLSKey SecretType = "tls_key"
+	// SecretTypeDatabase is the secret type for database credentials.
+	SecretTypeDatabase SecretType = "database"
+	// SecretTypeEncryptionKey is the secret type for encryption keys.
 	SecretTypeEncryptionKey SecretType = "encryption_key"
 )
 
@@ -40,11 +47,16 @@ const (
 type SecretSource string
 
 const (
+	// SecretSourceEnvironment is the secret source for environment variables.
 	SecretSourceEnvironment SecretSource = "environment"
-	SecretSourceFile        SecretSource = "file"
-	SecretSourceVault       SecretSource = "vault"
-	SecretSourceK8sSecret   SecretSource = "kubernetes"
-	SecretSourceInline      SecretSource = "inline"
+	// SecretSourceFile is the secret source for files.
+	SecretSourceFile SecretSource = "file"
+	// SecretSourceVault is the secret source for HashiCorp Vault.
+	SecretSourceVault SecretSource = "vault"
+	// SecretSourceK8sSecret is the secret source for Kubernetes secrets.
+	SecretSourceK8sSecret SecretSource = "kubernetes"
+	// SecretSourceInline is the secret source for inline values.
+	SecretSourceInline SecretSource = "inline"
 )
 
 // Secret represents a secret with metadata
