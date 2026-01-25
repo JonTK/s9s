@@ -196,39 +196,55 @@ func (v *PartitionsView) Hints() []string {
 
 // OnKey handles keyboard events
 func (v *PartitionsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
-	// Check if a modal is open - if so, don't process view shortcuts
-	if v.pages != nil && v.pages.GetPageCount() > 1 {
-		return event // Let modal handle it
+	// Check if a modal is open
+	if v.isModalOpen() {
+		return event
 	}
 
 	// Handle filter input focus interactions
-	if focusEvent := v.handleFilterInputFocus(event); focusEvent != nil {
-		return focusEvent
+	if result := v.handleFilterInputFocus(event); result != nil {
+		return result
 	}
 
-	// Handle advanced filter mode
+	// Handle other keyboard events
+	if result := v.handlePartitionKey(event); result != nil {
+		return result
+	}
+
+	return event
+}
+
+// isModalOpen checks if a modal page is currently open
+func (v *PartitionsView) isModalOpen() bool {
+	return v.pages != nil && v.pages.GetPageCount() > 1
+}
+
+// handlePartitionKey handles non-filter keyboard events
+func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventKey {
+	// Handle advanced filter mode ESC
 	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
 		v.closeAdvancedFilter()
 		return nil
 	}
 
+	// Handle mapped key handlers
 	if handler, ok := v.partitionsKeyHandlers()[event.Key()]; ok {
 		handler()
 		return nil
 	}
 
-	if event.Key() == tcell.KeyRune {
-		if v.handleRuneCommand(event.Rune()) {
-			return nil
-		}
+	// Handle rune commands
+	if event.Key() == tcell.KeyRune && v.handleRuneCommand(event.Rune()) {
+		return nil
 	}
 
+	// Handle ESC in filter input
 	if event.Key() == tcell.KeyEsc && v.filterInput.HasFocus() {
 		v.app.SetFocus(v.table.Table)
 		return nil
 	}
 
-	return event
+	return nil
 }
 
 // partitionsKeyHandlers returns a map of function key handlers
