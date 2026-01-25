@@ -297,7 +297,7 @@ func (v *ObservabilityView) Start(ctx context.Context) error {
 				logging.Debug("observability-view", "Stop signal received")
 				return
 			case <-ctx.Done():
-				logging.Debug("observability-view", "Context cancelled")
+				logging.Debug("observability-view", "Context canceled")
 				return
 			}
 		}
@@ -406,7 +406,28 @@ func (v *ObservabilityView) refresh(ctx context.Context) error {
 func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 	logging.Debug("observability-view", "fetchNodeMetrics starting")
 
-	// Add extra safety checks
+	// Validate prerequisites
+	if err := v.validateNodeMetricsPrerequisites(); err != nil {
+		return err
+	}
+
+	// Get list of nodes with panic recovery
+	nodes := v.safeGetNodeList(ctx)
+	logging.Info("observability-view", "Processing %d nodes", len(nodes))
+
+	// Process each node
+	for _, nodeName := range nodes {
+		v.processNodeMetrics(ctx, nodeName)
+	}
+
+	// Update local cache
+	v.nodeMetrics = v.nodeCollector.GetAllNodes()
+	logging.Info("observability-view", "fetchNodeMetrics completed: %d nodes in cache", len(v.nodeMetrics))
+
+	return nil
+}
+
+func (v *ObservabilityView) validateNodeMetricsPrerequisites() error {
 	if v.client == nil {
 		logging.Error("observability-view", "Prometheus client not initialized")
 		return fmt.Errorf("prometheus client not initialized")
@@ -415,207 +436,208 @@ func (v *ObservabilityView) fetchNodeMetrics(ctx context.Context) error {
 		logging.Error("observability-view", "Query builder not initialized")
 		return fmt.Errorf("query builder not initialized")
 	}
+	return nil
+}
 
-	// Get list of nodes - in a real implementation, this would come from SLURM
-	// For now, we'll query Prometheus for all nodes with error handling
+func (v *ObservabilityView) safeGetNodeList(ctx context.Context) []string {
 	logging.Debug("observability-view", "Getting node list")
 	var nodes []string
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logging.Error("observability-view", "getNodeList panicked: %v", r)
-				// If getNodeList panics, use empty list
-				nodes = []string{}
-			}
-		}()
-		nodes = v.getNodeList(ctx)
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Error("observability-view", "getNodeList panicked: %v", r)
+			nodes = []string{}
+		}
+	}()
+	nodes = v.getNodeList(ctx)
+	return nodes
+}
+
+func (v *ObservabilityView) processNodeMetrics(ctx context.Context, nodeName string) {
+	// Get instance name
+	instanceName := nodeName
+	if fullInstance, exists := nodeInstanceMap[nodeName]; exists {
+		instanceName = fullInstance
+		logging.Debug("observability-view", "Using instance name %s for node %s", instanceName, nodeName)
+	}
+
+	// Build and execute queries
+	queries, err := v.buildNodeQueries(instanceName)
+	if err != nil {
+		logging.Error("observability-view", "Failed to build queries for node %s: %v", nodeName, err)
+		return
+	}
+
+	v.logQueries(queries)
+
+	results, err := v.executeNodeQueries(ctx, queries)
+	if err != nil {
+		logging.Error("observability-view", "Failed to execute queries for node %s: %v", nodeName, err)
+		return
+	}
+
+	logging.Debug("observability-view", "Batch query returned %d results for node %s", len(results), nodeName)
+
+	// Convert results and update collector
+	metrics := v.convertNodeResults(nodeName, results)
+	v.updateNodeCollector(nodeName, metrics)
+}
+
+func (v *ObservabilityView) buildNodeQueries(instanceName string) (map[string]string, error) {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("query building panic: %v", r)
+		}
 	}()
 
-	logging.Info("observability-view", "Processing %d nodes", len(nodes))
+	result, queryErr := v.queryBuilder.GetNodeQueries(instanceName, v.config.Metrics.Node.NodeLabel)
+	if queryErr != nil {
+		err = queryErr
+	}
+	return result, err
+}
 
-	for _, nodeName := range nodes {
-		// Get the full instance name (with port) for Prometheus queries
-		instanceName := nodeName
-		if fullInstance, exists := nodeInstanceMap[nodeName]; exists {
-			instanceName = fullInstance
-			logging.Debug("observability-view", "Using instance name %s for node %s", instanceName, nodeName)
-		}
-
-		// Build queries for this node with error handling
-		queries, err := func() (map[string]string, error) {
-			var err error
-			defer func() {
-				if r := recover(); r != nil {
-					err = fmt.Errorf("query building panic: %v", r)
-				}
-			}()
-			result, queryErr := v.queryBuilder.GetNodeQueries(instanceName, v.config.Metrics.Node.NodeLabel)
-			if queryErr != nil {
-				err = queryErr
-			}
-			return result, err
-		}()
-
-		if err != nil {
-			logging.Error("observability-view", "Failed to build queries for node %s: %v", nodeName, err)
-			continue
-		}
-
-		logging.Debug("observability-view", "Built %d queries for node %s", len(queries), nodeName)
-		for qName, qStr := range queries {
-			// Log first 100 chars of query to avoid too much output
-			if len(qStr) > 100 {
-				logging.Debug("observability-view", "Query %s: %s...", qName, qStr[:100])
-			} else {
-				logging.Debug("observability-view", "Query %s: %s", qName, qStr)
-			}
-		}
-
-		// Execute queries in batch with error handling
-		results, err := func() (map[string]*prometheus.QueryResult, error) {
-			var err error
-			defer func() {
-				if r := recover(); r != nil {
-					err = fmt.Errorf("batch query panic: %v", r)
-				}
-			}()
-			result, queryErr := v.client.BatchQuery(ctx, queries, time.Now())
-			if queryErr != nil {
-				err = queryErr
-			}
-			return result, err
-		}()
-
-		if err != nil {
-			logging.Error("observability-view", "Failed to execute queries for node %s: %v", nodeName, err)
-			continue
-		}
-
-		logging.Debug("observability-view", "Batch query returned %d results for node %s", len(results), nodeName)
-
-		// Convert results to TimeSeries
-		metrics := make(map[string]*models.TimeSeries)
-		for queryName, result := range results {
-			if len(result.Data.Result) > 0 {
-				logging.Debug("observability-view", "Query %s returned %d results for node %s",
-					queryName, len(result.Data.Result), nodeName)
-				// Convert first result to TimeSeries
-				ts := v.convertToTimeSeries(queryName, result)
-				if ts != nil {
-					metrics[queryName] = ts
-					logging.Debug("observability-view", "Converted %s to TimeSeries with %d values",
-						queryName, len(ts.Values))
-				} else {
-					logging.Warn("observability-view", "Failed to convert %s to TimeSeries", queryName)
-				}
-			} else {
-				logging.Debug("observability-view", "Query %s returned no results for node %s",
-					queryName, nodeName)
-			}
-		}
-
-		// Log the metrics being sent to the collector
-		logging.Info("observability-view", "Updating node %s with %d metrics", nodeName, len(metrics))
-
-		// Update node collector
-		v.nodeCollector.UpdateFromPrometheus(nodeName, metrics)
-
-		// Check if the node was actually stored
-		if storedNode, exists := v.nodeCollector.GetNode(nodeName); exists {
-			logging.Info("observability-view", "Node %s successfully stored: CPU=%.2f%%, Memory=%.2f%%",
-				nodeName, storedNode.Resources.CPU.Usage, storedNode.Resources.Memory.Usage)
+func (v *ObservabilityView) logQueries(queries map[string]string) {
+	logging.Debug("observability-view", "Built %d queries", len(queries))
+	for qName, qStr := range queries {
+		if len(qStr) > 100 {
+			logging.Debug("observability-view", "Query %s: %s...", qName, qStr[:100])
 		} else {
-			logging.Error("observability-view", "Node %s was not stored in collector!", nodeName)
+			logging.Debug("observability-view", "Query %s: %s", qName, qStr)
 		}
 	}
+}
 
-	// Update local cache
-	v.nodeMetrics = v.nodeCollector.GetAllNodes()
+func (v *ObservabilityView) executeNodeQueries(ctx context.Context, queries map[string]string) (map[string]*prometheus.QueryResult, error) {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("batch query panic: %v", r)
+		}
+	}()
 
-	logging.Info("observability-view", "fetchNodeMetrics completed: %d nodes in cache", len(v.nodeMetrics))
-	for nodeName, metrics := range v.nodeMetrics {
-		logging.Debug("observability-view", "Node %s metrics: CPU=%.2f%%, Memory=%.2f%%, State=%s",
-			nodeName, metrics.Resources.CPU.Usage, metrics.Resources.Memory.Usage, metrics.NodeState)
+	result, queryErr := v.client.BatchQuery(ctx, queries, time.Now())
+	if queryErr != nil {
+		err = queryErr
 	}
+	return result, err
+}
 
-	return nil
+func (v *ObservabilityView) convertNodeResults(nodeName string, results map[string]*prometheus.QueryResult) map[string]*models.TimeSeries {
+	metrics := make(map[string]*models.TimeSeries)
+	for queryName, result := range results {
+		if len(result.Data.Result) > 0 {
+			logging.Debug("observability-view", "Query %s returned %d results for node %s",
+				queryName, len(result.Data.Result), nodeName)
+			ts := v.convertToTimeSeries(queryName, result)
+			if ts != nil {
+				metrics[queryName] = ts
+				logging.Debug("observability-view", "Converted %s to TimeSeries with %d values",
+					queryName, len(ts.Values))
+			} else {
+				logging.Warn("observability-view", "Failed to convert %s to TimeSeries", queryName)
+			}
+		} else {
+			logging.Debug("observability-view", "Query %s returned no results for node %s",
+				queryName, nodeName)
+		}
+	}
+	return metrics
+}
+
+func (v *ObservabilityView) updateNodeCollector(nodeName string, metrics map[string]*models.TimeSeries) {
+	logging.Info("observability-view", "Updating node %s with %d metrics", nodeName, len(metrics))
+	v.nodeCollector.UpdateFromPrometheus(nodeName, metrics)
+
+	if storedNode, exists := v.nodeCollector.GetNode(nodeName); exists {
+		logging.Info("observability-view", "Node %s successfully stored: CPU=%.2f%%, Memory=%.2f%%",
+			nodeName, storedNode.Resources.CPU.Usage, storedNode.Resources.Memory.Usage)
+	} else {
+		logging.Error("observability-view", "Node %s was not stored in collector!", nodeName)
+	}
 }
 
 // fetchJobMetrics fetches job metrics from Prometheus
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (v *ObservabilityView) fetchJobMetrics(ctx context.Context) error {
-	// Get list of running jobs from Prometheus discovery
 	jobs := v.getJobList(ctx)
 	logging.Info("observability-view", "Fetching metrics for %d jobs: %v", len(jobs), jobs)
 
-	// Try to get job details from SLURM if client is available
 	jobDetails := v.getJobDetailsFromSlurm(ctx, jobs)
 
 	for _, jobID := range jobs {
-		// Build queries for this job
-		queries, err := v.queryBuilder.GetJobQueries(jobID)
-		if err != nil {
-			logging.Error("observability-view", "Failed to build queries for job %s: %v", jobID, err)
+		v.processSingleJobMetrics(ctx, jobID, jobDetails)
+	}
+
+	v.jobMetrics = v.jobCollector.GetAllJobs()
+	return nil
+}
+
+func (v *ObservabilityView) processSingleJobMetrics(ctx context.Context, jobID string, jobDetails map[string]models.JobInfo) {
+	queries, err := v.queryBuilder.GetJobQueries(jobID)
+	if err != nil {
+		logging.Error("observability-view", "Failed to build queries for job %s: %v", jobID, err)
+		return
+	}
+
+	v.logJobQueries(jobID, queries)
+
+	results, err := v.client.BatchQuery(ctx, queries, time.Now())
+	if err != nil {
+		logging.Error("observability-view", "Failed to execute queries for job %s: %v", jobID, err)
+		return
+	}
+
+	metrics := v.processQueryResults(jobID, queries, results)
+	v.jobCollector.UpdateFromPrometheus(jobID, metrics)
+
+	if details, ok := jobDetails[jobID]; ok {
+		v.jobCollector.UpdateJobInfo(jobID, details)
+	}
+}
+
+func (v *ObservabilityView) logJobQueries(jobID string, queries map[string]string) {
+	for queryName, query := range queries {
+		logging.Debug("observability-view", "Job %s query %s: %s", jobID, queryName, query)
+	}
+}
+
+func (v *ObservabilityView) processQueryResults(jobID string, queries map[string]string, results map[string]*prometheus.QueryResult) map[string]*models.TimeSeries {
+	metrics := make(map[string]*models.TimeSeries)
+	foundMetrics := 0
+
+	for queryName, result := range results {
+		if len(result.Data.Result) == 0 {
+			logging.Debug("observability-view", "Job %s query %s returned no results", jobID, queryName)
 			continue
 		}
 
-		// Log the actual queries being made
-		for queryName, query := range queries {
-			logging.Debug("observability-view", "Job %s query %s: %s", jobID, queryName, query)
-		}
+		logging.Debug("observability-view", "Job %s query %s returned %d results", jobID, queryName, len(result.Data.Result))
+		v.logResultSamples(jobID, queryName, result)
 
-		// Execute queries in batch
-		results, err := v.client.BatchQuery(ctx, queries, time.Now())
-		if err != nil {
-			logging.Error("observability-view", "Failed to execute queries for job %s: %v", jobID, err)
-			continue
-		}
-
-		// Convert results to TimeSeries
-		metrics := make(map[string]*models.TimeSeries)
-		foundMetrics := 0
-		for queryName, result := range results {
-			if len(result.Data.Result) > 0 {
-				logging.Debug("observability-view", "Job %s query %s returned %d results", jobID, queryName, len(result.Data.Result))
-
-				// Log the actual result for debugging
-				if vec, err := result.GetVector(); err == nil && len(vec) > 0 {
-					for i, sample := range vec {
-						if i < 2 { // Log first 2 samples
-							logging.Debug("observability-view", "Job %s query %s sample %d: value=%f, metric=%v",
-								jobID, queryName, i, sample.Value.Value(), sample.Metric)
-						}
-					}
-				}
-
-				ts := v.convertToTimeSeries(queryName, result)
-				if ts != nil {
-					metrics[queryName] = ts
-					foundMetrics++
-					logging.Debug("observability-view", "Job %s query %s successfully converted to TimeSeries", jobID, queryName)
-				} else {
-					logging.Warn("observability-view", "Job %s query %s failed to convert to TimeSeries", jobID, queryName)
-				}
-			} else {
-				logging.Debug("observability-view", "Job %s query %s returned no results", jobID, queryName)
-			}
-		}
-
-		logging.Info("observability-view", "Job %s: found %d metrics from %d queries", jobID, foundMetrics, len(queries))
-
-		// Update job collector with Prometheus metrics
-		v.jobCollector.UpdateFromPrometheus(jobID, metrics)
-
-		// Update with SLURM info if available
-		if details, ok := jobDetails[jobID]; ok {
-			v.jobCollector.UpdateJobInfo(jobID, details)
+		ts := v.convertToTimeSeries(queryName, result)
+		if ts != nil {
+			metrics[queryName] = ts
+			foundMetrics++
+			logging.Debug("observability-view", "Job %s query %s successfully converted to TimeSeries", jobID, queryName)
+		} else {
+			logging.Warn("observability-view", "Job %s query %s failed to convert to TimeSeries", jobID, queryName)
 		}
 	}
 
-	// Update local cache
-	v.jobMetrics = v.jobCollector.GetAllJobs()
+	logging.Info("observability-view", "Job %s: found %d metrics from %d queries", jobID, foundMetrics, len(queries))
+	return metrics
+}
 
-	return nil
+func (v *ObservabilityView) logResultSamples(jobID, queryName string, result *prometheus.QueryResult) {
+	if vec, err := result.GetVector(); err == nil && len(vec) > 0 {
+		for i, sample := range vec {
+			if i < 2 {
+				logging.Debug("observability-view", "Job %s query %s sample %d: value=%f, metric=%v",
+					jobID, queryName, i, sample.Value.Value(), sample.Metric)
+			}
+		}
+	}
 }
 
 // convertToTimeSeries converts Prometheus query result to TimeSeries
@@ -775,82 +797,79 @@ func (v *ObservabilityView) getJobDetailsFromSlurm(_ context.Context, jobIDs []s
 		return details
 	}
 
-	// Try to use the SLURM client to get job information
 	logging.Debug("observability-view", "SLURM client type: %T", v.slurmClient)
 
-	// Try different type assertions for the SLURM client
-	var slurmClient dao.SlurmClient
-	var ok bool
-
-	// First try direct interface
-	if slurmClient, ok = v.slurmClient.(dao.SlurmClient); ok {
-		logging.Debug("observability-view", "SLURM client implements dao.SlurmClient interface")
-	} else if adapter, ok := v.slurmClient.(*dao.SlurmAdapter); ok {
-		// If it's a SlurmAdapter, it should implement SlurmClient
-		slurmClient = adapter
-		logging.Debug("observability-view", "SLURM client is SlurmAdapter, casting to interface")
-	} else {
+	slurmClient := v.resolveSlurmClient()
+	if slurmClient == nil {
 		logging.Debug("observability-view", "SLURM client does not support job listing interface")
 		return details
 	}
 
-	if client := slurmClient; client != nil {
-		logging.Debug("observability-view", "Querying SLURM for job details")
-
-		// Get job manager from SLURM client
-		jobMgr := client.Jobs()
-		if jobMgr == nil {
-			logging.Error("observability-view", "SLURM client returned nil job manager")
-			return details
-		}
-
-		// Query for each job ID
-		for _, jobID := range jobIDs {
-			job, err := jobMgr.Get(jobID)
-			if err != nil {
-				logging.Debug("observability-view", "Failed to get job %s from SLURM: %v", jobID, err)
-				continue
-			}
-
-			if job != nil {
-				// Convert SLURM job to our JobInfo structure
-				info := models.JobInfo{
-					JobName:  job.Name,
-					User:     job.User,
-					State:    job.State,
-					NodeList: strings.Split(job.NodeList, ","),
-				}
-
-				// Parse start time if available
-				if job.StartTime != nil {
-					info.StartTime = *job.StartTime
-				}
-
-				// Log the raw job data to understand what we're getting
-				logging.Debug("observability-view", "SLURM job data: ID=%s, Name=%s, User=%s, State=%s, NodeCount=%d, Command=%s",
-					job.ID, job.Name, job.User, job.State, job.NodeCount, job.Command)
-
-				// For now, use NodeCount as CPU allocation until we can get actual CPU data from SLURM
-				// This is a limitation of the current dao.Job struct not having NumCPUs field
-				if job.NodeCount > 0 {
-					// Use 1 CPU per node as a more conservative estimate
-					// TODO: Update dao.Job struct to include NumCPUs from SLURM API
-					info.AllocatedCPUs = job.NodeCount // Assume 1 CPU per node for now
-				}
-
-				details[jobID] = info
-
-				logging.Debug("observability-view", "Got SLURM details for job %s: user=%s, state=%s, nodes=%d",
-					jobID, info.User, info.State, job.NodeCount)
-			}
-		}
-
-		logging.Info("observability-view", "Retrieved SLURM details for %d jobs", len(details))
-	} else {
-		logging.Debug("observability-view", "SLURM client does not support job listing interface")
+	logging.Debug("observability-view", "Querying SLURM for job details")
+	jobMgr := slurmClient.Jobs()
+	if jobMgr == nil {
+		logging.Error("observability-view", "SLURM client returned nil job manager")
+		return details
 	}
 
+	for _, jobID := range jobIDs {
+		info := v.fetchJobInfoFromSlurm(jobID, jobMgr)
+		if info != nil {
+			details[jobID] = *info
+		}
+	}
+
+	logging.Info("observability-view", "Retrieved SLURM details for %d jobs", len(details))
 	return details
+}
+
+func (v *ObservabilityView) resolveSlurmClient() dao.SlurmClient {
+	if client, ok := v.slurmClient.(dao.SlurmClient); ok {
+		logging.Debug("observability-view", "SLURM client implements dao.SlurmClient interface")
+		return client
+	}
+
+	if adapter, ok := v.slurmClient.(*dao.SlurmAdapter); ok {
+		logging.Debug("observability-view", "SLURM client is SlurmAdapter, casting to interface")
+		return adapter
+	}
+
+	return nil
+}
+
+func (v *ObservabilityView) fetchJobInfoFromSlurm(jobID string, jobMgr dao.JobManager) *models.JobInfo {
+	job, err := jobMgr.Get(jobID)
+	if err != nil {
+		logging.Debug("observability-view", "Failed to get job %s from SLURM: %v", jobID, err)
+		return nil
+	}
+
+	if job == nil {
+		return nil
+	}
+
+	info := models.JobInfo{
+		JobName:  job.Name,
+		User:     job.User,
+		State:    job.State,
+		NodeList: strings.Split(job.NodeList, ","),
+	}
+
+	if job.StartTime != nil {
+		info.StartTime = *job.StartTime
+	}
+
+	logging.Debug("observability-view", "SLURM job data: ID=%s, Name=%s, User=%s, State=%s, NodeCount=%d, Command=%s",
+		job.ID, job.Name, job.User, job.State, job.NodeCount, job.Command)
+
+	if job.NodeCount > 0 {
+		info.AllocatedCPUs = job.NodeCount
+	}
+
+	logging.Debug("observability-view", "Got SLURM details for job %s: user=%s, state=%s, nodes=%d",
+		jobID, info.User, info.State, job.NodeCount)
+
+	return &info
 }
 
 // discoverJobsFromPrometheus discovers running jobs from Prometheus metrics
@@ -1130,80 +1149,111 @@ func (v *ObservabilityView) renderNodeTable() {
 // renderJobTable updates the job metrics table
 func (v *ObservabilityView) renderJobTable() {
 	logging.Debug("observability-view", "renderJobTable: jobMetrics count=%d", len(v.jobMetrics))
-	// Clear existing rows (except header)
-	for i := v.jobTable.GetRowCount() - 1; i > 0; i-- {
-		v.jobTable.RemoveRow(i)
-	}
 
-	if len(v.jobMetrics) == 0 {
-		// Add empty row with debug message
-		v.jobTable.SetCell(1, 0, tview.NewTableCell("No jobs detected"))
-		v.jobTable.SetCell(1, 1, tview.NewTableCell("Check SLURM/cgroup"))
-		logging.Warn("observability-view", "No job metrics available")
+	v.clearJobTable()
+
+	if v.handleEmptyJobMetrics() {
 		return
 	}
 
-	row := 1
+	// Populate table with job metrics
 	runningJobs := 0
+	row := 1
 	for jobID, job := range v.jobMetrics {
 		logging.Debug("observability-view", "Processing job: %s, state: %s, CPU: %.1f%%",
 			jobID, job.State, job.Resources.CPU.Usage)
 
 		// Skip non-running jobs only if state is explicitly set
-		// If state is empty, assume the job is running (since we're getting metrics for it)
 		if job.State != "" && job.State != "RUNNING" && job.State != "R" {
 			continue
 		}
 		runningJobs++
 
-		metrics := &job.Resources
-
-		// Determine efficiency color
-		effColor := tcell.ColorGreen
-		if job.Efficiency.OverallEfficiency < 50 {
-			effColor = tcell.ColorYellow
-		}
-		if job.Efficiency.OverallEfficiency < 20 {
-			effColor = tcell.ColorRed
-		}
-
-		// Determine state color
-		stateColor := tcell.ColorGreen
-		if job.State == "PENDING" || job.State == "PD" {
-			stateColor = tcell.ColorYellow
-		}
-
-		v.jobTable.SetCell(row, 0, tview.NewTableCell(job.JobID))
-		v.jobTable.SetCell(row, 1, tview.NewTableCell(job.User))
-		v.jobTable.SetCell(row, 2, tview.NewTableCell(
-			fmt.Sprintf("%.1f%%", metrics.CPU.Usage)).
-			SetTextColor(getColor(models.GetColorForUsage(metrics.CPU.Usage))))
-		v.jobTable.SetCell(row, 3, tview.NewTableCell(
-			models.FormatValue(float64(metrics.Memory.Used), "bytes")))
-		// Use cgroup limits if SLURM allocation info is not available
-		cpuLimit := job.AllocatedCPUs
-		memLimit := job.AllocatedMem
-
-		// If SLURM info is not available (0), try to use cgroup limits
-		if cpuLimit == 0 && metrics.CPU.Limit > 0 {
-			cpuLimit = int(metrics.CPU.Limit)
-		}
-		if memLimit == 0 && metrics.Memory.Limit > 0 {
-			memLimit = metrics.Memory.Limit
-		}
-
-		v.jobTable.SetCell(row, 4, tview.NewTableCell(
-			fmt.Sprintf("%d", cpuLimit)))
-		v.jobTable.SetCell(row, 5, tview.NewTableCell(
-			models.FormatValue(float64(memLimit), "bytes")))
-		v.jobTable.SetCell(row, 6, tview.NewTableCell(
-			fmt.Sprintf("%.1f%%", job.Efficiency.OverallEfficiency)).SetTextColor(effColor))
-		v.jobTable.SetCell(row, 7, tview.NewTableCell(job.State).
-			SetTextColor(stateColor))
-
+		v.addJobRow(row, job)
 		row++
 	}
+
 	logging.Info("observability-view", "Total running jobs displayed: %d", runningJobs)
+}
+
+func (v *ObservabilityView) clearJobTable() {
+	// Clear existing rows (except header)
+	for i := v.jobTable.GetRowCount() - 1; i > 0; i-- {
+		v.jobTable.RemoveRow(i)
+	}
+}
+
+func (v *ObservabilityView) handleEmptyJobMetrics() bool {
+	if len(v.jobMetrics) == 0 {
+		// Add empty row with debug message
+		v.jobTable.SetCell(1, 0, tview.NewTableCell("No jobs detected"))
+		v.jobTable.SetCell(1, 1, tview.NewTableCell("Check SLURM/cgroup"))
+		logging.Warn("observability-view", "No job metrics available")
+		return true
+	}
+	return false
+}
+
+func (v *ObservabilityView) addJobRow(row int, job *models.JobMetrics) {
+	metrics := &job.Resources
+
+	// Determine colors for efficiency and state
+	effColor := v.getEfficiencyColor(job.Efficiency.OverallEfficiency)
+	stateColor := v.getStateColor(job.State)
+
+	// Get CPU and memory limits
+	cpuLimit, memLimit := v.getJobResourceLimits(job, metrics)
+
+	// NOTE: memLimit is uint64, but FormatValue expects float64
+	// The type assertion is safe here
+
+	// Set table cells for job row
+	v.jobTable.SetCell(row, 0, tview.NewTableCell(job.JobID))
+	v.jobTable.SetCell(row, 1, tview.NewTableCell(job.User))
+	v.jobTable.SetCell(row, 2, tview.NewTableCell(
+		fmt.Sprintf("%.1f%%", metrics.CPU.Usage)).
+		SetTextColor(getColor(models.GetColorForUsage(metrics.CPU.Usage))))
+	v.jobTable.SetCell(row, 3, tview.NewTableCell(
+		models.FormatValue(float64(metrics.Memory.Used), "bytes")))
+	v.jobTable.SetCell(row, 4, tview.NewTableCell(fmt.Sprintf("%d", cpuLimit)))
+	v.jobTable.SetCell(row, 5, tview.NewTableCell(
+		models.FormatValue(float64(memLimit), "bytes")))
+	v.jobTable.SetCell(row, 6, tview.NewTableCell(
+		fmt.Sprintf("%.1f%%", job.Efficiency.OverallEfficiency)).SetTextColor(effColor))
+	v.jobTable.SetCell(row, 7, tview.NewTableCell(job.State).SetTextColor(stateColor))
+}
+
+func (v *ObservabilityView) getEfficiencyColor(efficiency float64) tcell.Color {
+	switch {
+	case efficiency < 20:
+		return tcell.ColorRed
+	case efficiency < 50:
+		return tcell.ColorYellow
+	default:
+		return tcell.ColorGreen
+	}
+}
+
+func (v *ObservabilityView) getStateColor(state string) tcell.Color {
+	if state == "PENDING" || state == "PD" {
+		return tcell.ColorYellow
+	}
+	return tcell.ColorGreen
+}
+
+func (v *ObservabilityView) getJobResourceLimits(job *models.JobMetrics, metrics *models.ResourceMetrics) (int, uint64) {
+	cpuLimit := job.AllocatedCPUs
+	memLimit := job.AllocatedMem
+
+	// If SLURM info is not available (0), try to use cgroup limits
+	if cpuLimit == 0 && metrics.CPU.Limit > 0 {
+		cpuLimit = int(metrics.CPU.Limit)
+	}
+	if memLimit == 0 && metrics.Memory.Limit > 0 {
+		memLimit = metrics.Memory.Limit
+	}
+
+	return cpuLimit, memLimit
 }
 
 // renderAlerts updates the alerts panel

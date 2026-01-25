@@ -31,7 +31,6 @@ const (
 	FormatHTML Format = "html"
 )
 
-//nolint:revive // type alias for backward compatibility
 type ExportFormat = Format
 
 // JobOutputExporter handles exporting job output to various formats
@@ -76,7 +75,6 @@ type Result struct {
 	Timestamp time.Time
 }
 
-//nolint:revive // type alias for backward compatibility
 type ExportResult = Result
 
 // ExportJobOutput exports job output to a file in the specified format
@@ -107,19 +105,43 @@ func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, cust
 		Timestamp: time.Now(),
 	}
 
-	// Generate filename
+	// Generate filename and determine output path
 	filename := e.generateFilename(data.JobID, data.JobName, data.OutputType, format)
+	outputPath := e.determinePath(customPath, filename)
 
-	// Determine output path
-	var outputPath string
-	if customPath != "" {
-		outputPath = customPath
-	} else {
-		outputPath = filepath.Join(e.defaultPath, filename)
+	// Validate path
+	validPath, err := e.validateAndSetPath(result, outputPath)
+	if err != nil {
+		return result, err
 	}
 
-	// Validate output path is within safe directory
-	// Allow writes within defaultPath or user's home directory
+	// Create directory
+	if err := e.createExportDirectory(result, validPath); err != nil {
+		return result, err
+	}
+
+	// Export by format
+	if err := e.exportByFormat(result, data, format, validPath); err != nil {
+		return result, err
+	}
+
+	// Get file size
+	e.updateFileSize(result, validPath)
+
+	result.Success = true
+	return result, nil
+}
+
+// determinePath returns the path to export to
+func (e *JobOutputExporter) determinePath(customPath, filename string) string {
+	if customPath != "" {
+		return customPath
+	}
+	return filepath.Join(e.defaultPath, filename)
+}
+
+// validateAndSetPath validates the output path is within safe directories
+func (e *JobOutputExporter) validateAndSetPath(result *Result, outputPath string) (string, error) {
 	homeDir, _ := os.UserHomeDir()
 	validPath, validationErr := security.ValidatePathWithinBase(outputPath, e.defaultPath)
 	if validationErr != nil && homeDir != "" {
@@ -128,20 +150,24 @@ func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, cust
 	}
 	if validationErr != nil {
 		result.Error = fmt.Errorf("invalid export path %q: %w", outputPath, validationErr)
-		return result, result.Error
+		return "", result.Error
 	}
-	outputPath = validPath
+	result.FilePath = validPath
+	return validPath, nil
+}
 
-	result.FilePath = outputPath
-
-	// Ensure directory exists
+// createExportDirectory ensures the export directory exists
+func (e *JobOutputExporter) createExportDirectory(result *Result, outputPath string) error {
 	dir := filepath.Dir(outputPath)
 	if err := os.MkdirAll(dir, fileperms.DirUserOnly); err != nil {
 		result.Error = fmt.Errorf("failed to create directory %s: %w", dir, err)
-		return result, result.Error
+		return result.Error
 	}
+	return nil
+}
 
-	// Export based on format
+// exportByFormat dispatches to the appropriate export format handler
+func (e *JobOutputExporter) exportByFormat(result *Result, data JobOutputData, format ExportFormat, outputPath string) error {
 	var err error
 	switch format {
 	case FormatText:
@@ -157,19 +183,17 @@ func (e *JobOutputExporter) Export(data JobOutputData, format ExportFormat, cust
 	default:
 		err = fmt.Errorf("unsupported export format: %s", format)
 	}
-
 	if err != nil {
 		result.Error = err
-		return result, err
 	}
+	return err
+}
 
-	// Get file size
+// updateFileSize retrieves and updates the file size in result
+func (e *JobOutputExporter) updateFileSize(result *Result, outputPath string) {
 	if stat, err := os.Stat(outputPath); err == nil {
 		result.Size = stat.Size()
 	}
-
-	result.Success = true
-	return result, nil
 }
 
 // exportText exports job output as plain text

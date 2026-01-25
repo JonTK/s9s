@@ -200,9 +200,9 @@ func (v *AccountsView) Hints() []string {
 
 // OnKey handles keyboard events
 func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
-	// Check if a modal is open - if so, don't process view shortcuts
+	// Check if a modal is open
 	if v.pages != nil && v.pages.GetPageCount() > 1 {
-		return event // Let modal handle it
+		return event
 	}
 
 	// Handle advanced filter mode
@@ -211,36 +211,43 @@ func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	}
 
-	switch event.Key() {
-	case tcell.KeyF3:
-		v.showAdvancedFilter()
+	if handler, ok := v.accountsKeyHandlers()[event.Key()]; ok {
+		handler()
 		return nil
-	case tcell.KeyCtrlF:
-		v.showGlobalSearch()
-		return nil
-	case tcell.KeyRune:
-		switch event.Rune() {
-		case 'R':
-			go func() { _ = v.Refresh() }()
-			return nil
-		case '/':
-			v.app.SetFocus(v.filterInput)
-			return nil
-		case 'h', 'H':
-			v.showAccountHierarchy()
-			return nil
-		}
-	case tcell.KeyEnter:
-		v.showAccountDetails()
-		return nil
-	case tcell.KeyEsc:
-		if v.filterInput.HasFocus() {
-			v.app.SetFocus(v.table.Table)
+	}
+
+	if event.Key() == tcell.KeyRune {
+		if handler, ok := v.accountsRuneHandlers()[event.Rune()]; ok {
+			handler()
 			return nil
 		}
 	}
 
+	if event.Key() == tcell.KeyEsc && v.filterInput.HasFocus() {
+		v.app.SetFocus(v.table.Table)
+		return nil
+	}
+
 	return event
+}
+
+// accountsKeyHandlers returns a map of function key handlers
+func (v *AccountsView) accountsKeyHandlers() map[tcell.Key]func() {
+	return map[tcell.Key]func(){
+		tcell.KeyF3:    v.showAdvancedFilter,
+		tcell.KeyCtrlF: v.showGlobalSearch,
+		tcell.KeyEnter: v.showAccountDetails,
+	}
+}
+
+// accountsRuneHandlers returns a map of rune handlers
+func (v *AccountsView) accountsRuneHandlers() map[rune]func() {
+	return map[rune]func(){
+		'R': func() { go func() { _ = v.Refresh() }() },
+		'/': func() { v.app.SetFocus(v.filterInput) },
+		'h': v.showAccountHierarchy,
+		'H': v.showAccountHierarchy,
+	}
 }
 
 // OnFocus handles focus events

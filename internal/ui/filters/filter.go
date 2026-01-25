@@ -258,32 +258,36 @@ func (e *FilterExpression) Evaluate(data map[string]interface{}) bool {
 		return false
 	}
 
-	switch e.Operator {
-	case OpEquals:
-		return compareEqual(value, e.Value)
-	case OpNotEquals:
-		return !compareEqual(value, e.Value)
-	case OpContains:
-		return contains(value, e.Value)
-	case OpNotContains:
-		return !contains(value, e.Value)
-	case OpGreater:
-		return compareGreater(value, e.Value)
-	case OpLess:
-		return compareLess(value, e.Value)
-	case OpGreaterEq:
-		return compareGreater(value, e.Value) || compareEqual(value, e.Value)
-	case OpLessEq:
-		return compareLess(value, e.Value) || compareEqual(value, e.Value)
-	case OpRegex:
-		return matchRegex(value, e.Value)
-	case OpIn:
-		return isIn(value, e.Value)
-	case OpNotIn:
-		return !isIn(value, e.Value)
-	default:
-		return false
+	return evaluateOperator(e.Operator, value, e.Value)
+}
+
+// evaluateOperator applies the appropriate comparison operator
+func evaluateOperator(operator FilterOperator, value, expected interface{}) bool {
+	// Handle special cases that require multiple comparisons
+	if operator == OpGreaterEq {
+		return compareGreater(value, expected) || compareEqual(value, expected)
 	}
+	if operator == OpLessEq {
+		return compareLess(value, expected) || compareEqual(value, expected)
+	}
+
+	// Map remaining operators to their evaluators
+	evaluators := map[FilterOperator]func() bool{
+		OpEquals:     func() bool { return compareEqual(value, expected) },
+		OpNotEquals:  func() bool { return !compareEqual(value, expected) },
+		OpContains:   func() bool { return contains(value, expected) },
+		OpNotContains: func() bool { return !contains(value, expected) },
+		OpGreater:    func() bool { return compareGreater(value, expected) },
+		OpLess:       func() bool { return compareLess(value, expected) },
+		OpRegex:      func() bool { return matchRegex(value, expected) },
+		OpIn:         func() bool { return isIn(value, expected) },
+		OpNotIn:      func() bool { return !isIn(value, expected) },
+	}
+
+	if evaluator, ok := evaluators[operator]; ok {
+		return evaluator()
+	}
+	return false
 }
 
 // Helper functions for comparisons
@@ -397,21 +401,7 @@ func SplitRespectingQuotes(s string) []string {
 	quoteChar := rune(0)
 
 	for _, r := range s {
-		switch {
-		case !inQuotes && (r == '"' || r == '\''):
-			inQuotes = true
-			quoteChar = r
-		case inQuotes && r == quoteChar:
-			inQuotes = false
-			quoteChar = 0
-		case !inQuotes && r == ' ':
-			if current.Len() > 0 {
-				result = append(result, current.String())
-				current.Reset()
-			}
-		default:
-			current.WriteRune(r)
-		}
+		processQuoteChar(&inQuotes, &quoteChar, r, &current, &result)
 	}
 
 	if current.Len() > 0 {
@@ -419,6 +409,25 @@ func SplitRespectingQuotes(s string) []string {
 	}
 
 	return result
+}
+
+// processQuoteChar handles the logic of processing a single character in quote parsing
+func processQuoteChar(inQuotes *bool, quoteChar *rune, r rune, current *strings.Builder, result *[]string) {
+	switch {
+	case !*inQuotes && (r == '"' || r == '\''):
+		*inQuotes = true
+		*quoteChar = r
+	case *inQuotes && r == *quoteChar:
+		*inQuotes = false
+		*quoteChar = 0
+	case !*inQuotes && r == ' ':
+		if current.Len() > 0 {
+			*result = append(*result, current.String())
+			current.Reset()
+		}
+	default:
+		current.WriteRune(r)
+	}
 }
 
 // smartSplit splits filter string while respecting multi-word operators like "in" and "not in"

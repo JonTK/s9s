@@ -21,7 +21,6 @@ type Provider interface {
 	Logout(ctx context.Context, token *Token) error
 }
 
-//nolint:revive // type alias for backward compatibility
 type AuthProvider = Provider
 
 // SlurmAuthProvider implements authentication against SLURM REST API

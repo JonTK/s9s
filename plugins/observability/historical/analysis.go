@@ -85,7 +85,6 @@ type Analyzer struct {
 	collector *DataCollector
 }
 
-//nolint:revive // type alias for backward compatibility
 type HistoricalAnalyzer = Analyzer
 
 // NewHistoricalAnalyzer creates a new historical data analyzer
@@ -202,14 +201,7 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 		zScore := deviation / stdDev
 
 		if zScore > sensitivity {
-			severity := "low"
-			if zScore > sensitivity*1.5 {
-				severity = "medium"
-			}
-			if zScore > sensitivity*2 {
-				severity = "high"
-			}
-
+			severity := ha.calculateAnomalySeverity(zScore, sensitivity)
 			anomaly := AnomalyPoint{
 				Timestamp: dataPoints[i].Timestamp,
 				Value:     val,
@@ -217,7 +209,6 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 				Deviation: deviation,
 				Severity:  severity,
 			}
-
 			anomalies = append(anomalies, anomaly)
 		}
 	}
@@ -234,6 +225,16 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 	}, nil
 }
 
+func (ha *HistoricalAnalyzer) calculateAnomalySeverity(zScore, sensitivity float64) string {
+	if zScore > sensitivity*2 {
+		return "high"
+	}
+	if zScore > sensitivity*1.5 {
+		return "medium"
+	}
+	return "low"
+}
+
 // AnalyzeSeasonality detects seasonal patterns in historical data
 func (ha *HistoricalAnalyzer) AnalyzeSeasonality(metricName string, duration time.Duration) (*SeasonalAnalysis, error) {
 	end := time.Now()
@@ -248,11 +249,40 @@ func (ha *HistoricalAnalyzer) AnalyzeSeasonality(metricName string, duration tim
 		return nil, fmt.Errorf("insufficient data points for seasonality analysis")
 	}
 
-	// Group data by hour of day
+	// Group data by hour
+	hourlyData, allValues := ha.groupDataByHour(series.DataPoints)
+
+	if len(allValues) < 50 {
+		return nil, fmt.Errorf("insufficient numeric data for seasonality analysis")
+	}
+
+	// Analyze hourly patterns
+	hourlyAverages, peakHours, lowHours, maxAvg, minAvg := ha.analyzeHourlyAverages(hourlyData)
+
+	// Calculate seasonality strength
+	overallMean := average(allValues)
+	seasonalVariance := (maxAvg - minAvg) / overallMean
+	hasSeasonality := seasonalVariance > 0.1 // 10% variation threshold
+
+	// Convert hours to timestamps
+	peakTimes := ha.convertHoursToTimestamps(peakHours)
+	lowTimes := ha.convertHoursToTimestamps(lowHours)
+
+	return &SeasonalAnalysis{
+		HasSeasonality: hasSeasonality,
+		Period:         24 * time.Hour, // Daily period
+		Strength:       seasonalVariance,
+		Patterns:       hourlyAverages,
+		PeakTimes:      peakTimes,
+		LowTimes:       lowTimes,
+	}, nil
+}
+
+func (ha *HistoricalAnalyzer) groupDataByHour(dataPoints []DataPoint) (map[int][]float64, []float64) {
 	hourlyData := make(map[int][]float64)
 	var allValues []float64
 
-	for _, dp := range series.DataPoints {
+	for _, dp := range dataPoints {
 		if val, ok := convertToFloat64(dp.Value); ok {
 			hour := dp.Timestamp.Hour()
 			hourlyData[hour] = append(hourlyData[hour], val)
@@ -260,16 +290,13 @@ func (ha *HistoricalAnalyzer) AnalyzeSeasonality(metricName string, duration tim
 		}
 	}
 
-	if len(allValues) < 50 {
-		return nil, fmt.Errorf("insufficient numeric data for seasonality analysis")
-	}
+	return hourlyData, allValues
+}
 
-	// Calculate hourly averages
+func (ha *HistoricalAnalyzer) analyzeHourlyAverages(hourlyData map[int][]float64) (map[string]float64, []int, []int, float64, float64) {
 	hourlyAverages := make(map[string]float64)
-	overallMean := average(allValues)
-
-	var maxAvg, minAvg float64
 	var peakHours, lowHours []int
+	var maxAvg, minAvg float64
 	first := true
 
 	for hour := 0; hour < 24; hour++ {
@@ -283,46 +310,42 @@ func (ha *HistoricalAnalyzer) AnalyzeSeasonality(metricName string, duration tim
 				first = false
 			}
 
-			if avg > maxAvg {
-				maxAvg = avg
-				peakHours = []int{hour}
-			} else if avg == maxAvg {
-				peakHours = append(peakHours, hour)
-			}
-
-			if avg < minAvg {
-				minAvg = avg
-				lowHours = []int{hour}
-			} else if avg == minAvg {
-				lowHours = append(lowHours, hour)
-			}
+			// Track peak and low hours
+			ha.updatePeakHours(&peakHours, hour, avg, &maxAvg)
+			ha.updateLowHours(&lowHours, hour, avg, &minAvg)
 		}
 	}
 
-	// Calculate seasonality strength
-	seasonalVariance := (maxAvg - minAvg) / overallMean
-	hasSeasonality := seasonalVariance > 0.1 // 10% variation threshold
+	return hourlyAverages, peakHours, lowHours, maxAvg, minAvg
+}
 
-	// Convert hours to timestamps (using today as base)
+func (ha *HistoricalAnalyzer) updatePeakHours(peakHours *[]int, hour int, avg float64, maxAvg *float64) {
+	if avg > *maxAvg {
+		*maxAvg = avg
+		*peakHours = []int{hour}
+	} else if avg == *maxAvg {
+		*peakHours = append(*peakHours, hour)
+	}
+}
+
+func (ha *HistoricalAnalyzer) updateLowHours(lowHours *[]int, hour int, avg float64, minAvg *float64) {
+	if avg < *minAvg {
+		*minAvg = avg
+		*lowHours = []int{hour}
+	} else if avg == *minAvg {
+		*lowHours = append(*lowHours, hour)
+	}
+}
+
+func (ha *HistoricalAnalyzer) convertHoursToTimestamps(hours []int) []time.Time {
 	today := time.Now().Truncate(24 * time.Hour)
-	var peakTimes, lowTimes []time.Time
+	times := make([]time.Time, 0, len(hours))
 
-	for _, hour := range peakHours {
-		peakTimes = append(peakTimes, today.Add(time.Duration(hour)*time.Hour))
+	for _, hour := range hours {
+		times = append(times, today.Add(time.Duration(hour)*time.Hour))
 	}
 
-	for _, hour := range lowHours {
-		lowTimes = append(lowTimes, today.Add(time.Duration(hour)*time.Hour))
-	}
-
-	return &SeasonalAnalysis{
-		HasSeasonality: hasSeasonality,
-		Period:         24 * time.Hour, // Daily period
-		Strength:       seasonalVariance,
-		Patterns:       hourlyAverages,
-		PeakTimes:      peakTimes,
-		LowTimes:       lowTimes,
-	}, nil
+	return times
 }
 
 // CompareMetrics compares multiple metrics over a time period
@@ -334,68 +357,67 @@ func (ha *HistoricalAnalyzer) CompareMetrics(metricNames []string, duration time
 	var allStats []map[string]interface{}
 
 	for _, metricName := range metricNames {
-		series, err := ha.collector.GetHistoricalData(metricName, start, end)
-		if err != nil {
-			comparison[metricName] = map[string]interface{}{
-				"error": err.Error(),
-			}
-			continue
-		}
-
-		// Calculate basic statistics
-		var values []float64
-		for _, dp := range series.DataPoints {
-			if val, ok := convertToFloat64(dp.Value); ok {
-				values = append(values, val)
-			}
-		}
-
-		if len(values) == 0 {
-			comparison[metricName] = map[string]interface{}{
-				"error": "no numeric data points",
-			}
-			continue
-		}
-
-		stats := map[string]interface{}{
-			"metric":   metricName,
-			"count":    len(values),
-			"mean":     average(values),
-			"min":      minimum(values),
-			"max":      maximum(values),
-			"std_dev":  standardDeviation(values),
-			"variance": variance(values),
-		}
-
+		stats := ha.processMetricForComparison(metricName, start, end)
 		comparison[metricName] = stats
-		allStats = append(allStats, stats)
+		if _, isError := stats["error"]; !isError {
+			allStats = append(allStats, stats)
+		}
 	}
 
-	// Add correlation analysis if we have multiple valid metrics
 	if len(allStats) >= 2 {
-		// Simple correlation between first two metrics with valid data
-		correlations := make(map[string]float64)
-
-		for i := 0; i < len(allStats); i++ {
-			for j := i + 1; j < len(allStats); j++ {
-				metric1 := allStats[i]["metric"].(string)
-				metric2 := allStats[j]["metric"].(string)
-
-				// Get data for correlation calculation
-				series1, _ := ha.collector.GetHistoricalData(metric1, start, end)
-				series2, _ := ha.collector.GetHistoricalData(metric2, start, end)
-
-				if series1 != nil && series2 != nil {
-					corr := calculateCorrelation(series1.DataPoints, series2.DataPoints)
-					correlations[fmt.Sprintf("%s_vs_%s", metric1, metric2)] = corr
-				}
-			}
-		}
-
-		comparison["correlations"] = correlations
+		ha.addCorrelationAnalysis(comparison, allStats, start, end)
 	}
 
 	return comparison, nil
+}
+
+func (ha *HistoricalAnalyzer) processMetricForComparison(metricName string, start, end time.Time) map[string]interface{} {
+	series, err := ha.collector.GetHistoricalData(metricName, start, end)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	var values []float64
+	for _, dp := range series.DataPoints {
+		if val, ok := convertToFloat64(dp.Value); ok {
+			values = append(values, val)
+		}
+	}
+
+	if len(values) == 0 {
+		return map[string]interface{}{"error": "no numeric data points"}
+	}
+
+	return map[string]interface{}{
+		"metric":   metricName,
+		"count":    len(values),
+		"mean":     average(values),
+		"min":      minimum(values),
+		"max":      maximum(values),
+		"std_dev":  standardDeviation(values),
+		"variance": variance(values),
+	}
+}
+
+func (ha *HistoricalAnalyzer) addCorrelationAnalysis(comparison map[string]interface{}, allStats []map[string]interface{}, start, end time.Time) {
+	correlations := make(map[string]float64)
+
+	for i := 0; i < len(allStats); i++ {
+		for j := i + 1; j < len(allStats); j++ {
+			metric1 := allStats[i]["metric"].(string)
+			metric2 := allStats[j]["metric"].(string)
+
+			series1, _ := ha.collector.GetHistoricalData(metric1, start, end)
+			series2, _ := ha.collector.GetHistoricalData(metric2, start, end)
+
+			if series1 != nil && series2 != nil {
+				corr := calculateCorrelation(series1.DataPoints, series2.DataPoints)
+				correlations[fmt.Sprintf("%s_vs_%s", metric1, metric2)] = corr
+			}
+		}
+	}
+
+	comparison["correlations"] = correlations
 }
 
 // Helper functions for statistical calculations

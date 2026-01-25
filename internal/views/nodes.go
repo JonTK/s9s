@@ -226,11 +226,9 @@ func (v *NodesView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	// If filter input has focus, let it handle the key events (except ESC)
 	if v.filterInput != nil && v.filterInput.HasFocus() {
 		if event.Key() == tcell.KeyEsc {
-			// ESC should return focus to table
 			v.app.SetFocus(v.table.Table)
 			return nil
 		}
-		// For all other keys, let the filter input handle them
 		return event
 	}
 
@@ -240,60 +238,59 @@ func (v *NodesView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	}
 
-	switch event.Key() {
-	case tcell.KeyF3:
-		v.showAdvancedFilter()
-		return nil
-	case tcell.KeyCtrlF:
-		v.showGlobalSearch()
-		return nil
-	case tcell.KeyRune:
-		switch event.Rune() {
-		case 'd', 'D':
-			v.drainSelectedNode()
-			return nil
-		case 'r':
-			v.resumeSelectedNode()
-			return nil
-		case 'R':
-			go func() { _ = v.Refresh() }()
-			return nil
-		case 's', 'S':
-			v.sshToNode()
-			return nil
-		case '/':
-			v.app.SetFocus(v.filterInput)
-			return nil
-		case 'a', 'A':
-			v.toggleStateFilter("all")
-			return nil
-		case 'i', 'I':
-			v.toggleStateFilter(dao.NodeStateIdle)
-			return nil
-		case 'm', 'M':
-			v.toggleStateFilter(dao.NodeStateMixed)
-			return nil
-		case 'p', 'P':
-			v.promptPartitionFilter()
-			return nil
-		case 'g', 'G':
-			v.promptGroupBy()
-			return nil
-		case ' ':
-			v.toggleGroupExpansion()
-			return nil
-		}
-	case tcell.KeyEnter:
-		v.showNodeDetails()
-		return nil
-	case tcell.KeyEsc:
-		if v.filterInput.HasFocus() {
-			v.app.SetFocus(v.table.Table)
-			return nil
-		}
+	// Handle by key type
+	if event.Key() == tcell.KeyRune {
+		return v.handleNodesViewRune(event)
+	}
+
+	// Handle by special key
+	if handler, ok := v.nodesKeyHandlers()[event.Key()]; ok {
+		return handler(v, event)
 	}
 
 	return event
+}
+
+// handleNodesViewRune handles rune key presses in the nodes view
+func (v *NodesView) handleNodesViewRune(event *tcell.EventKey) *tcell.EventKey {
+	handler, ok := v.nodesRuneHandlers()[event.Rune()]
+	if ok {
+		return handler(v, event)
+	}
+	return event
+}
+
+// nodesKeyHandlers returns a map of special keys to their handlers
+func (v *NodesView) nodesKeyHandlers() map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey {
+	return map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey{
+		tcell.KeyF3:     func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
+		tcell.KeyCtrlF:  func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
+		tcell.KeyEnter:  func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showNodeDetails(); return nil },
+	}
+}
+
+// nodesRuneHandlers returns a map of rune keys to their handlers
+func (v *NodesView) nodesRuneHandlers() map[rune]func(*NodesView, *tcell.EventKey) *tcell.EventKey {
+	return map[rune]func(*NodesView, *tcell.EventKey) *tcell.EventKey{
+		'd': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.drainSelectedNode(); return nil },
+		'D': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.drainSelectedNode(); return nil },
+		'r': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.resumeSelectedNode(); return nil },
+		'R': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { go func() { _ = v.Refresh() }(); return nil },
+		's': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.sshToNode(); return nil },
+		'S': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.sshToNode(); return nil },
+		'/': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.app.SetFocus(v.filterInput); return nil },
+		'a': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter("all"); return nil },
+		'A': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter("all"); return nil },
+		'i': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter(dao.NodeStateIdle); return nil },
+		'I': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter(dao.NodeStateIdle); return nil },
+		'm': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter(dao.NodeStateMixed); return nil },
+		'M': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleStateFilter(dao.NodeStateMixed); return nil },
+		'p': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptPartitionFilter(); return nil },
+		'P': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptPartitionFilter(); return nil },
+		'g': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptGroupBy(); return nil },
+		'G': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptGroupBy(); return nil },
+		' ': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleGroupExpansion(); return nil },
+	}
 }
 
 // OnFocus handles focus events
@@ -367,66 +364,16 @@ func (v *NodesView) updateTableGrouped() {
 
 // formatNodeRow formats a single node row
 func (v *NodesView) formatNodeRow(node *dao.Node) []string {
-	// Check if node is actually drained (has a reason) even if state only shows IDLE
-	displayState := node.State
-	isDrainedByReason := node.Reason != "" && node.Reason != "Not responding"
-
-	if node.State == "IDLE" && isDrainedByReason {
-		displayState = "IDLE+DRAIN"
-	}
+	displayState := v.getNodeDisplayState(node)
 	stateColor := dao.GetNodeStateColor(displayState)
 	coloredState := fmt.Sprintf("[%s]%s[white]", stateColor, displayState)
 
-	// CPU usage bar - dual view showing allocation vs actual load
-	// For CPU: allocated CPUs vs actual CPU load (if available)
-	cpuActualUsed := node.CPUsAllocated // Default to allocated if no load data
-	if node.CPULoad >= 0 {              // CPULoad can be 0 (valid idle state)
-		// CPULoad is the 1-minute load average
-		// Load average represents the number of processes waiting for CPU time
-		// Convert load average to equivalent "CPU cores being used"
-		cpuActualUsed = int(node.CPULoad + 0.5) // Round to nearest integer
-		if cpuActualUsed > node.CPUsTotal {
-			cpuActualUsed = node.CPUsTotal
-		}
-		if cpuActualUsed < 0 {
-			cpuActualUsed = 0
-		}
-	}
-	cpuUsage := v.createDualUsageBar(node.CPUsAllocated, cpuActualUsed, node.CPUsTotal)
-	// Show both allocation and actual load
-	var cpuUsageText string
-	if node.CPULoad >= 0 {
-		cpuUsageText = fmt.Sprintf("%s %d/%d (%.1f)", cpuUsage, node.CPUsAllocated, node.CPUsTotal, node.CPULoad)
-	} else {
-		cpuUsageText = fmt.Sprintf("%s %d/%d", cpuUsage, node.CPUsAllocated, node.CPUsTotal)
-	}
+	cpuUsageText := v.formatNodeCPUUsage(node)
+	memUsageText := v.formatNodeMemoryUsage(node)
 
-	// Memory usage bar - dual view showing allocation vs actual usage
-	// Calculate actual memory used from free memory
-	memActualUsed := int(node.MemoryTotal - node.MemoryFree)
-	if memActualUsed < 0 {
-		memActualUsed = int(node.MemoryAllocated) // Fallback to allocated
-	}
-	memUsage := v.createDualUsageBar(int(node.MemoryAllocated), memActualUsed, int(node.MemoryTotal))
-	memUsageText := fmt.Sprintf("%s %s/%s", memUsage, FormatMemory(node.MemoryAllocated), FormatMemory(node.MemoryTotal))
-
-	// Partitions
-	partitions := strings.Join(node.Partitions, ",")
-	if len(partitions) > 14 {
-		partitions = partitions[:11] + "..."
-	}
-
-	// Features
-	features := strings.Join(node.Features, ",")
-	if len(features) > 19 {
-		features = features[:16] + "..."
-	}
-
-	// Reason
-	reason := node.Reason
-	if len(reason) > 24 {
-		reason = reason[:21] + "..."
-	}
+	partitions := truncateString(strings.Join(node.Partitions, ","), 14, 11)
+	features := truncateString(strings.Join(node.Features, ","), 19, 16)
+	reason := truncateString(node.Reason, 24, 21)
 
 	return []string{
 		node.Name,
@@ -439,6 +386,63 @@ func (v *NodesView) formatNodeRow(node *dao.Node) []string {
 		features,
 		reason,
 	}
+}
+
+// getNodeDisplayState determines the display state for a node
+func (v *NodesView) getNodeDisplayState(node *dao.Node) string {
+	displayState := node.State
+	isDrainedByReason := node.Reason != "" && node.Reason != "Not responding"
+
+	if node.State == "IDLE" && isDrainedByReason {
+		displayState = "IDLE+DRAIN"
+	}
+
+	return displayState
+}
+
+// formatNodeCPUUsage formats CPU usage text for a node row
+func (v *NodesView) formatNodeCPUUsage(node *dao.Node) string {
+	cpuActualUsed := v.calculateCPUActualUsed(node)
+	cpuUsage := v.createDualUsageBar(node.CPUsAllocated, cpuActualUsed, node.CPUsTotal)
+
+	if node.CPULoad >= 0 {
+		return fmt.Sprintf("%s %d/%d (%.1f)", cpuUsage, node.CPUsAllocated, node.CPUsTotal, node.CPULoad)
+	}
+	return fmt.Sprintf("%s %d/%d", cpuUsage, node.CPUsAllocated, node.CPUsTotal)
+}
+
+// calculateCPUActualUsed calculates actual CPU usage from load average
+func (v *NodesView) calculateCPUActualUsed(node *dao.Node) int {
+	cpuActualUsed := node.CPUsAllocated
+	if node.CPULoad >= 0 {
+		cpuActualUsed = int(node.CPULoad + 0.5)
+		if cpuActualUsed > node.CPUsTotal {
+			cpuActualUsed = node.CPUsTotal
+		}
+		if cpuActualUsed < 0 {
+			cpuActualUsed = 0
+		}
+	}
+	return cpuActualUsed
+}
+
+// formatNodeMemoryUsage formats memory usage text for a node row
+func (v *NodesView) formatNodeMemoryUsage(node *dao.Node) string {
+	memActualUsed := int(node.MemoryTotal - node.MemoryFree)
+	if memActualUsed < 0 {
+		memActualUsed = int(node.MemoryAllocated)
+	}
+
+	memUsage := v.createDualUsageBar(int(node.MemoryAllocated), memActualUsed, int(node.MemoryTotal))
+	return fmt.Sprintf("%s %s/%s", memUsage, FormatMemory(node.MemoryAllocated), FormatMemory(node.MemoryTotal))
+}
+
+// truncateString truncates a string with ellipsis if it exceeds max length
+func truncateString(s string, maxLen, truncateLen int) string {
+	if len(s) > maxLen {
+		return s[:truncateLen] + "..."
+	}
+	return s
 }
 
 /*
@@ -715,49 +719,20 @@ func (v *NodesView) resumeSelectedNode() {
 		return
 	}
 
-	nodeName := data[0] // Still used for resume operation
+	nodeName := data[0]
 	state := data[1]
-	debug.Logger.Printf("resumeSelectedNode() - node: %s, state: %s", nodeName, state)
 
-	// Find the full node object to check reason
-	var node *dao.Node
-	v.mu.RLock()
-	for _, n := range v.nodes {
-		if n.Name == nodeName {
-			node = n
-			break
-		}
-	}
-	v.mu.RUnlock()
-
+	node := v.findNode(nodeName)
 	if node == nil {
 		debug.Logger.Printf("resumeSelectedNode() - node %s not found in node list", nodeName)
 		return
 	}
 
-	// Check if node can be resumed
-	// - State must contain DRAIN/DRAINING, OR
-	// - Node must have a reason (indicating it was drained)
-	cleanState := strings.ReplaceAll(strings.ReplaceAll(state, "[green]", ""), "[white]", "")
-	cleanState = strings.ReplaceAll(strings.ReplaceAll(cleanState, "[yellow]", ""), "[red]", "")
-	cleanState = strings.ReplaceAll(strings.ReplaceAll(cleanState, "[blue]", ""), "[orange]", "")
+	cleanState := v.cleanNodeState(state)
 	debug.Logger.Printf("resumeSelectedNode() - clean state: %s, reason: '%s'", cleanState, node.Reason)
 
-	isDrained := strings.Contains(cleanState, dao.NodeStateDrain) ||
-		strings.Contains(cleanState, dao.NodeStateDraining) ||
-		(node.Reason != "" && node.Reason != "Not responding")
-	if !isDrained {
-		// Show informative error message
-		if v.pages != nil {
-			errorModal := tview.NewModal().
-				SetText(fmt.Sprintf("Node %s is in state '%s' with no drain reason. Only drained nodes can be resumed.", nodeName, cleanState)).
-				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(_ int, _ string) {
-					v.pages.RemovePage("error")
-					v.app.SetFocus(v.table.Table)
-				})
-			v.pages.AddPage("error", errorModal, true, true)
-		}
+	if !v.isNodeDrained(cleanState, node) {
+		v.showResumeError(nodeName, cleanState)
 		debug.Logger.Printf("resumeSelectedNode() - node %s cannot be resumed, state: %s, reason: %s", nodeName, cleanState, node.Reason)
 		return
 	}
@@ -774,6 +749,54 @@ func (v *NodesView) resumeSelectedNode() {
 		})
 
 	v.app.SetRoot(modal, true)
+}
+
+// findNode finds a node by name in the node list
+func (v *NodesView) findNode(nodeName string) *dao.Node {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	for _, n := range v.nodes {
+		if n.Name == nodeName {
+			return n
+		}
+	}
+	return nil
+}
+
+// cleanNodeState removes color codes from node state string
+func (v *NodesView) cleanNodeState(state string) string {
+	colorCodes := []string{"[green]", "[white]", "[yellow]", "[red]", "[blue]", "[orange]"}
+	cleanState := state
+
+	for _, code := range colorCodes {
+		cleanState = strings.ReplaceAll(cleanState, code, "")
+	}
+
+	return cleanState
+}
+
+// isNodeDrained checks if a node is in a drained state
+func (v *NodesView) isNodeDrained(cleanState string, node *dao.Node) bool {
+	return strings.Contains(cleanState, dao.NodeStateDrain) ||
+		strings.Contains(cleanState, dao.NodeStateDraining) ||
+		(node.Reason != "" && node.Reason != "Not responding")
+}
+
+// showResumeError shows an error modal for resume operation
+func (v *NodesView) showResumeError(nodeName, state string) {
+	if v.pages == nil {
+		return
+	}
+
+	errorModal := tview.NewModal().
+		SetText(fmt.Sprintf("Node %s is in state '%s' with no drain reason. Only drained nodes can be resumed.", nodeName, state)).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(_ int, _ string) {
+			v.pages.RemovePage("error")
+			v.app.SetFocus(v.table.Table)
+		})
+	v.pages.AddPage("error", errorModal, true, true)
 }
 
 // performResumeNode performs the node resume operation
@@ -881,62 +904,8 @@ func (v *NodesView) formatNodeDetails(node *dao.Node) string {
 
 	details.WriteString(fmt.Sprintf("[yellow]Partitions:[white] %s\n", strings.Join(node.Partitions, ", ")))
 
-	details.WriteString("\n[teal]CPU Information:[white]\n")
-	details.WriteString(fmt.Sprintf("[yellow]  Total CPUs:[white] %d\n", node.CPUsTotal))
-	details.WriteString(fmt.Sprintf("[yellow]  Allocated CPUs:[white] %d\n", node.CPUsAllocated))
-	details.WriteString(fmt.Sprintf("[yellow]  Idle CPUs:[white] %d\n", node.CPUsIdle))
-
-	// Show allocation percentage
-	cpuAllocPercent := 0.0
-	if node.CPUsTotal > 0 {
-		cpuAllocPercent = float64(node.CPUsAllocated) * 100.0 / float64(node.CPUsTotal)
-	}
-	details.WriteString(fmt.Sprintf("[yellow]  CPU Allocation:[white] %.1f%% (SLURM allocated)\n", cpuAllocPercent))
-
-	// Show actual CPU load if available
-	if node.CPULoad >= 0 {
-		details.WriteString(fmt.Sprintf("[yellow]  CPU Load:[white] %.2f (1-minute load average)\n", node.CPULoad))
-		// Calculate efficiency: how much of allocated CPU is actually being used
-		if node.CPUsAllocated > 0 {
-			efficiency := (node.CPULoad / float64(node.CPUsAllocated)) * 100.0
-			if efficiency > 100 {
-				efficiency = 100 // Cap at 100% for display
-			}
-			details.WriteString(fmt.Sprintf("[yellow]  CPU Efficiency:[white] %.1f%% (load/allocation)\n", efficiency))
-		}
-	}
-
-	details.WriteString("\n[teal]Memory Information:[white]\n")
-	details.WriteString(fmt.Sprintf("[yellow]  Total Memory:[white] %s\n", FormatMemory(node.MemoryTotal)))
-	details.WriteString(fmt.Sprintf("[yellow]  Allocated Memory:[white] %s", FormatMemory(node.MemoryAllocated)))
-
-	// Show allocation percentage
-	memAllocPercent := 0.0
-	if node.MemoryTotal > 0 {
-		memAllocPercent = float64(node.MemoryAllocated) * 100.0 / float64(node.MemoryTotal)
-	}
-	details.WriteString(fmt.Sprintf(" (%.1f%% allocated by SLURM)\n", memAllocPercent))
-
-	// Show actual memory usage
-	memActualUsed := node.MemoryTotal - node.MemoryFree
-	if memActualUsed < 0 {
-		memActualUsed = node.MemoryAllocated // Fallback
-	}
-	memUsagePercent := 0.0
-	if node.MemoryTotal > 0 {
-		memUsagePercent = float64(memActualUsed) * 100.0 / float64(node.MemoryTotal)
-	}
-	details.WriteString(fmt.Sprintf("[yellow]  Used Memory:[white] %s (%.1f%% actual usage)\n", FormatMemory(memActualUsed), memUsagePercent))
-	details.WriteString(fmt.Sprintf("[yellow]  Free Memory:[white] %s\n", FormatMemory(node.MemoryFree)))
-
-	// Show efficiency (how much of allocated memory is actually used)
-	if node.MemoryAllocated > 0 {
-		efficiency := float64(memActualUsed) * 100.0 / float64(node.MemoryAllocated)
-		if efficiency > 100 {
-			efficiency = 100
-		}
-		details.WriteString(fmt.Sprintf("[yellow]  Memory Efficiency:[white] %.1f%% (used/allocated)\n", efficiency))
-	}
+	v.writeCPUDetails(&details, node)
+	v.writeMemoryDetails(&details, node)
 
 	if len(node.Features) > 0 {
 		details.WriteString(fmt.Sprintf("\n[yellow]Features:[white] %s\n", strings.Join(node.Features, ", ")))
@@ -954,6 +923,63 @@ func (v *NodesView) formatNodeDetails(node *dao.Node) string {
 	}
 
 	return details.String()
+}
+
+// writeCPUDetails writes CPU information section to the details
+func (v *NodesView) writeCPUDetails(w *strings.Builder, node *dao.Node) {
+	w.WriteString("\n[teal]CPU Information:[white]\n")
+	fmt.Fprintf(w, "[yellow]  Total CPUs:[white] %d\n", node.CPUsTotal)
+	fmt.Fprintf(w, "[yellow]  Allocated CPUs:[white] %d\n", node.CPUsAllocated)
+	fmt.Fprintf(w, "[yellow]  Idle CPUs:[white] %d\n", node.CPUsIdle)
+
+	cpuAllocPercent := 0.0
+	if node.CPUsTotal > 0 {
+		cpuAllocPercent = float64(node.CPUsAllocated) * 100.0 / float64(node.CPUsTotal)
+	}
+	fmt.Fprintf(w, "[yellow]  CPU Allocation:[white] %.1f%% (SLURM allocated)\n", cpuAllocPercent)
+
+	if node.CPULoad >= 0 {
+		fmt.Fprintf(w, "[yellow]  CPU Load:[white] %.2f (1-minute load average)\n", node.CPULoad)
+		if node.CPUsAllocated > 0 {
+			efficiency := (node.CPULoad / float64(node.CPUsAllocated)) * 100.0
+			if efficiency > 100 {
+				efficiency = 100
+			}
+			fmt.Fprintf(w, "[yellow]  CPU Efficiency:[white] %.1f%% (load/allocation)\n", efficiency)
+		}
+	}
+}
+
+// writeMemoryDetails writes memory information section to the details
+func (v *NodesView) writeMemoryDetails(w *strings.Builder, node *dao.Node) {
+	w.WriteString("\n[teal]Memory Information:[white]\n")
+	fmt.Fprintf(w, "[yellow]  Total Memory:[white] %s\n", FormatMemory(node.MemoryTotal))
+	fmt.Fprintf(w, "[yellow]  Allocated Memory:[white] %s", FormatMemory(node.MemoryAllocated))
+
+	memAllocPercent := 0.0
+	if node.MemoryTotal > 0 {
+		memAllocPercent = float64(node.MemoryAllocated) * 100.0 / float64(node.MemoryTotal)
+	}
+	fmt.Fprintf(w, " (%.1f%% allocated by SLURM)\n", memAllocPercent)
+
+	memActualUsed := node.MemoryTotal - node.MemoryFree
+	if memActualUsed < 0 {
+		memActualUsed = node.MemoryAllocated
+	}
+	memUsagePercent := 0.0
+	if node.MemoryTotal > 0 {
+		memUsagePercent = float64(memActualUsed) * 100.0 / float64(node.MemoryTotal)
+	}
+	fmt.Fprintf(w, "[yellow]  Used Memory:[white] %s (%.1f%% actual usage)\n", FormatMemory(memActualUsed), memUsagePercent)
+	fmt.Fprintf(w, "[yellow]  Free Memory:[white] %s\n", FormatMemory(node.MemoryFree))
+
+	if node.MemoryAllocated > 0 {
+		efficiency := float64(memActualUsed) * 100.0 / float64(node.MemoryAllocated)
+		if efficiency > 100 {
+			efficiency = 100
+		}
+		fmt.Fprintf(w, "[yellow]  Memory Efficiency:[white] %.1f%% (used/allocated)\n", efficiency)
+	}
 }
 
 // sshToNode opens SSH connection to the selected node

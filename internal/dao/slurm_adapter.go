@@ -321,7 +321,18 @@ func (j *jobManager) simulateJobOutput(id string) (string, error) {
 		return "", errs.DAOError("get", "job", err).WithContext("job_id", id).WithContext("operation", "get_output")
 	}
 
-	// Create simulated output based on job state and type
+	// Build output header with job info
+	output := j.buildJobOutputHeader(job)
+
+	// Add state-specific output
+	output += j.buildStateOutput(job)
+
+	output += "\n=== End of Output ===\n"
+	return output, nil
+}
+
+// buildJobOutputHeader creates the header section of job output
+func (j *jobManager) buildJobOutputHeader(job *Job) string {
 	output := fmt.Sprintf("=== Job %s (%s) Output ===\n", job.ID, job.Name)
 	output += fmt.Sprintf("User: %s\n", job.User)
 	output += fmt.Sprintf("Partition: %s\n", job.Partition)
@@ -334,39 +345,70 @@ func (j *jobManager) simulateJobOutput(id string) (string, error) {
 	output += fmt.Sprintf("State: %s\n", job.State)
 	output += "\n=== Command Output ===\n"
 
-	switch job.State {
-	case "PENDING":
-		output += "Job is waiting in queue...\n"
-	case "RUNNING":
-		output += "Job is currently running...\n"
-		output += "Processing data...\n"
-		output += "[Step 1/3] Initializing...\n"
-		output += "[Step 2/3] Computing...\n"
-		output += "[Step 3/3] Finalizing...\n"
-	case "COMPLETED":
-		output += "Job completed successfully!\n"
-		output += "Processing completed in " + job.TimeUsed + "\n"
-		output += "Results saved to output files.\n"
-		if job.ExitCode != nil {
-			output += fmt.Sprintf("Exit Code: %d\n", *job.ExitCode)
-		}
-	case "FAILED":
-		output += "Job failed during execution.\n"
-		output += "Error: Simulation failure for demonstration\n"
-		if job.ExitCode != nil {
-			output += fmt.Sprintf("Exit Code: %d\n", *job.ExitCode)
-		}
-	case "CANCELLED":
-		output += "Job was cancelled by user.\n"
-	default:
-		output += fmt.Sprintf("Job state: %s\n", job.State)
-	}
-
-	output += "\n=== End of Output ===\n"
-	return output, nil
+	return output
 }
 
-func (j *jobManager) Notify(id string, message string) error {
+// buildStateOutput creates output based on job state
+func (j *jobManager) buildStateOutput(job *Job) string {
+	switch job.State {
+	case "PENDING":
+		return j.addPendingOutput()
+	case "RUNNING":
+		return j.addRunningOutput()
+	case "COMPLETED":
+		return j.addCompletedOutput(job)
+	case "FAILED":
+		return j.addFailedOutput(job)
+	case "CANCELLED": //nolint:misspell // matches SLURM official job state spelling
+		return j.addCancelledOutput()
+	default:
+		return fmt.Sprintf("Job state: %s\n", job.State)
+	}
+}
+
+// addPendingOutput returns output for pending jobs
+func (j *jobManager) addPendingOutput() string {
+	return "Job is waiting in queue...\n"
+}
+
+// addRunningOutput returns output for running jobs
+func (j *jobManager) addRunningOutput() string {
+	output := "Job is currently running...\n"
+	output += "Processing data...\n"
+	output += "[Step 1/3] Initializing...\n"
+	output += "[Step 2/3] Computing...\n"
+	output += "[Step 3/3] Finalizing...\n"
+	return output
+}
+
+// addCompletedOutput returns output for completed jobs
+func (j *jobManager) addCompletedOutput(job *Job) string {
+	output := "Job completed successfully!\n"
+	output += "Processing completed in " + job.TimeUsed + "\n"
+	output += "Results saved to output files.\n"
+	if job.ExitCode != nil {
+		output += fmt.Sprintf("Exit Code: %d\n", *job.ExitCode)
+	}
+	return output
+}
+
+// addFailedOutput returns output for failed jobs
+func (j *jobManager) addFailedOutput(job *Job) string {
+	output := "Job failed during execution.\n"
+	output += "Error: Simulation failure for demonstration\n"
+	if job.ExitCode != nil {
+		output += fmt.Sprintf("Exit Code: %d\n", *job.ExitCode)
+	}
+	return output
+}
+
+// addCancelledOutput returns output for cancelled jobs
+//nolint:misspell // "cancelled" matches SLURM official job state spelling
+func (j *jobManager) addCancelledOutput() string {
+	return "Job was cancelled by user.\n"
+}
+
+func (j *jobManager) Notify(id, message string) error {
 	return j.client.Notify(j.ctx, id, message)
 }
 
@@ -409,7 +451,7 @@ func (n *nodeManager) Get(name string) (*Node, error) {
 	return convertNode(node), nil
 }
 
-func (n *nodeManager) Drain(name string, reason string) error {
+func (n *nodeManager) Drain(name, reason string) error {
 	debug.Logger.Printf("Drain node %s with reason: %s", name, reason)
 	err := n.client.Drain(n.ctx, name, reason)
 	if err != nil {
@@ -431,7 +473,7 @@ func (n *nodeManager) Resume(name string) error {
 	return err
 }
 
-func (n *nodeManager) SetState(_ string, _ string) error {
+func (n *nodeManager) SetState(_, _ string) error {
 	// Note: May need to implement if slurm-client supports it
 	return errs.Internal("set state operation not supported by slurm-client")
 }
@@ -621,64 +663,12 @@ func convertJob(job *slurm.Job) *Job {
 
 func convertNode(node *slurm.Node) *Node {
 	// Use available fields from the slurm-client, with fallbacks for missing fields
-
-	// Try to get allocated CPUs, fallback to 0 if not available
-	allocCPUs := 0
-	if node.CPUs > 0 {
-		// Estimate based on node state or provide reasonable default
-		switch node.State {
-		case "idle":
-			allocCPUs = 0
-		case "mixed", "allocated":
-			allocCPUs = node.CPUs / 2 // Estimate 50% utilization
-		case "down", "drain":
-			allocCPUs = 0
-		default:
-			allocCPUs = 0
-		}
-	}
-
-	// Estimate memory allocation (in MB)
-	allocMemory := int64(0)
-	if node.Memory > 0 {
-		memoryTotalMB := int64(node.Memory)
-		switch node.State {
-		case "mixed", "allocated":
-			allocMemory = memoryTotalMB / 2 // Estimate 50% utilization
-		default:
-			allocMemory = 0
-		}
-	}
-
-	// CPU load - provide reasonable defaults
-	cpuLoad := float64(0.0)
-	if allocCPUs > 0 && node.CPUs > 0 {
-		cpuLoad = float64(allocCPUs) / float64(node.CPUs) * 100.0
-	}
-
-	// Convert memory to MB if needed
 	memoryTotalMB := int64(node.Memory)
-
-	// Calculate idle CPUs (total - allocated)
-	idleCPUs := node.CPUs - allocCPUs
-	if idleCPUs < 0 {
-		idleCPUs = 0
-	}
-
-	// Calculate free memory (total - allocated)
-	freeMemory := memoryTotalMB - allocMemory
-	if freeMemory < 0 {
-		freeMemory = 0
-	}
-
-	// If FreeMemory not available, calculate from allocation
-	// This is less accurate as it doesn't reflect actual system usage
-	if freeMemory == 0 {
-		freeMemory = memoryTotalMB - allocMemory
-		if freeMemory < 0 {
-			freeMemory = 0
-		}
-	}
+	allocCPUs := estimateAllocatedCPUs(node)
+	allocMemory := estimateAllocatedMemory(node, memoryTotalMB)
+	idleCPUs := safeSubtract(node.CPUs, allocCPUs)
+	freeMemory := safeSubtract64(memoryTotalMB, allocMemory)
+	cpuLoad := calculateCPULoad(allocCPUs, node.CPUs)
 
 	debug.Logger.Printf("convertNode: %s state='%s' CPULoad=%.2f AllocCPUs=%d AllocMem=%dMB MemTotal=%dMB FreeMem=%dMB",
 		node.Name, node.State, cpuLoad, allocCPUs, allocMemory, memoryTotalMB, freeMemory)
@@ -699,6 +689,60 @@ func convertNode(node *slurm.Node) *Node {
 		ReasonTime:      node.LastBusy,
 		AllocatedJobs:   []string{}, // Would need to query jobs for this node
 	}
+}
+
+// estimateAllocatedCPUs estimates CPU allocation based on node state
+func estimateAllocatedCPUs(node *slurm.Node) int {
+	if node.CPUs <= 0 {
+		return 0
+	}
+
+	switch node.State {
+	case "mixed", "allocated":
+		return node.CPUs / 2 // Estimate 50% utilization
+	default:
+		return 0
+	}
+}
+
+// estimateAllocatedMemory estimates memory allocation based on node state
+func estimateAllocatedMemory(node *slurm.Node, totalMemory int64) int64 {
+	if totalMemory <= 0 {
+		return 0
+	}
+
+	switch node.State {
+	case "mixed", "allocated":
+		return totalMemory / 2 // Estimate 50% utilization
+	default:
+		return 0
+	}
+}
+
+// safeSubtract subtracts two integers and returns 0 if result is negative
+func safeSubtract(a, b int) int {
+	result := a - b
+	if result < 0 {
+		return 0
+	}
+	return result
+}
+
+// safeSubtract64 subtracts two int64 values and returns 0 if result is negative
+func safeSubtract64(a, b int64) int64 {
+	result := a - b
+	if result < 0 {
+		return 0
+	}
+	return result
+}
+
+// calculateCPULoad calculates CPU load as a percentage
+func calculateCPULoad(allocCPUs, totalCPUs int) float64 {
+	if allocCPUs <= 0 || totalCPUs <= 0 {
+		return 0.0
+	}
+	return float64(allocCPUs) / float64(totalCPUs) * 100.0
 }
 
 func convertPartition(partition *slurm.Partition) *Partition {

@@ -86,31 +86,65 @@ func initConfig() {
 
 // runRoot executes the main s9s TUI application
 func runRoot(cmd *cobra.Command, _ []string) error {
-	// Handle version flag
 	if showVersion {
-		info := version.Get()
-		fmt.Printf("%s version %s\n", appName, info.Short())
-		return nil
+		return displayVersion()
 	}
 
-	// Initialize logging
 	logging.Init(logging.DefaultConfig())
 
-	// Create root context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	// Load configuration
-	cfg, err := config.Load()
+	cfg, err := initializeConfiguration(ctx, cmd)
 	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
+		return err
 	}
 
-	// Apply command line flag overrides
+	s9sApp, err := app.New(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to create application: %w", err)
+	}
+
+	return runApplicationWithShutdown(ctx, cancel, sigChan, s9sApp)
+}
+
+// displayVersion shows the application version
+func displayVersion() error {
+	info := version.Get()
+	fmt.Printf("%s version %s\n", appName, info.Short())
+	return nil
+}
+
+// initializeConfiguration loads and validates the application configuration
+func initializeConfiguration(ctx context.Context, cmd *cobra.Command) (*config.Config, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	applyCommandLineOverrides(cfg)
+	if err := handleMockConfiguration(cfg); err != nil {
+		return nil, err
+	}
+
+	applyDiscoveryConfiguration(cfg)
+
+	if cfg.Discovery.Enabled && !cfg.UseMockClient {
+		cfg = applyAutoDiscovery(ctx, cfg)
+	}
+
+	if err := validateConfiguration(cfg, cmd); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// applyCommandLineOverrides applies command line flag overrides to configuration
+func applyCommandLineOverrides(cfg *config.Config) {
 	if useMock {
 		cfg.UseMockClient = true
 	}
@@ -118,38 +152,37 @@ func runRoot(cmd *cobra.Command, _ []string) error {
 		cfg.UseMockClient = false
 	}
 	if debugMode {
-		// Debug mode enabled - would configure logging if we had logging config
 		fmt.Println("Debug mode enabled")
 	}
+}
 
-	// Validate mock usage with environment variable gating
+// handleMockConfiguration validates mock mode configuration
+func handleMockConfiguration(cfg *config.Config) error {
 	if err := mock.ValidateMockUsage(cfg.UseMockClient); err != nil {
 		if useMock {
-			// User explicitly requested mock but it's not enabled
 			fmt.Printf("❌ %v\n\n", err)
 			mock.SuggestMockSetup()
 			return fmt.Errorf("mock mode validation failed")
 		}
-		// Config file has mock enabled but environment doesn't allow it
 		fmt.Printf("⚠️  Mock mode disabled by environment: %v\n", err)
 		fmt.Printf("   Switching to real SLURM client mode\n\n")
 		cfg.UseMockClient = false
 	}
+	return nil
+}
 
-	// Apply discovery flag overrides
+// applyDiscoveryConfiguration applies discovery-related configuration
+func applyDiscoveryConfiguration(cfg *config.Config) {
 	if noDiscovery {
 		cfg.Discovery.Enabled = false
 	}
 	if discoveryTimeout != "" {
 		cfg.Discovery.Timeout = discoveryTimeout
 	}
+}
 
-	// Attempt auto-discovery if enabled and no endpoint/token configured
-	if cfg.Discovery.Enabled && !cfg.UseMockClient {
-		cfg = applyAutoDiscovery(ctx, cfg)
-	}
-
-	// Check if config is empty and suggest setup
+// validateConfiguration checks if configuration is valid
+func validateConfiguration(cfg *config.Config, cmd *cobra.Command) error {
 	if len(cfg.Contexts) == 0 && !cfg.UseMockClient && cfg.Cluster.Endpoint == "" {
 		fmt.Printf("⚠️  No SLURM clusters configured.\n\n")
 		fmt.Printf("To get started:\n")
@@ -161,49 +194,35 @@ func runRoot(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("no clusters configured")
 		}
 	}
+	return nil
+}
 
-	// Create application instance
-	s9sApp, err := app.New(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create application: %w", err)
-	}
-
-	// Create error channel for app errors
+// runApplicationWithShutdown runs the application and handles graceful shutdown
+func runApplicationWithShutdown(_ context.Context, cancel context.CancelFunc, sigChan chan os.Signal, s9sApp *app.S9s) error {
 	errChan := make(chan error, 1)
 
-	// Run application in goroutine
 	go func() {
-		err := s9sApp.Run()
-		errChan <- err
+		errChan <- s9sApp.Run()
 	}()
 
-	// Wait for shutdown signal or error
 	select {
 	case sig := <-sigChan:
 		logging.Infof("Received signal: %v. Starting graceful shutdown...", sig)
-
-		// Create shutdown context with timeout
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 
-		// Gracefully stop the application
 		if err := s9sApp.Stop(); err != nil {
 			logging.Errorf("Error during shutdown: %v", err)
 		}
 
-		// Cancel the main context
 		cancel()
-
-		// Wait for shutdown or timeout
 		<-shutdownCtx.Done()
 
 	case err := <-errChan:
+		cancel()
 		if err != nil {
-			cancel()
 			return fmt.Errorf("application error: %w", err)
 		}
-		// Normal shutdown (err == nil)
-		cancel()
 	}
 
 	logging.Info("S9S shutdown complete")
@@ -213,50 +232,67 @@ func runRoot(cmd *cobra.Command, _ []string) error {
 // applyAutoDiscovery attempts to auto-discover slurmrestd endpoint and token
 // when they are not explicitly configured
 func applyAutoDiscovery(ctx context.Context, cfg *config.Config) *config.Config {
-	// Skip if endpoint is already configured
+	// If endpoint is configured, just try to discover token
 	if cfg.Cluster.Endpoint != "" {
-		// But still try to discover token if not set
-		if cfg.Cluster.Token == "" && cfg.Discovery.EnableToken {
-			if token := discoverToken(ctx, cfg); token != "" {
-				cfg.Cluster.Token = token
-				logging.Info("Auto-discovered SLURM token")
-			}
-		}
+		applyTokenDiscovery(ctx, cfg)
 		return cfg
 	}
 
-	// Try to discover endpoint
-	if cfg.Discovery.EnableEndpoint {
-		endpoint := discoverEndpoint(ctx, cfg)
-		if endpoint != nil {
-			cfg.Cluster.Endpoint = endpoint.URL
-			logging.Infof("Auto-discovered slurmrestd endpoint: %s (source: %s)", endpoint.URL, endpoint.Source)
+	// Discover endpoint and configure if found
+	applyEndpointDiscovery(ctx, cfg)
 
-			// Set API version if not already set
-			if cfg.Cluster.APIVersion == "" {
-				cfg.Cluster.APIVersion = "v0.0.43"
-			}
-
-			// Create a default context if none exists
-			if len(cfg.Contexts) == 0 {
-				cfg.Contexts = append(cfg.Contexts, config.ContextConfig{
-					Name:    "default",
-					Cluster: cfg.Cluster,
-				})
-				cfg.CurrentContext = "default"
-			}
-		}
+	// Try to discover token if still not set
+	if cfg.Cluster.Token == "" {
+		applyTokenDiscovery(ctx, cfg)
 	}
 
-	// Try to discover token if not set
+	return cfg
+}
+
+// applyTokenDiscovery discovers and applies SLURM token if enabled
+func applyTokenDiscovery(ctx context.Context, cfg *config.Config) {
 	if cfg.Cluster.Token == "" && cfg.Discovery.EnableToken {
 		if token := discoverToken(ctx, cfg); token != "" {
 			cfg.Cluster.Token = token
 			logging.Info("Auto-discovered SLURM token")
 		}
 	}
+}
 
-	return cfg
+// applyEndpointDiscovery discovers and applies slurmrestd endpoint if enabled
+func applyEndpointDiscovery(ctx context.Context, cfg *config.Config) {
+	if !cfg.Discovery.EnableEndpoint {
+		return
+	}
+
+	endpoint := discoverEndpoint(ctx, cfg)
+	if endpoint == nil {
+		return
+	}
+
+	cfg.Cluster.Endpoint = endpoint.URL
+	logging.Infof("Auto-discovered slurmrestd endpoint: %s (source: %s)", endpoint.URL, endpoint.Source)
+
+	setDefaultAPIVersion(cfg)
+	ensureDefaultContext(cfg)
+}
+
+// setDefaultAPIVersion sets API version if not already configured
+func setDefaultAPIVersion(cfg *config.Config) {
+	if cfg.Cluster.APIVersion == "" {
+		cfg.Cluster.APIVersion = "v0.0.43"
+	}
+}
+
+// ensureDefaultContext creates a default context if none exists
+func ensureDefaultContext(cfg *config.Config) {
+	if len(cfg.Contexts) == 0 {
+		cfg.Contexts = append(cfg.Contexts, config.ContextConfig{
+			Name:    "default",
+			Cluster: cfg.Cluster,
+		})
+		cfg.CurrentContext = "default"
+	}
 }
 
 // discoverEndpoint attempts to discover the slurmrestd endpoint

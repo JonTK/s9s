@@ -479,27 +479,7 @@ func (pd *PerformanceDashboard) generateTrendLine(data []float64, width int) str
 	for i := 0; i < len(data); i += step {
 		value := data[i]
 		height := int((value / maxVal) * 8)
-
-		switch height {
-		case 0:
-			line += "_"
-		case 1:
-			line += "▁"
-		case 2:
-			line += "▂"
-		case 3:
-			line += "▃"
-		case 4:
-			line += "▄"
-		case 5:
-			line += "▅"
-		case 6:
-			line += "▆"
-		case 7:
-			line += "▇"
-		default:
-			line += "█"
-		}
+		line += pd.getSparklineChar(height)
 
 		if len(line) >= width {
 			break
@@ -507,6 +487,15 @@ func (pd *PerformanceDashboard) generateTrendLine(data []float64, width int) str
 	}
 
 	return line
+}
+
+// getSparklineChar returns the appropriate sparkline character for a given height level
+func (pd *PerformanceDashboard) getSparklineChar(height int) string {
+	chars := []string{"_", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"}
+	if height < 0 || height >= len(chars) {
+		return "█"
+	}
+	return chars[height]
 }
 
 // calculateAverage calculates the average of a slice
@@ -603,42 +592,42 @@ func (pd *PerformanceDashboard) updateAlerts(cpuUsage, memUsage, netUsage, opsRa
 	alerts := []string{}
 	recommendations := []string{}
 
-	// Check CPU alerts
-	if cpuUsage >= pd.thresholds.CPUCritical {
-		alerts = append(alerts, fmt.Sprintf("[red]🚨 CRITICAL: CPU usage at %.1f%%[white]", cpuUsage))
-		recommendations = append(recommendations, "[yellow]• Consider enabling CPU optimization[white]")
-		recommendations = append(recommendations, "[yellow]• Reduce concurrent operations[white]")
-	} else if cpuUsage >= pd.thresholds.CPUWarning {
-		alerts = append(alerts, fmt.Sprintf("[yellow]⚠️  WARNING: CPU usage at %.1f%%[white]", cpuUsage))
-	}
+	// Check metrics and collect alerts
+	pd.checkMetricAlert("CPU usage", cpuUsage, pd.thresholds.CPUCritical, pd.thresholds.CPUWarning, "%",
+		[]string{"[yellow]• Consider enabling CPU optimization[white]", "[yellow]• Reduce concurrent operations[white]"},
+		&alerts, &recommendations)
 
-	// Check Memory alerts
-	if memUsage >= pd.thresholds.MemoryCritical {
-		alerts = append(alerts, fmt.Sprintf("[red]🚨 CRITICAL: Memory usage at %.1f%%[white]", memUsage))
-		recommendations = append(recommendations, "[yellow]• Enable garbage collection optimization[white]")
-		recommendations = append(recommendations, "[yellow]• Clear unnecessary caches[white]")
-	} else if memUsage >= pd.thresholds.MemoryWarning {
-		alerts = append(alerts, fmt.Sprintf("[yellow]⚠️  WARNING: Memory usage at %.1f%%[white]", memUsage))
-	}
+	pd.checkMetricAlert("Memory usage", memUsage, pd.thresholds.MemoryCritical, pd.thresholds.MemoryWarning, "%",
+		[]string{"[yellow]• Enable garbage collection optimization[white]", "[yellow]• Clear unnecessary caches[white]"},
+		&alerts, &recommendations)
 
-	// Check Network alerts
-	if netUsage >= pd.thresholds.NetworkCritical {
-		alerts = append(alerts, fmt.Sprintf("[red]🚨 CRITICAL: Network usage at %.1f MB/s[white]", netUsage))
-		recommendations = append(recommendations, "[yellow]• Consider connection pooling[white]")
-	} else if netUsage >= pd.thresholds.NetworkWarning {
-		alerts = append(alerts, fmt.Sprintf("[yellow]⚠️  WARNING: High network usage %.1f MB/s[white]", netUsage))
-	}
+	pd.checkMetricAlert("Network usage", netUsage, pd.thresholds.NetworkCritical, pd.thresholds.NetworkWarning, " MB/s",
+		[]string{"[yellow]• Consider connection pooling[white]"},
+		&alerts, &recommendations)
 
-	// Check Operations alerts
-	if opsRate >= pd.thresholds.OpsCritical {
-		alerts = append(alerts, fmt.Sprintf("[red]🚨 CRITICAL: High operation rate %.1f/sec[white]", opsRate))
-		recommendations = append(recommendations, "[yellow]• Enable operation batching[white]")
-	} else if opsRate >= pd.thresholds.OpsWarning {
-		alerts = append(alerts, fmt.Sprintf("[yellow]⚠️  WARNING: High operation rate %.1f/sec[white]", opsRate))
-	}
+	pd.checkMetricAlert("High operation rate", opsRate, pd.thresholds.OpsCritical, pd.thresholds.OpsWarning, "/sec",
+		[]string{"[yellow]• Enable operation batching[white]"},
+		&alerts, &recommendations)
 
-	// Build alerts text
+	// Build alert text
+	alertText := pd.buildAlertText(alerts, recommendations)
+	pd.alertsPanel.SetText(alertText)
+}
+
+// checkMetricAlert evaluates a metric against thresholds and updates alerts
+func (pd *PerformanceDashboard) checkMetricAlert(metric string, value, critical, warning float64, unit string, criticalRecs []string, alerts, recommendations *[]string) {
+	if value >= critical {
+		*alerts = append(*alerts, fmt.Sprintf("[red]🚨 CRITICAL: %s at %.1f%s[white]", metric, value, unit))
+		*recommendations = append(*recommendations, criticalRecs...)
+	} else if value >= warning {
+		*alerts = append(*alerts, fmt.Sprintf("[yellow]⚠️  WARNING: %s at %.1f%s[white]", metric, value, unit))
+	}
+}
+
+// buildAlertText constructs the alert panel text
+func (pd *PerformanceDashboard) buildAlertText(alerts, recommendations []string) string {
 	var alertText string
+
 	if len(alerts) == 0 {
 		alertText = "[green]✅ All systems operating normally[white]\n\n"
 	} else {
@@ -649,7 +638,6 @@ func (pd *PerformanceDashboard) updateAlerts(cpuUsage, memUsage, netUsage, opsRa
 		alertText += "\n"
 	}
 
-	// Add recommendations
 	if len(recommendations) > 0 {
 		alertText += "💡 RECOMMENDATIONS:\n"
 		for _, rec := range recommendations {
@@ -658,12 +646,11 @@ func (pd *PerformanceDashboard) updateAlerts(cpuUsage, memUsage, netUsage, opsRa
 		alertText += "\n"
 	}
 
-	// Add controls help
 	alertText += "[gray]CONTROLS:[white]\n"
 	alertText += "[gray]F5/R: Refresh • Ctrl+O/O: Toggle auto-optimize[white]\n"
 	alertText += "[gray]Ctrl+A/A: Toggle alerts • C: Clear history[white]"
 
-	pd.alertsPanel.SetText(alertText)
+	return alertText
 }
 
 // performAutoOptimization applies automatic optimizations based on metrics

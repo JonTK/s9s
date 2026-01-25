@@ -94,69 +94,103 @@ func (tp *TerminalPane) handleInput(event *tcell.EventKey) *tcell.EventKey {
 
 	tp.lastActivity = time.Now()
 
-	switch event.Key() {
-	case tcell.KeyEnter:
-		if tp.inputMode {
-			command := tp.inputBuffer.String()
-			tp.inputBuffer.Reset()
-			tp.executeCommand(command)
-			return nil
-		}
-
-	case tcell.KeyBackspace, tcell.KeyBackspace2:
-		if tp.inputMode && tp.inputBuffer.Len() > 0 {
-			current := tp.inputBuffer.String()
-			if len(current) > 0 {
-				tp.inputBuffer.Reset()
-				tp.inputBuffer.WriteString(current[:len(current)-1])
-				tp.updatePrompt()
-			}
-			return nil
-		}
-
-	case tcell.KeyCtrlC:
-		if tp.inputMode {
-			tp.inputBuffer.Reset()
-			tp.addOutput("[red]^C[white]\n")
-			tp.showPrompt()
-			return nil
-		}
-
-	case tcell.KeyCtrlD:
-		if tp.inputMode && tp.inputBuffer.Len() == 0 {
-			tp.addOutput("[yellow]logout[white]\n")
-			tp.disconnect()
-			return nil
-		}
-
-	case tcell.KeyRune:
-		if tp.inputMode {
-			tp.inputBuffer.WriteRune(event.Rune())
-			tp.updatePrompt()
-			return nil
-		}
-
-		// Handle special characters when not in input mode
-		switch event.Rune() {
-		case 'i', 'I':
-			tp.enterInputMode()
-			return nil
-		case 'c', 'C':
-			tp.connect()
-			return nil
-		case 'd', 'D':
-			tp.disconnect()
-			return nil
-		case 'r', 'R':
-			tp.reconnect()
-			return nil
-		case 'h', 'H':
-			tp.showHelp()
-			return nil
-		}
+	if tp.processKeyEvent(event) {
+		return nil
 	}
 
 	return event
+}
+
+// processKeyEvent handles the dispatch of different key types
+func (tp *TerminalPane) processKeyEvent(event *tcell.EventKey) bool {
+	switch event.Key() {
+	case tcell.KeyEnter:
+		return tp.handleEnterKey()
+	case tcell.KeyBackspace, tcell.KeyBackspace2:
+		return tp.handleBackspaceKey()
+	case tcell.KeyCtrlC:
+		return tp.handleCtrlCKey()
+	case tcell.KeyCtrlD:
+		return tp.handleCtrlDKey()
+	case tcell.KeyRune:
+		return tp.handleRuneKey(event.Rune())
+	}
+	return false
+}
+
+func (tp *TerminalPane) handleEnterKey() bool {
+	if !tp.inputMode {
+		return false
+	}
+
+	command := tp.inputBuffer.String()
+	tp.inputBuffer.Reset()
+	tp.executeCommand(command)
+	return true
+}
+
+func (tp *TerminalPane) handleBackspaceKey() bool {
+	if !tp.inputMode || tp.inputBuffer.Len() == 0 {
+		return false
+	}
+
+	current := tp.inputBuffer.String()
+	if len(current) > 0 {
+		tp.inputBuffer.Reset()
+		tp.inputBuffer.WriteString(current[:len(current)-1])
+		tp.updatePrompt()
+	}
+	return true
+}
+
+func (tp *TerminalPane) handleCtrlCKey() bool {
+	if !tp.inputMode {
+		return false
+	}
+
+	tp.inputBuffer.Reset()
+	tp.addOutput("[red]^C[white]\n")
+	tp.showPrompt()
+	return true
+}
+
+func (tp *TerminalPane) handleCtrlDKey() bool {
+	if !tp.inputMode || tp.inputBuffer.Len() > 0 {
+		return false
+	}
+
+	tp.addOutput("[yellow]logout[white]\n")
+	tp.disconnect()
+	return true
+}
+
+func (tp *TerminalPane) handleRuneKey(r rune) bool {
+	if tp.inputMode {
+		tp.inputBuffer.WriteRune(r)
+		tp.updatePrompt()
+		return true
+	}
+
+	// Handle special characters when not in input mode
+	handlers := map[rune]func(){
+		'i': tp.enterInputMode,
+		'I': tp.enterInputMode,
+		'c': tp.connect,
+		'C': tp.connect,
+		'd': tp.disconnect,
+		'D': tp.disconnect,
+		'r': tp.reconnect,
+		'R': tp.reconnect,
+		'h': tp.showHelp,
+		'H': tp.showHelp,
+	}
+
+	if handler, ok := handlers[r]; ok {
+		handler()
+		return true
+	}
+
+	return false
 }
 
 // executeCommand executes a command in the terminal
@@ -166,40 +200,77 @@ func (tp *TerminalPane) executeCommand(command string) {
 		return
 	}
 
-	// Add to history
-	tp.commandHistory = append(tp.commandHistory, command)
-	if len(tp.commandHistory) > 100 {
-		tp.commandHistory = tp.commandHistory[1:]
-	}
+	tp.addCommandToHistory(command)
+	tp.displayCommand(command)
 
-	// Display command
-	tp.addOutput(fmt.Sprintf("[green]%s@%s[white]:[blue]~[white]$ %s\n", tp.username, tp.hostname, command))
-
-	// Handle built-in commands
-	switch {
-	case command == "exit" || command == "logout":
-		tp.addOutput("[yellow]logout[white]\n")
-		tp.disconnect()
-		return
-
-	case command == "clear":
-		tp.clearTerminal()
-		tp.showPrompt()
-		return
-
-	case command == "help":
-		tp.showHelp()
-		tp.showPrompt()
-		return
-
-	case strings.HasPrefix(command, "echo "):
-		message := strings.TrimPrefix(command, "echo ")
-		tp.addOutput(fmt.Sprintf("%s\n", message))
-		tp.showPrompt()
+	// Try built-in commands first
+	if tp.tryHandleBuiltinCommand(command) {
 		return
 	}
 
 	// Execute remote command if connected
+	tp.executeOrShowConnectionError(command)
+}
+
+// addCommandToHistory adds a command to the history with max size limit
+func (tp *TerminalPane) addCommandToHistory(command string) {
+	tp.commandHistory = append(tp.commandHistory, command)
+	if len(tp.commandHistory) > 100 {
+		tp.commandHistory = tp.commandHistory[1:]
+	}
+}
+
+// displayCommand displays the executed command in the terminal
+func (tp *TerminalPane) displayCommand(command string) {
+	tp.addOutput(fmt.Sprintf("[green]%s@%s[white]:[blue]~[white]$ %s\n", tp.username, tp.hostname, command))
+}
+
+// tryHandleBuiltinCommand tries to handle a built-in command
+func (tp *TerminalPane) tryHandleBuiltinCommand(command string) bool {
+	switch {
+	case command == "exit" || command == "logout":
+		tp.handleExitCommand()
+		return true
+	case command == "clear":
+		tp.handleClearCommand()
+		return true
+	case command == "help":
+		tp.handleHelpCommand()
+		return true
+	case strings.HasPrefix(command, "echo "):
+		tp.handleEchoCommand(command)
+		return true
+	}
+	return false
+}
+
+// handleExitCommand handles exit/logout built-in command
+func (tp *TerminalPane) handleExitCommand() {
+	tp.addOutput("[yellow]logout[white]\n")
+	tp.disconnect()
+}
+
+// handleClearCommand handles clear built-in command
+func (tp *TerminalPane) handleClearCommand() {
+	tp.clearTerminal()
+	tp.showPrompt()
+}
+
+// handleHelpCommand handles help built-in command
+func (tp *TerminalPane) handleHelpCommand() {
+	tp.showHelp()
+	tp.showPrompt()
+}
+
+// handleEchoCommand handles echo built-in command
+func (tp *TerminalPane) handleEchoCommand(command string) {
+	message := strings.TrimPrefix(command, "echo ")
+	tp.addOutput(fmt.Sprintf("%s\n", message))
+	tp.showPrompt()
+}
+
+// executeOrShowConnectionError executes remote command or shows connection error
+func (tp *TerminalPane) executeOrShowConnectionError(command string) {
 	if tp.connected && tp.sessionManager != nil && tp.sessionID != "" {
 		tp.executeRemoteCommand(command)
 	} else {

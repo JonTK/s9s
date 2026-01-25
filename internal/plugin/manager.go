@@ -31,7 +31,6 @@ type State struct {
 	RestartCount int
 }
 
-//nolint:revive // type alias for backward compatibility
 type PluginState = State
 
 // NewManager creates a new plugin manager
@@ -145,21 +144,46 @@ func (m *Manager) DisablePlugin(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Validate plugin exists and is enabled
+	plugin, state, err := m.getAndValidatePlugin(name)
+	if err != nil {
+		return err
+	}
+
+	// Check if other plugins depend on this one
+	if err := m.checkPluginDependencies(name); err != nil {
+		return err
+	}
+
+	// Perform disable operations
+	m.performPluginDisable(name, plugin, state)
+
+	debug.Logger.Printf("Disabled plugin: %s", name)
+	return nil
+}
+
+// getAndValidatePlugin retrieves a plugin and validates it's enabled
+func (m *Manager) getAndValidatePlugin(name string) (Plugin, PluginState, error) {
 	plugin, exists := m.plugins[name]
 	if !exists {
-		return fmt.Errorf("plugin %s not found", name)
+		return nil, PluginState{}, fmt.Errorf("plugin %s not found", name)
 	}
 
 	state := m.states[name]
 	if !state.Enabled {
-		return fmt.Errorf("plugin %s not enabled", name)
+		return nil, state, fmt.Errorf("plugin %s not enabled", name)
 	}
 
-	// Check if other plugins depend on this one
+	return plugin, state, nil
+}
+
+// checkPluginDependencies checks if other plugins depend on this one
+func (m *Manager) checkPluginDependencies(name string) error {
 	for otherName, otherPlugin := range m.plugins {
 		if otherName == name {
 			continue
 		}
+
 		otherState := m.states[otherName]
 		if !otherState.Enabled {
 			continue
@@ -172,7 +196,11 @@ func (m *Manager) DisablePlugin(name string) error {
 			}
 		}
 	}
+	return nil
+}
 
+// performPluginDisable handles lifecycle hooks and stopping the plugin
+func (m *Manager) performPluginDisable(name string, plugin Plugin, state PluginState) {
 	// Call lifecycle hook if implemented
 	if lifecycle, ok := plugin.(LifecycleAware); ok {
 		if err := lifecycle.OnDisable(m.ctx); err != nil {
@@ -183,16 +211,12 @@ func (m *Manager) DisablePlugin(name string) error {
 	// Stop plugin
 	if err := plugin.Stop(m.ctx); err != nil {
 		debug.Logger.Printf("Error stopping plugin %s: %v", name, err)
-		// Continue with disable even if stop fails
 	}
 
 	// Update state
 	state.Enabled = false
 	state.Running = false
 	m.states[name] = state
-
-	debug.Logger.Printf("Disabled plugin: %s", name)
-	return nil
 }
 
 // GetPlugin returns a plugin by name
@@ -397,61 +421,73 @@ func (m *Manager) Stop() error {
 	m.cancel()
 
 	// Stop all plugins in reverse dependency order
-	stopped := make(map[string]bool)
-
-	for {
-		stoppedAny := false
-
-		for name, plugin := range m.plugins {
-			if stopped[name] {
-				continue
-			}
-
-			state := m.states[name]
-			if !state.Running {
-				stopped[name] = true
-				continue
-			}
-
-			// Check if any plugins depend on this one
-			canStop := true
-			for otherName, otherPlugin := range m.plugins {
-				if stopped[otherName] || otherName == name {
-					continue
-				}
-
-				otherInfo := otherPlugin.GetInfo()
-				for _, req := range otherInfo.Requires {
-					if req == name {
-						canStop = false
-						break
-					}
-				}
-				if !canStop {
-					break
-				}
-			}
-
-			if canStop {
-				debug.Logger.Printf("Stopping plugin: %s", name)
-				if err := plugin.Stop(context.Background()); err != nil {
-					debug.Logger.Printf("Error stopping plugin %s: %v", name, err)
-				}
-				stopped[name] = true
-				stoppedAny = true
-			}
-		}
-
-		if !stoppedAny {
-			break
-		}
-	}
+	m.stopPluginsInOrder()
 
 	debug.Logger.Printf("Plugin manager stopped")
 	return nil
 }
 
-//nolint:revive // type alias for backward compatibility
+func (m *Manager) stopPluginsInOrder() {
+	stopped := make(map[string]bool)
+
+	for {
+		stoppedAny := m.stopAvailablePlugins(stopped)
+		if !stoppedAny {
+			break
+		}
+	}
+}
+
+func (m *Manager) stopAvailablePlugins(stopped map[string]bool) bool {
+	stoppedAny := false
+
+	for name, plugin := range m.plugins {
+		if stopped[name] {
+			continue
+		}
+
+		// Mark non-running plugins as stopped
+		state := m.states[name]
+		if !state.Running {
+			stopped[name] = true
+			continue
+		}
+
+		// Check if we can stop this plugin
+		if m.canStopPlugin(name, stopped) {
+			m.stopSinglePlugin(name, plugin)
+			stopped[name] = true
+			stoppedAny = true
+		}
+	}
+
+	return stoppedAny
+}
+
+func (m *Manager) canStopPlugin(name string, stopped map[string]bool) bool {
+	for otherName, otherPlugin := range m.plugins {
+		if stopped[otherName] || otherName == name {
+			continue
+		}
+
+		otherInfo := otherPlugin.GetInfo()
+		for _, req := range otherInfo.Requires {
+			if req == name {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (m *Manager) stopSinglePlugin(name string, plugin Plugin) {
+	debug.Logger.Printf("Stopping plugin: %s", name)
+	if err := plugin.Stop(context.Background()); err != nil {
+		debug.Logger.Printf("Error stopping plugin %s: %v", name, err)
+	}
+}
+
 // PluginInfo combines plugin info with runtime state
 type PluginInfo struct {
 	Info    Info

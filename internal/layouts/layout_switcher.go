@@ -236,7 +236,19 @@ func (ls *LayoutSwitcher) generateLayoutDiagram(layout *Layout) string {
 		return "Invalid grid dimensions"
 	}
 
-	// Create grid
+	grid := ls.initializeGrid(layout)
+	ls.placeWidgetsInGrid(layout, grid)
+
+	var diagram strings.Builder
+	diagram.WriteString(ls.generateGridBorders(layout))
+	diagram.WriteString(ls.generateGridContent(layout, grid))
+	diagram.WriteString(ls.generateLegend(layout))
+
+	return diagram.String()
+}
+
+// initializeGrid creates an empty grid filled with dots
+func (ls *LayoutSwitcher) initializeGrid(layout *Layout) [][]string {
 	grid := make([][]string, layout.Grid.Rows)
 	for i := range grid {
 		grid[i] = make([]string, layout.Grid.Columns)
@@ -244,8 +256,11 @@ func (ls *LayoutSwitcher) generateLayoutDiagram(layout *Layout) string {
 			grid[i][j] = "."
 		}
 	}
+	return grid
+}
 
-	// Place widgets
+// placeWidgetsInGrid fills the grid with widget characters
+func (ls *LayoutSwitcher) placeWidgetsInGrid(layout *Layout, grid [][]string) {
 	widgetChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	widgetIndex := 0
 
@@ -254,61 +269,72 @@ func (ls *LayoutSwitcher) generateLayoutDiagram(layout *Layout) string {
 			continue
 		}
 
-		char := "?"
-		if widgetIndex < len(widgetChars) {
-			char = string(widgetChars[widgetIndex])
-		}
-
-		// Fill widget area
+		char := ls.getWidgetChar(widgetIndex, widgetChars)
 		for r := widget.Row; r < widget.Row+widget.RowSpan && r < layout.Grid.Rows; r++ {
 			for c := widget.Column; c < widget.Column+widget.ColSpan && c < layout.Grid.Columns; c++ {
 				grid[r][c] = char
 			}
 		}
-
 		widgetIndex++
 	}
+}
 
-	// Generate ASCII
-	var diagram strings.Builder
-	diagram.WriteString("┌")
-	for c := 0; c < layout.Grid.Columns; c++ {
-		diagram.WriteString("─")
+// getWidgetChar returns the character for a widget index
+func (ls *LayoutSwitcher) getWidgetChar(index int, chars string) string {
+	if index < len(chars) {
+		return string(chars[index])
 	}
-	diagram.WriteString("┐\n")
+	return "?"
+}
 
+// generateGridBorders creates the top and bottom borders
+func (ls *LayoutSwitcher) generateGridBorders(layout *Layout) string {
+	border := "┌"
+	for c := 0; c < layout.Grid.Columns; c++ {
+		border += "─"
+	}
+	border += "┐\n"
+	return border
+}
+
+// generateGridContent generates the grid rows with widget characters
+func (ls *LayoutSwitcher) generateGridContent(layout *Layout, grid [][]string) string {
+	var content strings.Builder
 	for r := 0; r < layout.Grid.Rows; r++ {
-		diagram.WriteString("│")
+		content.WriteString("│")
 		for c := 0; c < layout.Grid.Columns; c++ {
-			diagram.WriteString(grid[r][c])
+			content.WriteString(grid[r][c])
 		}
-		diagram.WriteString("│\n")
+		content.WriteString("│\n")
 	}
 
-	diagram.WriteString("└")
+	content.WriteString("└")
 	for c := 0; c < layout.Grid.Columns; c++ {
-		diagram.WriteString("─")
+		content.WriteString("─")
 	}
-	diagram.WriteString("┘\n")
+	content.WriteString("┘\n")
 
-	// Add legend
-	diagram.WriteString("\n[blue]Legend:[white]\n")
-	widgetIndex = 0
+	return content.String()
+}
+
+// generateLegend creates the widget legend
+func (ls *LayoutSwitcher) generateLegend(layout *Layout) string {
+	widgetChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	var legend strings.Builder
+	legend.WriteString("\n[blue]Legend:[white]\n")
+
+	widgetIndex := 0
 	for _, widget := range layout.Widgets {
 		if !widget.Visible {
 			continue
 		}
 
-		char := "?"
-		if widgetIndex < len(widgetChars) {
-			char = string(widgetChars[widgetIndex])
-		}
-
-		diagram.WriteString(fmt.Sprintf("  %s = %s\n", char, widget.WidgetID))
+		char := ls.getWidgetChar(widgetIndex, widgetChars)
+		legend.WriteString(fmt.Sprintf("  %s = %s\n", char, widget.WidgetID))
 		widgetIndex++
 	}
 
-	return diagram.String()
+	return legend.String()
 }
 
 // switchToLayout switches to the selected layout

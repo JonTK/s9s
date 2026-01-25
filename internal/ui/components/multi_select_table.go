@@ -278,63 +278,81 @@ func (mst *MultiSelectTable) handleMultiSelectInput(event *tcell.EventKey) *tcel
 	selectAllState := mst.selectAllState
 	mst.mu.RUnlock()
 
+	// Handle multi-select mode shortcuts
 	if multiSelectMode {
-		switch event.Key() {
-		case tcell.KeyCtrlA:
-			// Select all
-			if selectAllState == 2 {
-				mst.ClearSelection()
-			} else {
-				mst.SelectAll()
-			}
+		if handled := mst.handleMultiSelectShortcuts(event, selectAllState); handled {
 			return nil
-
-		case tcell.KeyDelete, tcell.KeyBackspace2:
-			// Clear selection
-			mst.ClearSelection()
-			return nil
-
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case ' ':
-				// Toggle current row
-				currentRow, _ := mst.GetSelection()
-				mst.ToggleRow(currentRow)
-				return nil
-			case 'a', 'A':
-				// Select all (alternative to Ctrl+A)
-				if selectAllState == 2 {
-					mst.ClearSelection()
-				} else {
-					mst.SelectAll()
-				}
-				return nil
-			case 'n', 'N':
-				// Clear selection (none)
-				mst.ClearSelection()
-				return nil
-			case 'i', 'I':
-				// Invert selection
-				mst.InvertSelection()
-				return nil
-			}
 		}
 	}
 
 	// Handle vim-style navigation
-	if event.Key() == tcell.KeyRune {
-		switch event.Rune() {
-		case 'j':
-			// Move down (like ArrowDown)
-			return mst.handleInput(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
-		case 'k':
-			// Move up (like ArrowUp)
-			return mst.handleInput(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
-		}
+	if handled := mst.handleVimNavigation(event); handled {
+		return nil
 	}
 
 	// Let the base table handle other input
 	return mst.handleInput(event)
+}
+
+// handleMultiSelectShortcuts processes multi-select mode keyboard shortcuts
+func (mst *MultiSelectTable) handleMultiSelectShortcuts(event *tcell.EventKey, selectAllState int) bool {
+	switch event.Key() {
+	case tcell.KeyCtrlA:
+		mst.toggleSelectAll(selectAllState)
+		return true
+	case tcell.KeyDelete, tcell.KeyBackspace2:
+		mst.ClearSelection()
+		return true
+	case tcell.KeyRune:
+		return mst.handleMultiSelectRune(event.Rune(), selectAllState)
+	}
+	return false
+}
+
+// handleMultiSelectRune processes character shortcuts for multi-select mode
+func (mst *MultiSelectTable) handleMultiSelectRune(r rune, selectAllState int) bool {
+	switch r {
+	case ' ':
+		currentRow, _ := mst.GetSelection()
+		mst.ToggleRow(currentRow)
+		return true
+	case 'a', 'A':
+		mst.toggleSelectAll(selectAllState)
+		return true
+	case 'n', 'N':
+		mst.ClearSelection()
+		return true
+	case 'i', 'I':
+		mst.InvertSelection()
+		return true
+	}
+	return false
+}
+
+// toggleSelectAll toggles between select all and clear all
+func (mst *MultiSelectTable) toggleSelectAll(selectAllState int) {
+	if selectAllState == 2 {
+		mst.ClearSelection()
+	} else {
+		mst.SelectAll()
+	}
+}
+
+// handleVimNavigation processes vim-style navigation keys
+func (mst *MultiSelectTable) handleVimNavigation(event *tcell.EventKey) bool {
+	if event.Key() != tcell.KeyRune {
+		return false
+	}
+
+	switch event.Rune() {
+	case 'j':
+		mst.handleInput(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
+		return true
+	case 'k':
+		mst.handleInput(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+		return true
+	}
+	return false
 }
 
 // InvertSelection inverts the current selection
@@ -406,80 +424,98 @@ func (mst *MultiSelectTable) refreshDisplay() {
 		return
 	}
 
-	// Add header row with select-all checkbox if in multi-select mode
+	// Render header row
+	headerRow := mst.renderHeaderRow()
+
+	// Render data rows
+	mst.renderDataRows(headerRow)
+}
+
+// renderHeaderRow adds the header row to the table
+func (mst *MultiSelectTable) renderHeaderRow() int {
 	headerRow := 0
-	if mst.config.ShowHeader {
-		for col, column := range mst.config.Columns {
-			if column.Hidden {
-				continue
-			}
-
-			var cellText string
-			if col == 0 && mst.multiSelectMode && mst.showCheckboxes {
-				// Add select-all checkbox in first column header
-				selectAllIcon := mst.getSelectAllIcon()
-				cellText = fmt.Sprintf("%s %s", selectAllIcon, column.Name)
-			} else {
-				cellText = column.Name
-			}
-
-			cell := tview.NewTableCell(cellText).
-				SetTextColor(mst.config.HeaderColor).
-				SetAlign(column.Alignment).
-				SetSelectable(false).
-				SetExpansion(1)
-
-			mst.SetCell(headerRow, col, cell)
-		}
-		headerRow++
+	if !mst.config.ShowHeader {
+		return headerRow
 	}
 
-	// Access filteredData (already protected by Table.mu.Lock above)
+	for col, column := range mst.config.Columns {
+		if column.Hidden {
+			continue
+		}
+
+		var cellText string
+		if col == 0 && mst.multiSelectMode && mst.showCheckboxes {
+			selectAllIcon := mst.getSelectAllIcon()
+			cellText = fmt.Sprintf("%s %s", selectAllIcon, column.Name)
+		} else {
+			cellText = column.Name
+		}
+
+		cell := tview.NewTableCell(cellText).
+			SetTextColor(mst.config.HeaderColor).
+			SetAlign(column.Alignment).
+			SetSelectable(false).
+			SetExpansion(1)
+
+		mst.SetCell(headerRow, col, cell)
+	}
+	return 1
+}
+
+// renderDataRows adds all data rows to the table
+func (mst *MultiSelectTable) renderDataRows(headerRow int) {
 	filteredData := mst.filteredData
 
-	// Add data rows with selection indicators
 	for rowIndex, rowData := range filteredData {
 		displayRow := headerRow + rowIndex
+		mst.renderRow(displayRow, rowIndex, rowData)
+	}
+}
 
-		for col, cellData := range rowData {
-			if col >= len(mst.config.Columns) {
-				break
-			}
+// renderRow renders a single data row with proper styling and checkboxes
+func (mst *MultiSelectTable) renderRow(displayRow, rowIndex int, rowData []string) {
+	for col, cellData := range rowData {
+		if col >= len(mst.config.Columns) {
+			break
+		}
 
-			column := mst.config.Columns[col]
-			if column.Hidden {
-				continue
-			}
+		column := mst.config.Columns[col]
+		if column.Hidden {
+			continue
+		}
 
-			var cellText string
-			if col == 0 && mst.multiSelectMode && mst.showCheckboxes {
-				// Add selection checkbox in first column
-				checkboxIcon := mst.getCheckboxIcon(mst.selectedRows[rowIndex])
-				cellText = fmt.Sprintf("%s %s", checkboxIcon, cellData)
-			} else {
-				cellText = cellData
-			}
+		var cellText string
+		if col == 0 && mst.multiSelectMode && mst.showCheckboxes {
+			checkboxIcon := mst.getCheckboxIcon(mst.selectedRows[rowIndex])
+			cellText = fmt.Sprintf("%s %s", checkboxIcon, cellData)
+		} else {
+			cellText = cellData
+		}
 
-			// Apply row selection styling
-			cell := tview.NewTableCell(cellText).
-				SetAlign(column.Alignment).
-				SetExpansion(1)
+		cell := mst.createStyledCell(cellText, column, rowIndex)
+		mst.SetCell(displayRow, col, cell)
+	}
+}
 
-			if mst.selectedRows[rowIndex] {
-				cell.SetBackgroundColor(tcell.ColorDarkBlue).
-					SetTextColor(tcell.ColorWhite)
-			} else {
-				// Alternate row colors
-				if rowIndex%2 == 0 {
-					cell.SetBackgroundColor(mst.config.EvenRowColor)
-				} else {
-					cell.SetBackgroundColor(mst.config.OddRowColor)
-				}
-			}
+// createStyledCell creates a table cell with proper styling based on selection state
+func (mst *MultiSelectTable) createStyledCell(cellText string, column Column, rowIndex int) *tview.TableCell {
+	cell := tview.NewTableCell(cellText).
+		SetAlign(column.Alignment).
+		SetExpansion(1)
 
-			mst.SetCell(displayRow, col, cell)
+	if mst.selectedRows[rowIndex] {
+		cell.SetBackgroundColor(tcell.ColorDarkBlue).
+			SetTextColor(tcell.ColorWhite)
+	} else {
+		// Alternate row colors
+		if rowIndex%2 == 0 {
+			cell.SetBackgroundColor(mst.config.EvenRowColor)
+		} else {
+			cell.SetBackgroundColor(mst.config.OddRowColor)
 		}
 	}
+
+	return cell
 }
 
 // getCheckboxIcon returns the appropriate checkbox icon
@@ -506,56 +542,75 @@ func (mst *MultiSelectTable) getSelectAllIcon() string {
 
 // SetData sets the table data and maintains selections when data changes.
 func (mst *MultiSelectTable) SetData(data [][]string) {
-	mst.mu.Lock()
-
-	// Store current selections by data content (for persistence across refreshes)
-	var selectedDataContent []string
-	if mst.multiSelectMode && len(mst.selectedRows) > 0 {
-		// Get filtered data through the accessor to respect Table's mutex
-		filteredData := mst.GetFilteredData()
-		for row := range mst.selectedRows {
-			if row < len(filteredData) && len(filteredData[row]) > 0 {
-				// Use first column (usually ID) as identifier
-				selectedDataContent = append(selectedDataContent, filteredData[row][0])
-			}
-		}
-	}
-
-	// Unlock our mutex before calling Table.SetData which will lock Table's mutex
-	mst.mu.Unlock()
+	// Save current selections before data change
+	selectedDataContent := mst.saveCurrentSelections()
 
 	// Update base table data
 	mst.Table.SetData(data)
 
-	// Relock to update our selection state
+	// Restore selections
 	mst.mu.Lock()
 	defer mst.mu.Unlock()
 
-	// Restore selections if multi-select mode is active
-	if mst.multiSelectMode && len(selectedDataContent) > 0 {
-		newSelectedRows := make(map[int]bool)
-		newSelectionCount := 0
+	mst.restoreSelections(selectedDataContent)
+	mst.refreshDisplay()
+}
 
-		// Get updated filtered data through the accessor
-		filteredData := mst.GetFilteredData()
-		for rowIndex, rowData := range filteredData {
-			if len(rowData) > 0 {
-				for _, selectedID := range selectedDataContent {
-					if rowData[0] == selectedID {
-						newSelectedRows[rowIndex] = true
-						newSelectionCount++
-						break
-					}
-				}
-			}
-		}
+// saveCurrentSelections saves the current selections by content for persistence
+func (mst *MultiSelectTable) saveCurrentSelections() []string {
+	mst.mu.Lock()
+	defer mst.mu.Unlock()
 
-		mst.selectedRows = newSelectedRows
-		mst.selectionCount = newSelectionCount
-		mst.updateSelectAllStateUnsafe()
+	var selectedDataContent []string
+	if !mst.multiSelectMode || len(mst.selectedRows) == 0 {
+		return selectedDataContent
 	}
 
-	mst.refreshDisplay()
+	// Get filtered data through the accessor to respect Table's mutex
+	filteredData := mst.GetFilteredData()
+	for row := range mst.selectedRows {
+		if row < len(filteredData) && len(filteredData[row]) > 0 {
+			// Use first column (usually ID) as identifier
+			selectedDataContent = append(selectedDataContent, filteredData[row][0])
+		}
+	}
+
+	return selectedDataContent
+}
+
+// restoreSelections restores selections based on saved data content
+func (mst *MultiSelectTable) restoreSelections(selectedDataContent []string) {
+	if !mst.multiSelectMode || len(selectedDataContent) == 0 {
+		return
+	}
+
+	newSelectedRows := make(map[int]bool)
+	newSelectionCount := 0
+
+	// Get updated filtered data through the accessor
+	filteredData := mst.GetFilteredData()
+	for rowIndex, rowData := range filteredData {
+		if len(rowData) > 0 {
+			if mst.isRowSelected(rowData[0], selectedDataContent) {
+				newSelectedRows[rowIndex] = true
+				newSelectionCount++
+			}
+		}
+	}
+
+	mst.selectedRows = newSelectedRows
+	mst.selectionCount = newSelectionCount
+	mst.updateSelectAllStateUnsafe()
+}
+
+// isRowSelected checks if a row ID is in the selected IDs list
+func (mst *MultiSelectTable) isRowSelected(rowID string, selectedIDs []string) bool {
+	for _, selectedID := range selectedIDs {
+		if rowID == selectedID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetMultiSelectHints returns keyboard hints for multi-select mode

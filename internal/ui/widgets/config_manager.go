@@ -210,27 +210,21 @@ func (cm *ConfigManager) addFormField(field config.ConfigField) {
 		label += "*"
 	}
 
-	switch field.Type {
-	case config.FieldTypeString:
-		cm.addStringField(label, field)
-	case config.FieldTypeInt:
-		cm.addIntField(label, field)
-	case config.FieldTypeBool:
-		cm.addBoolField(label, field)
-	case config.FieldTypeSelect:
-		cm.addSelectField(label, field)
-	case config.FieldTypeArray:
-		cm.addArrayField(label, field)
-	case config.FieldTypeDuration:
-		cm.addDurationField(label, field)
-	case config.FieldTypeContext:
-		cm.addContextField(field)
-	case config.FieldTypeShortcut:
-		cm.addShortcutField(field)
-	case config.FieldTypeAlias:
-		cm.addAliasField(field)
-	case config.FieldTypePlugin:
-		cm.addPluginField(field)
+	fieldAdders := map[config.FieldType]func(){
+		config.FieldTypeString:    func() { cm.addStringField(label, field) },
+		config.FieldTypeInt:       func() { cm.addIntField(label, field) },
+		config.FieldTypeBool:      func() { cm.addBoolField(label, field) },
+		config.FieldTypeSelect:    func() { cm.addSelectField(label, field) },
+		config.FieldTypeArray:     func() { cm.addArrayField(label, field) },
+		config.FieldTypeDuration:  func() { cm.addDurationField(label, field) },
+		config.FieldTypeContext:   func() { cm.addContextField(field) },
+		config.FieldTypeShortcut:  func() { cm.addShortcutField(field) },
+		config.FieldTypeAlias:     func() { cm.addAliasField(field) },
+		config.FieldTypePlugin:    func() { cm.addPluginField(field) },
+	}
+
+	if adder, ok := fieldAdders[field.Type]; ok {
+		adder()
 	}
 }
 
@@ -408,7 +402,22 @@ func (cm *ConfigManager) getNestedValue(obj interface{}, path []string) interfac
 		return nil
 	}
 
-	switch path[0] {
+	field := path[0]
+
+	// Try scalar fields first
+	if len(path) == 1 {
+		if result := cm.getConfigScalarValue(cfg, field); result != nil {
+			return result
+		}
+	}
+
+	// Handle nested structures
+	return cm.getConfigNestedValue(cfg, field, path[1:])
+}
+
+// getConfigScalarValue returns scalar config values
+func (cm *ConfigManager) getConfigScalarValue(cfg *config.Config, field string) interface{} {
+	switch field {
 	case "refreshRate":
 		return cfg.RefreshRate
 	case "maxRetries":
@@ -417,23 +426,29 @@ func (cm *ConfigManager) getNestedValue(obj interface{}, path []string) interfac
 		return cfg.CurrentContext
 	case "useMockClient":
 		return cfg.UseMockClient
+	}
+	return nil
+}
+
+// getConfigNestedValue returns nested config structures
+func (cm *ConfigManager) getConfigNestedValue(cfg *config.Config, field string, path []string) interface{} {
+	switch field {
 	case "ui":
-		if len(path) == 1 {
+		if len(path) == 0 {
 			return cfg.UI
 		}
-		return cm.getUIValue(&cfg.UI, path[1:])
+		return cm.getUIValue(&cfg.UI, path)
 	case "views":
-		if len(path) == 1 {
+		if len(path) == 0 {
 			return cfg.Views
 		}
-		return cm.getViewsValue(&cfg.Views, path[1:])
+		return cm.getViewsValue(&cfg.Views, path)
 	case "features":
-		if len(path) == 1 {
+		if len(path) == 0 {
 			return cfg.Features
 		}
-		return cm.getFeaturesValue(&cfg.Features, path[1:])
+		return cm.getFeaturesValue(&cfg.Features, path)
 	}
-
 	return nil
 }
 
@@ -448,7 +463,21 @@ func (cm *ConfigManager) setNestedValue(obj interface{}, path []string, value in
 		return
 	}
 
-	switch path[0] {
+	field := path[0]
+
+	// Try scalar fields
+	if len(path) == 1 {
+		cm.setConfigScalarValue(cfg, field, value)
+		return
+	}
+
+	// Handle nested structures
+	cm.setConfigNestedValue(cfg, field, path[1:], value)
+}
+
+// setConfigScalarValue sets scalar config values
+func (cm *ConfigManager) setConfigScalarValue(cfg *config.Config, field string, value interface{}) {
+	switch field {
 	case "refreshRate":
 		if v, ok := value.(string); ok {
 			cfg.RefreshRate = v
@@ -465,12 +494,18 @@ func (cm *ConfigManager) setNestedValue(obj interface{}, path []string, value in
 		if v, ok := value.(bool); ok {
 			cfg.UseMockClient = v
 		}
+	}
+}
+
+// setConfigNestedValue sets nested config structure values
+func (cm *ConfigManager) setConfigNestedValue(cfg *config.Config, field string, path []string, value interface{}) {
+	switch field {
 	case "ui":
-		cm.setUIValue(&cfg.UI, path[1:], value)
+		cm.setUIValue(&cfg.UI, path, value)
 	case "views":
-		cm.setViewsValue(&cfg.Views, path[1:], value)
+		cm.setViewsValue(&cfg.Views, path, value)
 	case "features":
-		cm.setFeaturesValue(&cfg.Features, path[1:], value)
+		cm.setFeaturesValue(&cfg.Features, path, value)
 	}
 }
 
@@ -503,27 +538,46 @@ func (cm *ConfigManager) setUIValue(ui *config.UIConfig, path []string, value in
 		return
 	}
 
-	switch path[0] {
-	case "skin":
-		if v, ok := value.(string); ok {
-			ui.Skin = v
-		}
-	case "enableMouse":
-		if v, ok := value.(bool); ok {
-			ui.EnableMouse = v
-		}
-	case "logoless":
-		if v, ok := value.(bool); ok {
-			ui.Logoless = v
-		}
-	case "statusless":
-		if v, ok := value.(bool); ok {
-			ui.Statusless = v
-		}
-	case "noIcons":
-		if v, ok := value.(bool); ok {
-			ui.NoIcons = v
-		}
+	setters := map[string]func(){
+		"skin":        func() { cm.setUISkin(ui, value) },
+		"enableMouse": func() { cm.setUIMouse(ui, value) },
+		"logoless":    func() { cm.setUILogoless(ui, value) },
+		"statusless":  func() { cm.setUIStatusless(ui, value) },
+		"noIcons":     func() { cm.setUIIcons(ui, value) },
+	}
+
+	if setter, ok := setters[path[0]]; ok {
+		setter()
+	}
+}
+
+func (cm *ConfigManager) setUISkin(ui *config.UIConfig, value interface{}) {
+	if v, ok := value.(string); ok {
+		ui.Skin = v
+	}
+}
+
+func (cm *ConfigManager) setUIMouse(ui *config.UIConfig, value interface{}) {
+	if v, ok := value.(bool); ok {
+		ui.EnableMouse = v
+	}
+}
+
+func (cm *ConfigManager) setUILogoless(ui *config.UIConfig, value interface{}) {
+	if v, ok := value.(bool); ok {
+		ui.Logoless = v
+	}
+}
+
+func (cm *ConfigManager) setUIStatusless(ui *config.UIConfig, value interface{}) {
+	if v, ok := value.(bool); ok {
+		ui.Statusless = v
+	}
+}
+
+func (cm *ConfigManager) setUIIcons(ui *config.UIConfig, value interface{}) {
+	if v, ok := value.(bool); ok {
+		ui.NoIcons = v
 	}
 }
 
@@ -580,23 +634,39 @@ func (cm *ConfigManager) setJobsViewValue(jobs *config.JobsViewConfig, path []st
 		return
 	}
 
-	switch path[0] {
-	case "columns":
-		if v, ok := value.([]string); ok {
-			jobs.Columns = v
-		}
-	case "showOnlyActive":
-		if v, ok := value.(bool); ok {
-			jobs.ShowOnlyActive = v
-		}
-	case "defaultSort":
-		if v, ok := value.(string); ok {
-			jobs.DefaultSort = v
-		}
-	case "maxJobs":
-		if v, ok := value.(int); ok {
-			jobs.MaxJobs = v
-		}
+	setters := map[string]func(){
+		"columns":      func() { cm.setJobsColumns(jobs, value) },
+		"showOnlyActive": func() { cm.setJobsShowOnlyActive(jobs, value) },
+		"defaultSort":  func() { cm.setJobsDefaultSort(jobs, value) },
+		"maxJobs":      func() { cm.setJobsMaxJobs(jobs, value) },
+	}
+
+	if setter, ok := setters[path[0]]; ok {
+		setter()
+	}
+}
+
+func (cm *ConfigManager) setJobsColumns(jobs *config.JobsViewConfig, value interface{}) {
+	if v, ok := value.([]string); ok {
+		jobs.Columns = v
+	}
+}
+
+func (cm *ConfigManager) setJobsShowOnlyActive(jobs *config.JobsViewConfig, value interface{}) {
+	if v, ok := value.(bool); ok {
+		jobs.ShowOnlyActive = v
+	}
+}
+
+func (cm *ConfigManager) setJobsDefaultSort(jobs *config.JobsViewConfig, value interface{}) {
+	if v, ok := value.(string); ok {
+		jobs.DefaultSort = v
+	}
+}
+
+func (cm *ConfigManager) setJobsMaxJobs(jobs *config.JobsViewConfig, value interface{}) {
+	if v, ok := value.(int); ok {
+		jobs.MaxJobs = v
 	}
 }
 
@@ -795,7 +865,7 @@ func (cm *ConfigManager) cancelChanges() {
 		cm.currentConfig = cm.copyConfig(cm.originalConfig)
 		cm.hasChanges = false
 		cm.buildForm()
-		cm.updateStatusBar("[gray]Changes cancelled[white]")
+		cm.updateStatusBar("[gray]Changes canceled[white]")
 	}
 
 	if cm.onCancel != nil {

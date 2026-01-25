@@ -235,151 +235,155 @@ func (hm *HealthMonitor) generateAlert(check *HealthCheck) {
 
 // registerDefaultChecks registers the default set of health checks
 func (hm *HealthMonitor) registerDefaultChecks() {
-	// Node health check
-	hm.checks["nodes"] = func(client dao.SlurmClient) *HealthCheck {
-		check := &HealthCheck{
-			Name:        "nodes",
-			Description: "Monitor node availability and health",
-			LastCheck:   time.Now(),
-			Threshold: HealthThreshold{
-				WarningMax:  floatPtr(10.0), // >10% nodes down
-				CriticalMax: floatPtr(25.0), // >25% nodes down
-			},
-		}
+	hm.checks["nodes"] = hm.checkNodes
+	hm.checks["queue"] = hm.checkQueue
+	hm.checks["utilization"] = hm.checkUtilization
+}
 
-		nodeList, err := client.Nodes().List(&dao.ListNodesOptions{})
-		if err != nil {
-			check.Status = HealthStatusUnknown
-			check.Message = fmt.Sprintf("Failed to get node list: %v", err)
-			return check
-		}
+// checkNodes performs a node availability health check
+func (hm *HealthMonitor) checkNodes(client dao.SlurmClient) *HealthCheck {
+	check := &HealthCheck{
+		Name:        "nodes",
+		Description: "Monitor node availability and health",
+		LastCheck:   time.Now(),
+		Threshold: HealthThreshold{
+			WarningMax:  floatPtr(10.0),
+			CriticalMax: floatPtr(25.0),
+		},
+	}
 
-		total := len(nodeList.Nodes)
-		if total == 0 {
-			check.Status = HealthStatusCritical
-			check.Message = "No nodes found in cluster"
-			return check
-		}
-
-		downNodes := 0
-		drainNodes := 0
-		for _, node := range nodeList.Nodes {
-			switch node.State {
-			case dao.NodeStateDown:
-				downNodes++
-			case dao.NodeStateDrain, dao.NodeStateDraining:
-				drainNodes++
-			}
-		}
-
-		unavailablePercent := float64(downNodes+drainNodes) * 100.0 / float64(total)
-
-		switch {
-		case check.Threshold.CriticalMax != nil && unavailablePercent > *check.Threshold.CriticalMax:
-			check.Status = HealthStatusCritical
-			check.Message = fmt.Sprintf("%.1f%% of nodes unavailable (%d down, %d drain out of %d total)",
-				unavailablePercent, downNodes, drainNodes, total)
-		case check.Threshold.WarningMax != nil && unavailablePercent > *check.Threshold.WarningMax:
-			check.Status = HealthStatusWarning
-			check.Message = fmt.Sprintf("%.1f%% of nodes unavailable (%d down, %d drain out of %d total)",
-				unavailablePercent, downNodes, drainNodes, total)
-		default:
-			check.Status = HealthStatusHealthy
-			check.Message = fmt.Sprintf("All nodes healthy (%d total, %d down, %d drain)",
-				total, downNodes, drainNodes)
-		}
-
+	nodeList, err := client.Nodes().List(&dao.ListNodesOptions{})
+	if err != nil {
+		check.Status = HealthStatusUnknown
+		check.Message = fmt.Sprintf("Failed to get node list: %v", err)
 		return check
 	}
 
-	// Job queue health check
-	hm.checks["queue"] = func(client dao.SlurmClient) *HealthCheck {
-		check := &HealthCheck{
-			Name:        "queue",
-			Description: "Monitor job queue depth and wait times",
-			LastCheck:   time.Now(),
-			Threshold: HealthThreshold{
-				WarningMax:  floatPtr(100.0), // >100 pending jobs
-				CriticalMax: floatPtr(500.0), // >500 pending jobs
-			},
-		}
+	total := len(nodeList.Nodes)
+	if total == 0 {
+		check.Status = HealthStatusCritical
+		check.Message = "No nodes found in cluster"
+		return check
+	}
 
-		jobList, err := client.Jobs().List(&dao.ListJobsOptions{
-			States: []string{dao.JobStatePending},
-		})
-		if err != nil {
-			check.Status = HealthStatusUnknown
-			check.Message = fmt.Sprintf("Failed to get job list: %v", err)
-			return check
-		}
+	downNodes, drainNodes := countNodeStates(nodeList.Nodes)
+	unavailablePercent := float64(downNodes+drainNodes) * 100.0 / float64(total)
 
-		pendingJobs := float64(len(jobList.Jobs))
+	hm.setCheckStatus(check, unavailablePercent, func(_ HealthStatus) string {
+		return fmt.Sprintf("%.1f%% of nodes unavailable (%d down, %d drain out of %d total)",
+			unavailablePercent, downNodes, drainNodes, total)
+	}, func() string {
+		return fmt.Sprintf("All nodes healthy (%d total, %d down, %d drain)", total, downNodes, drainNodes)
+	})
 
-		switch {
-		case check.Threshold.CriticalMax != nil && pendingJobs > *check.Threshold.CriticalMax:
-			check.Status = HealthStatusCritical
-			check.Message = fmt.Sprintf("%.0f pending jobs (critical threshold: %.0f)",
+	return check
+}
+
+// checkQueue performs a job queue depth health check
+func (hm *HealthMonitor) checkQueue(client dao.SlurmClient) *HealthCheck {
+	check := &HealthCheck{
+		Name:        "queue",
+		Description: "Monitor job queue depth and wait times",
+		LastCheck:   time.Now(),
+		Threshold: HealthThreshold{
+			WarningMax:  floatPtr(100.0),
+			CriticalMax: floatPtr(500.0),
+		},
+	}
+
+	jobList, err := client.Jobs().List(&dao.ListJobsOptions{
+		States: []string{dao.JobStatePending},
+	})
+	if err != nil {
+		check.Status = HealthStatusUnknown
+		check.Message = fmt.Sprintf("Failed to get job list: %v", err)
+		return check
+	}
+
+	pendingJobs := float64(len(jobList.Jobs))
+
+	hm.setCheckStatus(check, pendingJobs, func(status HealthStatus) string {
+		if status != HealthStatusHealthy {
+			return fmt.Sprintf("%.0f pending jobs (threshold: %.0f)",
 				pendingJobs, *check.Threshold.CriticalMax)
-		case check.Threshold.WarningMax != nil && pendingJobs > *check.Threshold.WarningMax:
-			check.Status = HealthStatusWarning
-			check.Message = fmt.Sprintf("%.0f pending jobs (warning threshold: %.0f)",
-				pendingJobs, *check.Threshold.WarningMax)
-		default:
-			check.Status = HealthStatusHealthy
-			check.Message = fmt.Sprintf("Queue healthy with %.0f pending jobs", pendingJobs)
 		}
+		return fmt.Sprintf("Queue healthy with %.0f pending jobs", pendingJobs)
+	}, nil)
 
+	return check
+}
+
+// checkUtilization performs a resource utilization health check
+func (hm *HealthMonitor) checkUtilization(client dao.SlurmClient) *HealthCheck {
+	check := &HealthCheck{
+		Name:        "utilization",
+		Description: "Monitor cluster resource utilization",
+		LastCheck:   time.Now(),
+		Threshold: HealthThreshold{
+			WarningMax:  floatPtr(90.0),
+			CriticalMax: floatPtr(95.0),
+		},
+	}
+
+	infoMgr := client.Info()
+	if infoMgr == nil {
+		check.Status = HealthStatusUnknown
+		check.Message = "Cluster metrics not available"
 		return check
 	}
 
-	// Resource utilization health check
-	hm.checks["utilization"] = func(client dao.SlurmClient) *HealthCheck {
-		check := &HealthCheck{
-			Name:        "utilization",
-			Description: "Monitor cluster resource utilization",
-			LastCheck:   time.Now(),
-			Threshold: HealthThreshold{
-				WarningMax:  floatPtr(90.0), // >90% utilization
-				CriticalMax: floatPtr(95.0), // >95% utilization
-			},
-		}
-
-		if infoMgr := client.Info(); infoMgr != nil {
-			metrics, err := infoMgr.GetStats()
-			if err != nil {
-				check.Status = HealthStatusUnknown
-				check.Message = fmt.Sprintf("Failed to get cluster metrics: %v", err)
-				return check
-			}
-
-			cpuUtil := metrics.CPUUsage
-			memUtil := metrics.MemoryUsage
-			maxUtil := cpuUtil
-			if memUtil > maxUtil {
-				maxUtil = memUtil
-			}
-
-			switch {
-			case check.Threshold.CriticalMax != nil && maxUtil > *check.Threshold.CriticalMax:
-				check.Status = HealthStatusCritical
-				check.Message = fmt.Sprintf("High resource utilization: CPU %.1f%%, Memory %.1f%%",
-					cpuUtil, memUtil)
-			case check.Threshold.WarningMax != nil && maxUtil > *check.Threshold.WarningMax:
-				check.Status = HealthStatusWarning
-				check.Message = fmt.Sprintf("Elevated resource utilization: CPU %.1f%%, Memory %.1f%%",
-					cpuUtil, memUtil)
-			default:
-				check.Status = HealthStatusHealthy
-				check.Message = fmt.Sprintf("Resource utilization normal: CPU %.1f%%, Memory %.1f%%",
-					cpuUtil, memUtil)
-			}
-		} else {
-			check.Status = HealthStatusUnknown
-			check.Message = "Cluster metrics not available"
-		}
-
+	metrics, err := infoMgr.GetStats()
+	if err != nil {
+		check.Status = HealthStatusUnknown
+		check.Message = fmt.Sprintf("Failed to get cluster metrics: %v", err)
 		return check
 	}
+
+	cpuUtil := metrics.CPUUsage
+	memUtil := metrics.MemoryUsage
+	maxUtil := cpuUtil
+	if memUtil > maxUtil {
+		maxUtil = memUtil
+	}
+
+	hm.setCheckStatus(check, maxUtil, func(_ HealthStatus) string {
+		return fmt.Sprintf("Resource utilization: CPU %.1f%%, Memory %.1f%%", cpuUtil, memUtil)
+	}, nil)
+
+	return check
+}
+
+// setCheckStatus sets the check status based on threshold comparison
+func (hm *HealthMonitor) setCheckStatus(check *HealthCheck, value float64, criticalMsg func(HealthStatus) string, healthyMsg func() string) {
+	switch {
+	case check.Threshold.CriticalMax != nil && value > *check.Threshold.CriticalMax:
+		check.Status = HealthStatusCritical
+		check.Message = criticalMsg(HealthStatusCritical)
+	case check.Threshold.WarningMax != nil && value > *check.Threshold.WarningMax:
+		check.Status = HealthStatusWarning
+		check.Message = criticalMsg(HealthStatusWarning)
+	default:
+		check.Status = HealthStatusHealthy
+		if healthyMsg != nil {
+			check.Message = healthyMsg()
+		}
+	}
+}
+
+// countNodeStates counts nodes in down and drain states
+func countNodeStates(nodes []*dao.Node) (down, drain int) {
+	for _, node := range nodes {
+		if node == nil {
+			continue
+		}
+		switch node.State {
+		case dao.NodeStateDown:
+			down++
+		case dao.NodeStateDrain, dao.NodeStateDraining:
+			drain++
+		}
+	}
+	return down, drain
 }
 
 // floatPtr returns a pointer to a float64 value

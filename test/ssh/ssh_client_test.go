@@ -153,7 +153,7 @@ func TestSSHClientEdgeCases(t *testing.T) {
 
 		err := client.TestConnection(ctx, "test-host")
 		if err == nil {
-			t.Error("Expected error with cancelled context")
+			t.Error("Expected error with canceled context")
 		}
 	})
 }

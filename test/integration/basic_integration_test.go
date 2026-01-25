@@ -186,7 +186,7 @@ func TestContextIntegration(t *testing.T) {
 	// Simulate work that respects context
 	select {
 	case <-ctx.Done():
-		t.Error("Context should not be cancelled yet")
+		t.Error("Context should not be canceled yet")
 	case <-time.After(100 * time.Millisecond):
 		// Continue
 	}
