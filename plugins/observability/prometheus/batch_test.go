@@ -209,11 +209,11 @@ func TestBatchQueryTimeout(t *testing.T) {
 	// Test that queries respect context cancellation
 	_, err := mockClient.Query(timeoutCtx, "test", time.Now())
 
-	// Should eventually timeout or be cancelled
+	// Should eventually timeout or be canceled
 	if err == nil {
 		t.Log("Query completed before timeout (this is okay)")
 	} else {
-		t.Logf("Query cancelled as expected: %v", err)
+		t.Logf("Query canceled as expected: %v", err)
 	}
 }
 

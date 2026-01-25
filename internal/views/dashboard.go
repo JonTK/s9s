@@ -342,7 +342,7 @@ func (v *DashboardView) updateJobsSummary() {
 	content.WriteString(fmt.Sprintf("[yellow]Pending:[white] %d\n", jobStats[dao.JobStatePending]))
 	content.WriteString(fmt.Sprintf("[cyan]Completed:[white] %d\n", jobStats[dao.JobStateCompleted]))
 	content.WriteString(fmt.Sprintf("[red]Failed:[white] %d\n", jobStats[dao.JobStateFailed]))
-	content.WriteString(fmt.Sprintf("[orange]Cancelled:[white] %d\n", jobStats[dao.JobStateCancelled]))
+	content.WriteString(fmt.Sprintf("[orange]Canceled:[white] %d\n", jobStats[dao.JobStateCancelled]))
 
 	// Job state visualization
 	if totalJobs > 0 {

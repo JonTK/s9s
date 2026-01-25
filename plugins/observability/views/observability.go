@@ -297,7 +297,7 @@ func (v *ObservabilityView) Start(ctx context.Context) error {
 				logging.Debug("observability-view", "Stop signal received")
 				return
 			case <-ctx.Done():
-				logging.Debug("observability-view", "Context cancelled")
+				logging.Debug("observability-view", "Context canceled")
 				return
 			}
 		}

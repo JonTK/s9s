@@ -346,7 +346,7 @@ test/performance/              # Performance benchmarks
        
        // Assert
        assert.NoError(t, err)
-       assert.Equal(t, JobStateCancelled, mockClient.GetJob("job123").State)
+       assert.Equal(t, JobStateCanceled, mockClient.GetJob("job123").State)
    }
    ```
 

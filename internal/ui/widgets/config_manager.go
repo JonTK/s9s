@@ -865,7 +865,7 @@ func (cm *ConfigManager) cancelChanges() {
 		cm.currentConfig = cm.copyConfig(cm.originalConfig)
 		cm.hasChanges = false
 		cm.buildForm()
-		cm.updateStatusBar("[gray]Changes cancelled[white]")
+		cm.updateStatusBar("[gray]Changes canceled[white]")
 	}
 
 	if cm.onCancel != nil {

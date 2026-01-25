@@ -223,7 +223,7 @@ func TestStreamifyMatrixData(t *testing.T) {
 			if len(chunks) > 0 {
 				goto checkResults
 			}
-			t.Fatal("Context cancelled with no chunks received")
+			t.Fatal("Context canceled with no chunks received")
 		}
 	}
 
