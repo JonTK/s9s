@@ -262,61 +262,81 @@ func (t *Table) Clear() {
 // refresh updates the table display
 func (t *Table) refresh() {
 	t.Table.Clear()
+	t.renderHeader()
+	t.renderDataRows()
+}
 
-	// Add header row if configured
-	if t.config.ShowHeader && len(t.config.Columns) > 0 {
-		for col, column := range t.config.Columns {
-			if column.Hidden {
-				continue
-			}
-
-			header := column.Name
-			if column.Sortable && col == t.sortColumn {
-				if t.sortAscending {
-					header += " ▲"
-				} else {
-					header += " ▼"
-				}
-			}
-
-			cell := tview.NewTableCell(header).
-				SetTextColor(t.config.HeaderColor).
-				SetAlign(column.Alignment).
-				SetSelectable(false).
-				SetExpansion(1)
-
-			t.SetCell(0, col, cell)
-		}
+// renderHeader renders the table header row
+func (t *Table) renderHeader() {
+	if !t.config.ShowHeader || len(t.config.Columns) == 0 {
+		return
 	}
 
-	// Add data rows
+	for col, column := range t.config.Columns {
+		if column.Hidden {
+			continue
+		}
+
+		header := t.getHeaderText(col, column)
+		cell := tview.NewTableCell(header).
+			SetTextColor(t.config.HeaderColor).
+			SetAlign(column.Alignment).
+			SetSelectable(false).
+			SetExpansion(1)
+
+		t.SetCell(0, col, cell)
+	}
+}
+
+// getHeaderText returns the header text with sort indicator if applicable
+func (t *Table) getHeaderText(col int, column Column) string {
+	header := column.Name
+	if column.Sortable && col == t.sortColumn {
+		if t.sortAscending {
+			header += " ▲"
+		} else {
+			header += " ▼"
+		}
+	}
+	return header
+}
+
+// renderDataRows renders all data rows
+func (t *Table) renderDataRows() {
 	for rowIdx, rowData := range t.filteredData {
 		displayRow := rowIdx + t.config.FixedRows
+		t.renderRow(displayRow, rowIdx, rowData)
+	}
+}
 
-		for colIdx, cellData := range rowData {
-			if colIdx >= len(t.config.Columns) || t.config.Columns[colIdx].Hidden {
-				continue
-			}
-
-			// Truncate text if necessary, accounting for color codes
-			maxWidth := t.config.Columns[colIdx].Width
-			if maxWidth > 0 {
-				cellData = truncateWithColorCodes(cellData, maxWidth)
-			}
-
-			cell := tview.NewTableCell(cellData).
-				SetAlign(t.config.Columns[colIdx].Alignment).
-				SetExpansion(1)
-
-			// Apply row coloring
-			if rowIdx%2 == 0 && t.config.EvenRowColor != tcell.ColorDefault {
-				cell.SetTextColor(t.config.EvenRowColor)
-			} else if rowIdx%2 == 1 && t.config.OddRowColor != tcell.ColorDefault {
-				cell.SetTextColor(t.config.OddRowColor)
-			}
-
-			t.SetCell(displayRow, colIdx, cell)
+// renderRow renders a single data row
+func (t *Table) renderRow(displayRow, rowIdx int, rowData []string) {
+	for colIdx, cellData := range rowData {
+		if colIdx >= len(t.config.Columns) || t.config.Columns[colIdx].Hidden {
+			continue
 		}
+
+		// Truncate text if necessary, accounting for color codes
+		maxWidth := t.config.Columns[colIdx].Width
+		if maxWidth > 0 {
+			cellData = truncateWithColorCodes(cellData, maxWidth)
+		}
+
+		cell := tview.NewTableCell(cellData).
+			SetAlign(t.config.Columns[colIdx].Alignment).
+			SetExpansion(1)
+
+		t.applyRowColoring(cell, rowIdx)
+		t.SetCell(displayRow, colIdx, cell)
+	}
+}
+
+// applyRowColoring applies alternating row colors
+func (t *Table) applyRowColoring(cell *tview.TableCell, rowIdx int) {
+	if rowIdx%2 == 0 && t.config.EvenRowColor != tcell.ColorDefault {
+		cell.SetTextColor(t.config.EvenRowColor)
+	} else if rowIdx%2 == 1 && t.config.OddRowColor != tcell.ColorDefault {
+		cell.SetTextColor(t.config.OddRowColor)
 	}
 }
 
