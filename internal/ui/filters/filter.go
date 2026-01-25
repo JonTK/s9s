@@ -263,29 +263,29 @@ func (e *FilterExpression) Evaluate(data map[string]interface{}) bool {
 
 // evaluateOperator applies the appropriate comparison operator
 func evaluateOperator(operator FilterOperator, value, expected interface{}) bool {
-	switch operator {
-	case OpEquals:
-		return compareEqual(value, expected)
-	case OpNotEquals:
-		return !compareEqual(value, expected)
-	case OpContains:
-		return contains(value, expected)
-	case OpNotContains:
-		return !contains(value, expected)
-	case OpGreater:
-		return compareGreater(value, expected)
-	case OpLess:
-		return compareLess(value, expected)
-	case OpGreaterEq:
+	// Handle special cases that require multiple comparisons
+	if operator == OpGreaterEq {
 		return compareGreater(value, expected) || compareEqual(value, expected)
-	case OpLessEq:
+	}
+	if operator == OpLessEq {
 		return compareLess(value, expected) || compareEqual(value, expected)
-	case OpRegex:
-		return matchRegex(value, expected)
-	case OpIn:
-		return isIn(value, expected)
-	case OpNotIn:
-		return !isIn(value, expected)
+	}
+
+	// Map remaining operators to their evaluators
+	evaluators := map[FilterOperator]func() bool{
+		OpEquals:     func() bool { return compareEqual(value, expected) },
+		OpNotEquals:  func() bool { return !compareEqual(value, expected) },
+		OpContains:   func() bool { return contains(value, expected) },
+		OpNotContains: func() bool { return !contains(value, expected) },
+		OpGreater:    func() bool { return compareGreater(value, expected) },
+		OpLess:       func() bool { return compareLess(value, expected) },
+		OpRegex:      func() bool { return matchRegex(value, expected) },
+		OpIn:         func() bool { return isIn(value, expected) },
+		OpNotIn:      func() bool { return !isIn(value, expected) },
+	}
+
+	if evaluator, ok := evaluators[operator]; ok {
+		return evaluator()
 	}
 	return false
 }
