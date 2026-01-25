@@ -23,7 +23,7 @@ type NotificationManager struct {
 type NotificationHandler interface {
 	GetID() string
 	GetName() string
-	Send(ctx context.Context, notification Notification) error
+	Send(ctx context.Context, notification *Notification) error
 	IsEnabled() bool
 }
 
@@ -113,7 +113,7 @@ func (nm *NotificationManager) UnregisterHandler(handlerID string) {
 }
 
 // Subscribe creates a subscription for alert notifications
-func (nm *NotificationManager) Subscribe(subscription AlertSubscription) error {
+func (nm *NotificationManager) Subscribe(subscription *AlertSubscription) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
 
@@ -152,7 +152,7 @@ func (nm *NotificationManager) Unsubscribe(subscriptionID string) {
 }
 
 // NotifyAlert sends notifications for a new alert
-func (nm *NotificationManager) NotifyAlert(ctx context.Context, alert Alert) error {
+func (nm *NotificationManager) NotifyAlert(ctx context.Context, alert *Alert) error {
 	notification := Notification{
 		Alert:     alert,
 		Type:      NotificationTypeAlert,
@@ -163,7 +163,7 @@ func (nm *NotificationManager) NotifyAlert(ctx context.Context, alert Alert) err
 }
 
 // NotifyResolved sends notifications for a resolved alert
-func (nm *NotificationManager) NotifyResolved(ctx context.Context, alert Alert) error {
+func (nm *NotificationManager) NotifyResolved(ctx context.Context, alert *Alert) error {
 	notification := Notification{
 		Alert:     alert,
 		Type:      NotificationTypeResolved,
@@ -174,7 +174,7 @@ func (nm *NotificationManager) NotifyResolved(ctx context.Context, alert Alert) 
 }
 
 // sendNotification sends a notification to all matching subscriptions
-func (nm *NotificationManager) sendNotification(ctx context.Context, notification Notification) error {
+func (nm *NotificationManager) sendNotification(ctx context.Context, notification *Notification) error {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
 
@@ -221,7 +221,7 @@ func (nm *NotificationManager) sendNotification(ctx context.Context, notificatio
 }
 
 // matchesFilter checks if an alert matches a subscription filter
-func (nm *NotificationManager) matchesFilter(alert Alert, filter AlertFilter) bool {
+func (nm *NotificationManager) matchesFilter(alert *Alert, filter *AlertFilter) bool {
 	// Check severity
 	if !nm.matchesStringList(alert.Severity, filter.Severities) {
 		return false
@@ -266,7 +266,7 @@ func (nm *NotificationManager) matchesLabels(alertLabels, filterLabels map[strin
 }
 
 // addToHistory adds an event to the notification history
-func (nm *NotificationManager) addToHistory(event NotificationEvent) {
+func (nm *NotificationManager) addToHistory(event *NotificationEvent) {
 	nm.history = append([]NotificationEvent{event}, nm.history...)
 
 	// Limit history size
@@ -359,7 +359,7 @@ func (h *InAppHandler) GetName() string {
 }
 
 // Send sends a notification to the in-app notification queue.
-func (h *InAppHandler) Send(_ context.Context, notification Notification) error {
+func (h *InAppHandler) Send(_ context.Context, notification *Notification) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -423,7 +423,7 @@ func (h *LogHandler) GetName() string {
 }
 
 // Send sends a notification to the configured logger.
-func (h *LogHandler) Send(_ context.Context, notification Notification) error {
+func (h *LogHandler) Send(_ context.Context, notification *Notification) error {
 	if h.logger == nil {
 		return fmt.Errorf("logger not configured")
 	}
