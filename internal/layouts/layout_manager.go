@@ -356,19 +356,7 @@ func (lm *LayoutManager) applyVerticalLayout(layout *Layout) error {
 
 // applyGridLayout creates a complex grid layout
 func (lm *LayoutManager) applyGridLayout(layout *Layout) error {
-	// Create a grid of flex containers
-	rows := make([]*tview.Flex, layout.Grid.Rows)
-
-	// Initialize rows
-	for i := 0; i < layout.Grid.Rows; i++ {
-		rows[i] = tview.NewFlex()
-	}
-
-	// Track column usage per row
-	colUsage := make([][]bool, layout.Grid.Rows)
-	for i := range colUsage {
-		colUsage[i] = make([]bool, layout.Grid.Columns)
-	}
+	rows, colUsage := lm.initializeGridStructures(layout)
 
 	// Place widgets in grid
 	for _, placement := range layout.Widgets {
@@ -376,60 +364,88 @@ func (lm *LayoutManager) applyGridLayout(layout *Layout) error {
 			continue
 		}
 
-		widget, err := lm.GetWidget(placement.WidgetID)
-		if err != nil {
-			continue // Skip missing widgets
-		}
-
-		// Validate placement bounds
-		if placement.Row >= layout.Grid.Rows || placement.Column >= layout.Grid.Columns {
+		if !lm.canPlaceWidget(layout, placement, colUsage) {
 			continue
 		}
 
-		// Check for overlaps
-		canPlace := true
-		for r := placement.Row; r < placement.Row+placement.RowSpan && r < layout.Grid.Rows; r++ {
-			for c := placement.Column; c < placement.Column+placement.ColSpan && c < layout.Grid.Columns; c++ {
-				if colUsage[r][c] {
-					canPlace = false
-					break
-				}
-			}
-			if !canPlace {
-				break
-			}
+		widget, err := lm.GetWidget(placement.WidgetID)
+		if err != nil {
+			continue
 		}
 
-		if !canPlace {
-			continue // Skip overlapping widgets
-		}
+		lm.markWidgetCells(placement, colUsage)
+		lm.placeWidgetInGrid(rows, placement, widget)
+	}
 
-		// Mark cells as used
-		for r := placement.Row; r < placement.Row+placement.RowSpan && r < layout.Grid.Rows; r++ {
-			for c := placement.Column; c < placement.Column+placement.ColSpan && c < layout.Grid.Columns; c++ {
-				colUsage[r][c] = true
+	return lm.addRowsToContainer(rows)
+}
+
+// initializeGridStructures creates and initializes grid data structures
+func (lm *LayoutManager) initializeGridStructures(layout *Layout) ([]*tview.Flex, [][]bool) {
+	rows := make([]*tview.Flex, layout.Grid.Rows)
+	for i := 0; i < layout.Grid.Rows; i++ {
+		rows[i] = tview.NewFlex()
+	}
+
+	colUsage := make([][]bool, layout.Grid.Rows)
+	for i := range colUsage {
+		colUsage[i] = make([]bool, layout.Grid.Columns)
+	}
+
+	return rows, colUsage
+}
+
+// canPlaceWidget checks if a widget can be placed at the given location
+func (lm *LayoutManager) canPlaceWidget(layout *Layout, placement WidgetPlacement, colUsage [][]bool) bool {
+	// Validate bounds
+	if placement.Row >= layout.Grid.Rows || placement.Column >= layout.Grid.Columns {
+		return false
+	}
+
+	// Check for overlaps
+	for r := placement.Row; r < placement.Row+placement.RowSpan && r < layout.Grid.Rows; r++ {
+		for c := placement.Column; c < placement.Column+placement.ColSpan && c < layout.Grid.Columns; c++ {
+			if colUsage[r][c] {
+				return false
 			}
-		}
-
-		// Add widget to appropriate row
-		if placement.ColSpan == 1 {
-			rows[placement.Row].AddItem(widget.Render(), 0, placement.Width, false)
-		} else {
-			// For multi-column spans, create a wrapper
-			wrapper := tview.NewFlex()
-			wrapper.AddItem(widget.Render(), 0, 1, false)
-			rows[placement.Row].AddItem(wrapper, 0, placement.Width, false)
 		}
 	}
 
-	// Add rows to main container
+	return true
+}
+
+// markWidgetCells marks grid cells as used by a widget
+func (lm *LayoutManager) markWidgetCells(placement WidgetPlacement, colUsage [][]bool) {
+	for r := placement.Row; r < placement.Row+placement.RowSpan && r < len(colUsage); r++ {
+		for c := placement.Column; c < placement.Column+placement.ColSpan && c < len(colUsage[r]); c++ {
+			colUsage[r][c] = true
+		}
+	}
+}
+
+// placeWidgetInGrid adds a widget to the grid at the appropriate row
+func (lm *LayoutManager) placeWidgetInGrid(rows []*tview.Flex, placement WidgetPlacement, widget Widget) {
+	if placement.Row >= len(rows) {
+		return
+	}
+
+	if placement.ColSpan == 1 {
+		rows[placement.Row].AddItem(widget.Render(), 0, placement.Width, false)
+	} else {
+		wrapper := tview.NewFlex()
+		wrapper.AddItem(widget.Render(), 0, 1, false)
+		rows[placement.Row].AddItem(wrapper, 0, placement.Width, false)
+	}
+}
+
+// addRowsToContainer adds non-empty rows to the main container
+func (lm *LayoutManager) addRowsToContainer(rows []*tview.Flex) error {
 	lm.container.SetDirection(tview.FlexRow)
 	for _, row := range rows {
 		if row.GetItemCount() > 0 {
 			lm.container.AddItem(row, 0, 1, false)
 		}
 	}
-
 	return nil
 }
 
