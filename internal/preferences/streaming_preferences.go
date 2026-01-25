@@ -179,7 +179,14 @@ func (m *StreamingPreferencesManager) UpdatePreferences(update func(*StreamingPr
 // validatePreferences validates preference values
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (m *StreamingPreferencesManager) validatePreferences(prefs *StreamingPreferences) error {
-	// Validate numeric ranges
+	m.validateNumericRanges(prefs)
+	m.validateGridSize(prefs)
+	m.validateExportFormat(prefs)
+	return nil
+}
+
+// validateNumericRanges validates numeric preference ranges
+func (m *StreamingPreferencesManager) validateNumericRanges(prefs *StreamingPreferences) {
 	if prefs.MaxConcurrentStreams < 1 || prefs.MaxConcurrentStreams > 16 {
 		prefs.MaxConcurrentStreams = 4
 	}
@@ -199,24 +206,26 @@ func (m *StreamingPreferencesManager) validatePreferences(prefs *StreamingPrefer
 	if prefs.FileCheckIntervalMs < 100 || prefs.FileCheckIntervalMs > 10000 {
 		prefs.FileCheckIntervalMs = 1000
 	}
+}
 
-	// Validate grid size
+// validateGridSize validates and corrects the grid size setting
+func (m *StreamingPreferencesManager) validateGridSize(prefs *StreamingPreferences) {
 	validGridSizes := map[string]bool{
 		"2x2": true, "3x3": true, "2x3": true, "3x2": true, "4x4": true,
 	}
 	if !validGridSizes[prefs.MultiStreamGridSize] {
 		prefs.MultiStreamGridSize = "2x2"
 	}
+}
 
-	// Validate export format
+// validateExportFormat validates and corrects the export format setting
+func (m *StreamingPreferencesManager) validateExportFormat(prefs *StreamingPreferences) {
 	validFormats := map[string]bool{
 		"txt": true, "json": true, "csv": true, "md": true,
 	}
 	if !validFormats[prefs.ExportFormat] {
 		prefs.ExportFormat = "txt"
 	}
-
-	return nil
 }
 
 // ToStreamConfig converts preferences to streaming.StreamConfig
