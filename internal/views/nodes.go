@@ -114,6 +114,7 @@ func NewNodesView(client dao.SlurmClient) *NodesView {
 	// Set up callbacks
 	v.table.SetOnSelect(v.onNodeSelect)
 	v.table.SetOnSort(v.onSort)
+	v.table.SetOnEnter(func(row, col int) { v.showNodeDetails() })
 
 	// Create filter input
 	v.filterInput = tview.NewInputField().
