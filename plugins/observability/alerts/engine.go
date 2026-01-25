@@ -227,78 +227,72 @@ func (e *Engine) evaluateRule(ctx context.Context, rule Rule) []Alert {
 
 // evaluateThresholdRule evaluates a simple threshold rule
 func (e *Engine) evaluateThresholdRule(ctx context.Context, rule Rule) []Alert {
-	alerts := []Alert{}
-
-	// Get current metrics based on rule target
 	switch rule.Target {
 	case "node":
-		// Evaluate for all nodes
-		nodes := e.nodeCollector.GetAllNodes()
-		for nodeName, node := range nodes {
-			value := e.getNodeMetricValue(node, rule.Metric)
-			if value != nil && e.checkThreshold(*value, rule.Operator, rule.Threshold) {
-				alert := Alert{
-					RuleName:    rule.Name,
-					Severity:    rule.Severity,
-					Message:     e.formatAlertMessage(rule, nodeName, *value),
-					Description: rule.Description,
-					Value:       *value,
-					Threshold:   rule.Threshold,
-					Source:      fmt.Sprintf("node:%s", nodeName),
-					Labels: map[string]string{
-						"node":   nodeName,
-						"metric": rule.Metric,
-					},
-				}
-				alerts = append(alerts, alert)
-			}
-		}
-
+		return e.evaluateNodeThreshold(rule)
 	case "job":
-		// Evaluate for all jobs
-		jobs := e.jobCollector.GetActiveJobs()
-		for jobID, job := range jobs {
-			value := e.getJobMetricValue(job, rule.Metric)
-			if value != nil && e.checkThreshold(*value, rule.Operator, rule.Threshold) {
-				alert := Alert{
-					RuleName:    rule.Name,
-					Severity:    rule.Severity,
-					Message:     e.formatAlertMessage(rule, jobID, *value),
-					Description: rule.Description,
-					Value:       *value,
-					Threshold:   rule.Threshold,
-					Source:      fmt.Sprintf("job:%s", jobID),
-					Labels: map[string]string{
-						"job":    jobID,
-						"user":   job.User,
-						"metric": rule.Metric,
-					},
-				}
-				alerts = append(alerts, alert)
-			}
-		}
-
+		return e.evaluateJobThreshold(rule)
 	case "cluster":
-		// Evaluate cluster-wide metrics
-		value := e.getClusterMetricValue(ctx, rule.Metric)
+		return e.evaluateClusterThreshold(ctx, rule)
+	default:
+		return []Alert{}
+	}
+}
+
+func (e *Engine) evaluateNodeThreshold(rule Rule) []Alert {
+	alerts := []Alert{}
+	nodes := e.nodeCollector.GetAllNodes()
+	for nodeName, node := range nodes {
+		value := e.getNodeMetricValue(node, rule.Metric)
 		if value != nil && e.checkThreshold(*value, rule.Operator, rule.Threshold) {
-			alert := Alert{
-				RuleName:    rule.Name,
-				Severity:    rule.Severity,
-				Message:     e.formatAlertMessage(rule, "cluster", *value),
-				Description: rule.Description,
-				Value:       *value,
-				Threshold:   rule.Threshold,
-				Source:      "cluster",
-				Labels: map[string]string{
-					"metric": rule.Metric,
-				},
-			}
+			alert := e.buildAlert(rule, nodeName, *value, fmt.Sprintf("node:%s", nodeName), map[string]string{
+				"node":   nodeName,
+				"metric": rule.Metric,
+			})
 			alerts = append(alerts, alert)
 		}
 	}
-
 	return alerts
+}
+
+func (e *Engine) evaluateJobThreshold(rule Rule) []Alert {
+	alerts := []Alert{}
+	jobs := e.jobCollector.GetActiveJobs()
+	for jobID, job := range jobs {
+		value := e.getJobMetricValue(job, rule.Metric)
+		if value != nil && e.checkThreshold(*value, rule.Operator, rule.Threshold) {
+			alert := e.buildAlert(rule, jobID, *value, fmt.Sprintf("job:%s", jobID), map[string]string{
+				"job":    jobID,
+				"user":   job.User,
+				"metric": rule.Metric,
+			})
+			alerts = append(alerts, alert)
+		}
+	}
+	return alerts
+}
+
+func (e *Engine) evaluateClusterThreshold(ctx context.Context, rule Rule) []Alert {
+	value := e.getClusterMetricValue(ctx, rule.Metric)
+	if value != nil && e.checkThreshold(*value, rule.Operator, rule.Threshold) {
+		return []Alert{e.buildAlert(rule, "cluster", *value, "cluster", map[string]string{
+			"metric": rule.Metric,
+		})}
+	}
+	return []Alert{}
+}
+
+func (e *Engine) buildAlert(rule Rule, source string, value float64, sourceLabel string, labels map[string]string) Alert {
+	return Alert{
+		RuleName:    rule.Name,
+		Severity:    rule.Severity,
+		Message:     e.formatAlertMessage(rule, source, value),
+		Description: rule.Description,
+		Value:       value,
+		Threshold:   rule.Threshold,
+		Source:      sourceLabel,
+		Labels:      labels,
+	}
 }
 
 // evaluateQueryRule evaluates a custom PromQL query rule
