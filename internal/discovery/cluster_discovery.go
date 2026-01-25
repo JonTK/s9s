@@ -197,33 +197,51 @@ func (ed *EnvironmentDiscovery) parseConfigFile(path string) *DiscoveredCluster 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		ed.parseConfigLine(line, cluster)
+	}
 
-		switch {
-		case strings.HasPrefix(line, "ClusterName="):
-			cluster.Name = strings.TrimPrefix(line, "ClusterName=")
-		case strings.HasPrefix(line, "ControlMachine="):
-			cluster.Host = strings.TrimPrefix(line, "ControlMachine=")
-		case strings.HasPrefix(line, "SlurmctldHost="):
-			// Parse SlurmctldHost which might include port
-			hostLine := strings.TrimPrefix(line, "SlurmctldHost=")
-			if strings.Contains(hostLine, "(") {
-				// Format: SlurmctldHost=hostname(addr:port)
-				re := regexp.MustCompile(`^([^(]+)\(([^:]+):?(\d+)?\)`)
-				matches := re.FindStringSubmatch(hostLine)
-				if len(matches) >= 3 {
-					cluster.Host = matches[2]
-					if len(matches) > 3 && matches[3] != "" {
-						if port, err := strconv.Atoi(matches[3]); err == nil {
-							cluster.Port = port
-						}
-					}
-				}
-			} else {
-				cluster.Host = hostLine
+	ed.finalizeClusterConfig(cluster)
+	return cluster
+}
+
+// parseConfigLine parses a single configuration line
+func (ed *EnvironmentDiscovery) parseConfigLine(line string, cluster *DiscoveredCluster) {
+	switch {
+	case strings.HasPrefix(line, "ClusterName="):
+		cluster.Name = strings.TrimPrefix(line, "ClusterName=")
+	case strings.HasPrefix(line, "ControlMachine="):
+		cluster.Host = strings.TrimPrefix(line, "ControlMachine=")
+	case strings.HasPrefix(line, "SlurmctldHost="):
+		ed.parseSlurmctldHost(line, cluster)
+	}
+}
+
+// parseSlurmctldHost parses the SlurmctldHost configuration line
+func (ed *EnvironmentDiscovery) parseSlurmctldHost(line string, cluster *DiscoveredCluster) {
+	hostLine := strings.TrimPrefix(line, "SlurmctldHost=")
+	if strings.Contains(hostLine, "(") {
+		ed.parseSlurmctldHostWithPort(hostLine, cluster)
+	} else {
+		cluster.Host = hostLine
+	}
+}
+
+// parseSlurmctldHostWithPort parses hostname(addr:port) format
+func (ed *EnvironmentDiscovery) parseSlurmctldHostWithPort(hostLine string, cluster *DiscoveredCluster) {
+	re := regexp.MustCompile(`^([^(]+)\(([^:]+):?(\d+)?\)`)
+	matches := re.FindStringSubmatch(hostLine)
+	if len(matches) >= 3 {
+		cluster.Host = matches[2]
+		if len(matches) > 3 && matches[3] != "" {
+			if port, err := strconv.Atoi(matches[3]); err == nil {
+				cluster.Port = port
 			}
 		}
 	}
+}
 
+// finalizeClusterConfig sets defaults and builds REST endpoints
+func (ed *EnvironmentDiscovery) finalizeClusterConfig(cluster *DiscoveredCluster) {
 	if cluster.Host != "" && cluster.Port == 0 {
 		cluster.Port = 6820 // Default SLURM REST port
 	}
@@ -237,8 +255,6 @@ func (ed *EnvironmentDiscovery) parseConfigFile(path string) *DiscoveredCluster 
 	if cluster.Name == "" {
 		cluster.Name = "config-cluster"
 	}
-
-	return cluster
 }
 
 // ConfigFileDiscovery discovers SLURM clusters through configuration files.
