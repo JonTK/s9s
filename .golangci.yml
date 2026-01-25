@@ -127,7 +127,7 @@ linters:
       # Configure revive rules
       # var-naming: Common exceptions for acronyms and naming conventions
       # Note: "api" and "errors" entries no longer needed after package renames (PR #34)
-      # Keeping for potential future use with other package names
+      # "Auth" kept to allow AuthProvider type aliases for backward compatibility
       rules:
         - name: var-naming
           severity: warning
@@ -201,15 +201,6 @@ linters:
       - path: '.*/layouts/.*'
         linters:
           - dupl
-      # Exclude revive empty-block from tests
-      - path: '(.+)_test\.go'
-        text: 'empty-block: this block is empty, you can remove it'
-        linters:
-          - revive
-      # Exclude revive type-alias stuttering from type alias files
-      - text: 'exported: type name will be used as .* by other packages, and that stutters'
-        linters:
-          - revive
       # Exclude gosec false positives for exec.Command with controlled args
       - text: 'G204:'
         linters:
