@@ -135,7 +135,6 @@ func NewJobsView(client dao.SlurmClient) *JobsView {
 	// Set up callbacks
 	v.table.SetOnSelect(v.onJobSelect)
 	v.table.SetOnSort(v.onSort)
-	v.table.SetOnEnter(func(row, col int) { v.showJobDetails() })
 	v.table.SetOnSelectionChange(v.onSelectionChange)
 	v.table.SetOnRowToggle(v.onRowToggle)
 

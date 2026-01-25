@@ -95,7 +95,6 @@ type Table struct {
 	filter        string
 	onSelect      func(row, col int)
 	onSort        func(col int, ascending bool)
-	onEnter       func(row, col int)
 	vimMode       *navigation.VimMode
 }
 
@@ -248,11 +247,6 @@ func (t *Table) SetOnSelect(fn func(row, col int)) {
 // SetOnSort sets the sort callback
 func (t *Table) SetOnSort(fn func(col int, ascending bool)) {
 	t.onSort = fn
-}
-
-// SetOnEnter sets the Enter key callback
-func (t *Table) SetOnEnter(fn func(row, col int)) {
-	t.onEnter = fn
 }
 
 // Clear clears the table
@@ -454,12 +448,6 @@ func (t *Table) handleNavigationKeys(event *tcell.EventKey) bool {
 		return true
 	case tcell.KeyEnd:
 		t.handleEnd()
-		return true
-	case tcell.KeyEnter:
-		row, col := t.GetSelection()
-		if t.onEnter != nil && row >= t.config.FixedRows {
-			t.onEnter(row-t.config.FixedRows, col)
-		}
 		return true
 	}
 	return false

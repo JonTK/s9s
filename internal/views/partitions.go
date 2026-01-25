@@ -93,7 +93,6 @@ func NewPartitionsView(client dao.SlurmClient) *PartitionsView {
 	// Set up callbacks
 	v.table.SetOnSelect(v.onPartitionSelect)
 	v.table.SetOnSort(v.onSort)
-	v.table.SetOnEnter(func(row, col int) { v.showPartitionDetails() })
 
 	// Create filter input
 	v.filterInput = tview.NewInputField().
