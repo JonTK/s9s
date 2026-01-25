@@ -181,28 +181,36 @@ linters-settings:
 
   cyclop:
     # Cyclomatic complexity threshold
-    # Phase 4d: COMPLETED - All 12 highest-complexity functions refactored (200+ pt reduction)
-    # Phase 5: COMPLETED - 7 additional medium-high complexity functions refactored (60+ pt reduction)
-    # Phase 5+: IN PROGRESS - Targeting remaining 11-20 complexity functions (270+ points eliminated)
+    # Phase 4d: COMPLETED - 12 highest-complexity functions (200+ pt reduction)
+    # Phase 5: COMPLETED - 7 medium-high complexity functions (60+ pt reduction)
+    # Phase 5+ CONTINUATION: 11 additional functions refactored (70+ pt reduction)
     #
-    # Phase 5+ Progress (Current Session):
-    # - generateHealthCheck (21→~7) - dashboard.go: Section-based extraction
-    # - HandleKey (20→~8) - vim_mode.go: Key-handler map pattern
-    # - OnKey (20→~8) - partitions.go: Handler extraction
-    # - handleInput (19→~10) - terminal_pane.go: Key handler methods
-    # - fetchNodeMetrics (19→~8) - observability.go: Section-based extraction (7 helpers)
-    # - formatPartitionAnalytics (18→~7) - partitions.go: Section-based extraction (6 helpers)
-    # Total functions refactored in Phase 5+: 6 functions (~50 point reduction)
+    # Phase 5+ Session Progress:
+    # Functions Refactored (11 total, 70+ complexity reduction):
+    # 1. generateHealthCheck (21→~7) - dashboard.go: 4 section helpers
+    # 2. HandleKey (20→~8) - vim_mode.go: Key-handler map pattern
+    # 3. OnKey (20→~8) - partitions.go: Handler/filter helpers
+    # 4. handleInput (19→~10) - terminal_pane.go: 5 key handlers
+    # 5. fetchNodeMetrics (19→~8) - observability.go: 7 section helpers
+    # 6. formatPartitionAnalytics (18→~7) - partitions.go: 6 helpers
+    # 7. Draw (19→~8) - heatmap.go: 5 layout/drawing helpers
+    # 8. drawCell (12→~6) - heatmap.go: 3 color/fill helpers
+    # 9. renderJobTable (15→~8) - observability.go: 4 helpers
+    # 10. AnalyzeSeasonality (16→~8) - analysis.go: 5 helpers
+    # 11. ExportPerformanceReport (15→~6) - performance_exporter.go: 4 helpers
+    # 12. generateAlerts (17→~5) - dashboard.go: 5 alert checkers
+    # 13. generateRecommendations (15→~6) - dashboard.go: 3 section helpers
     #
-    # Current status: 112 violations remaining (down from 116 at session start)
+    # Current status: 105 violations remaining (down from 116 at session start)
     # Remaining distribution:
     # - 30 functions with 11 complexity (just 1 over threshold)
-    # - 23 functions with 12 complexity
+    # - 22 functions with 12 complexity
     # - 19 functions with 13 complexity
     # - 14 functions with 14 complexity
-    # - 12 functions with 15 complexity
-    # - 9 functions with 16 complexity
-    # - Plus a few with 17-21 complexity
+    # - 9 functions with 15 complexity
+    # - 8 functions with 16 complexity
+    # - 2 functions with 17 complexity
+    # - 1 function with 21 complexity (mock code)
     #
     # Threshold: 10 - aiming for excellent code quality
     # Test functions excluded (skip-tests: true)
