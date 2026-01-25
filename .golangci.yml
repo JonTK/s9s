@@ -64,12 +64,12 @@ linters:
     # - dupl          # Detect duplicated code (threshold: 150)
 
     # Phase 4d: cyclop - Cyclomatic complexity checking
-    # Status: TEMPORARILY DISABLED - Configuration parsing issue in golangci-lint 2.8.0
-    # Details: Configuration file not being read (using default threshold of 10 despite setting 30)
+    # Status: ENABLED with proper configuration (v2.8.0 - latest)
+    # Details: Configuration now properly recognized with correct format in linters-settings
     # PR #38: 10 highest-complexity functions refactored (74+ complexity reduction)
     #   Phase 5+ Final Batch: Eliminated all non-test cyclop violations
-    # TODO: Re-enable with proper configuration in follow-up PR
-    # - cyclop
+    # Configuration: max-complexity: 30, skip-tests: true (test violations excluded)
+    - cyclop
 
     # Phase 4e: containedctx - Context in struct fields
     # Status: DISABLED (22 pre-existing instances, architectural pattern)
@@ -81,7 +81,6 @@ linters:
 
     # Other disabled advanced linters:
     # - wsl_v5: Whitespace linting - 2600+ issues, too many to enable now
-    # - cyclop: See Phase 4d above
 
     # Phase 3: noctx - context.Context not passed to function (PR #31)
     # All 7 integration test violations fixed by using context-aware versions
@@ -89,118 +88,113 @@ linters:
 
   disable:
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: false  # Allow _ = assignment for intentionally ignored errors
+  # Settings for enabled linters (v2 format: linters.settings)
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false  # Allow _ = assignment for intentionally ignored errors
 
-  govet:
-    enable:
-      - shadow
+    govet:
+      enable:
+        - shadow
 
-  gosec:
-    # Security severity threshold
-    severity: medium
-    confidence: medium
-    # Note: Rule exclusions moved to issues section below due to config parsing issues
+    gosec:
+      # Security severity threshold
+      severity: medium
+      confidence: medium
+      # Note: Rule exclusions moved to issues section below due to config parsing issues
 
-  gocritic:
-    # Enable multiple checks by tags
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain  # Style preference, too many pre-existing instances
-      - singleCaseSwitch  # Style preference, too many pre-existing instances
-      - dupBranchBody  # Acceptable in some cases
-      - octalLiteral
-      - whyNoLint
+    gocritic:
+      # Enable multiple checks by tags
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - dupImport # https://github.com/go-critic/go-critic/issues/845
+        - ifElseChain  # Style preference, too many pre-existing instances
+        - singleCaseSwitch  # Style preference, too many pre-existing instances
+        - dupBranchBody  # Acceptable in some cases
+        - octalLiteral
+        - whyNoLint
 
-  errorlint:
-    # Check whether fmt.Errorf uses the %w verb for formatting errors
-    errorf: true
-    # Check for plain type assertions and type switches
-    asserts: true
-    # Check for plain error comparisons
-    comparison: true
+    errorlint:
+      # Check whether fmt.Errorf uses the %w verb for formatting errors
+      errorf: true
+      # Check for plain type assertions and type switches
+      asserts: true
+      # Check for plain error comparisons
+      comparison: true
 
-  misspell:
-    # Correct spellings using locale preferences for US or UK
-    locale: US
+    misspell:
+      # Correct spellings using locale preferences for US or UK
+      locale: US
 
-  revive:
-    # Configure revive rules
-    # var-naming: Common exceptions for acronyms and naming conventions
-    # Note: "api" and "errors" entries no longer needed after package renames (PR #34)
-    # Keeping for potential future use with other package names
+    revive:
+      # Configure revive rules
+      # var-naming: Common exceptions for acronyms and naming conventions
+      # Note: "api" and "errors" entries no longer needed after package renames (PR #34)
+      # Keeping for potential future use with other package names
+      rules:
+        - name: var-naming
+          severity: warning
+          arguments:
+            - ["ID", "URL", "GID", "UID", "SID", "TID", "CID"]
+            - ["Arg", "Auth"]
+
+    # Phase 4: Advanced Linters
+
+    gocognit:
+      # Cognitive complexity threshold (different from cyclomatic)
+      # Measures how difficult code is to understand
+      # Set to 50 to accommodate pre-existing test and config complexity
+      # Phase 5 task: refactor functions with complexity > 50
+      min-complexity: 50
+      skip-tests: true
+
+    nolintlint:
+      # Check validity of nolint directives
+      allow-unused: false     # Disallow unused nolint directives
+      allow-leading-space: false  # Require //nolint without space
+      require-explanation: true   # Require explanation for suppressed violations
+      require-specific: true      # Require specific rule names (avoid blanket //nolint)
+
+    # Note: revive configuration is handled via exclude-rules below
+    # Revive linter helps enforce Go idioms and style conventions
+
+    dupl:
+      # Detect duplicated code blocks
+      threshold: 150  # Minimum lines to consider as duplication
+
+    containedctx:
+      # Prevent storing context.Context in struct fields
+      # Context should be passed as function parameter
+      skip-tests: true  # Allow in test helpers
+
+    cyclop:
+      # The maximal code complexity to report
+      # All non-test production code violations ELIMINATED (10 functions refactored)
+      # Current threshold: 30 allows test functions while enforcing production quality
+      # Default: 10
+      max-complexity: 30
+
+      # The maximal average package complexity
+      # If it's higher than 0.0 (float) the check is enabled
+      # Default: 0.0
+      package-average: 0.0
+
+      # Should ignore tests
+      # Excludes all *_test.go files from cyclomatic complexity analysis
+      # Default: false
+      skip-tests: true
+
+  # Exclusion rules for linters (v2 format)
+  exclusions:
     rules:
-      - name: var-naming
-        severity: warning
-        arguments:
-          - ["ID", "URL", "GID", "UID", "SID", "TID", "CID"]
-          - ["Arg", "Auth"]
-
-  # Phase 4: Advanced Linters
-  # cyclop:
-  #   # Cyclomatic complexity threshold - disabled pending configuration fix
-  #   # 136 pre-existing issues exceed reasonable thresholds
-  #   # max-complexity: 25
-  #   # skip-tests: true
-
-  gocognit:
-    # Cognitive complexity threshold (different from cyclomatic)
-    # Measures how difficult code is to understand
-    # Set to 50 to accommodate pre-existing test and config complexity
-    # Phase 5 task: refactor functions with complexity > 50
-    min-complexity: 50
-    skip-tests: true
-
-  nolintlint:
-    # Check validity of nolint directives
-    allow-unused: false     # Disallow unused nolint directives
-    allow-leading-space: false  # Require //nolint without space
-    require-explanation: true   # Require explanation for suppressed violations
-    require-specific: true      # Require specific rule names (avoid blanket //nolint)
-
-  # Note: revive configuration is handled via exclude-rules below
-  # Revive linter helps enforce Go idioms and style conventions
-
-  dupl:
-    # Detect duplicated code blocks
-    threshold: 150  # Minimum lines to consider as duplication
-
-  containedctx:
-    # Prevent storing context.Context in struct fields
-    # Context should be passed as function parameter
-    skip-tests: true  # Allow in test helpers
-
-  cyclop:
-    # Cyclomatic complexity threshold
-    # Phase 4d: COMPLETED - 12 highest-complexity functions (200+ pt reduction)
-    # Phase 5: COMPLETED - 7 medium-high complexity functions (60+ pt reduction)
-    # Phase 5+ CONTINUATION: 10 additional functions refactored (74+ pt reduction)
-    #
-    # Current Session (Phase 5+ Final Batch):
-    # Functions Refactored (10 total, 74 complexity reduction):
-    # 1. setUIValue (13→~4) - config_manager.go
-    # 2. fetchJobMetrics (13→~5) - observability.go
-    # 3. Draw (13→~5) - gauge.go
-    # 4. addFormField (12→~4) - config_manager.go
-    # 5. handleResourceEfficiency (12→~6) - external.go
-    # 6. Query (12→~6) - plugin.go
-    # 7. setJobsViewValue (11→~4) - config_manager.go
-    # 8. GetCellData (11→~5) - nodes_overlay.go
-    # 9. getJobDetailsFromSlurm (11→~5) - observability.go
-    # 10. InputHandler (11→~4) - heatmap.go
-    #
-    # All non-test violations ELIMINATED
-    # Remaining violations: Test functions only (27 test functions with complexity > 10)
-    # Threshold: 30 - Allow test violations while enforcing production code quality
-    # Note: skip-tests config not working in golangci-lint 2.8.0, using exclude-rules instead
-    max-complexity: 30
-    skip-tests: true
+      # Exclude cyclop violations from test files
+      - path: '(.+)_test\.go'
+        linters:
+          - cyclop
 
 issues:
   exclude-files:
