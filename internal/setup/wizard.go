@@ -25,7 +25,6 @@ type Wizard struct {
 	config  *config.Config
 }
 
-//nolint:revive // type alias for backward compatibility
 type SetupWizard = Wizard
 
 // WizardStep represents a step in the setup process

@@ -18,7 +18,6 @@ type Template struct {
 	Variables   map[string]string
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigTemplate = Template
 
 // TemplateManager manages configuration templates

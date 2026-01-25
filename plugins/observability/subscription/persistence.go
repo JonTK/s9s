@@ -34,7 +34,6 @@ type Persistence struct {
 	stopChan        chan struct{}
 }
 
-//nolint:revive // type alias for backward compatibility
 type SubscriptionPersistence = Persistence
 
 // PersistenceConfig configuration for subscription persistence
@@ -383,7 +382,6 @@ type Recovery struct {
 	retryDelay      time.Duration
 }
 
-//nolint:revive // type alias for backward compatibility
 type SubscriptionRecovery = Recovery
 
 // NewSubscriptionRecovery creates a new subscription recovery manager

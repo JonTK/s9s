@@ -50,7 +50,6 @@ type DataCollector struct {
 	stopChan chan struct{}
 }
 
-//nolint:revive // type alias for backward compatibility
 type HistoricalDataCollector = DataCollector
 
 // CollectorConfig configuration for historical data collector

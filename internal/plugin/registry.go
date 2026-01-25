@@ -25,7 +25,6 @@ type Metadata struct {
 	Checksum         string // For verification
 }
 
-//nolint:revive // type alias for backward compatibility
 type PluginMetadata = Metadata
 
 // NewRegistry creates a new plugin registry

@@ -26,7 +26,6 @@ type TestHarness struct {
 	height int
 }
 
-//nolint:revive // type alias for backward compatibility
 type TUITestHarness = TestHarness
 
 // NewTUITestHarness creates a new TUI test harness with a simulated screen
