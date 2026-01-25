@@ -187,24 +187,17 @@ func (m *StreamingPreferencesManager) validatePreferences(prefs *StreamingPrefer
 
 // validateNumericRanges validates numeric preference ranges
 func (m *StreamingPreferencesManager) validateNumericRanges(prefs *StreamingPreferences) {
-	if prefs.MaxConcurrentStreams < 1 || prefs.MaxConcurrentStreams > 16 {
-		prefs.MaxConcurrentStreams = 4
-	}
+	m.validateIntRange(&prefs.MaxConcurrentStreams, 1, 16, 4)
+	m.validateIntRange(&prefs.BufferSizeLines, 100, 100000, 10000)
+	m.validateIntRange(&prefs.PollIntervalSeconds, 1, 60, 2)
+	m.validateIntRange(&prefs.MaxMemoryMB, 10, 1000, 50)
+	m.validateIntRange(&prefs.FileCheckIntervalMs, 100, 10000, 1000)
+}
 
-	if prefs.BufferSizeLines < 100 || prefs.BufferSizeLines > 100000 {
-		prefs.BufferSizeLines = 10000
-	}
-
-	if prefs.PollIntervalSeconds < 1 || prefs.PollIntervalSeconds > 60 {
-		prefs.PollIntervalSeconds = 2
-	}
-
-	if prefs.MaxMemoryMB < 10 || prefs.MaxMemoryMB > 1000 {
-		prefs.MaxMemoryMB = 50
-	}
-
-	if prefs.FileCheckIntervalMs < 100 || prefs.FileCheckIntervalMs > 10000 {
-		prefs.FileCheckIntervalMs = 1000
+// validateIntRange validates an integer is within bounds and resets to default if not
+func (m *StreamingPreferencesManager) validateIntRange(val *int, min, max, defaultVal int) {
+	if *val < min || *val > max {
+		*val = defaultVal
 	}
 }
 

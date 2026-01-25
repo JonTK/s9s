@@ -126,14 +126,33 @@ func (km *KeyManager) DisconnectFromAgent() error {
 
 // DiscoverKeys discovers SSH keys in the SSH directory
 func (km *KeyManager) DiscoverKeys() error {
+	if err := km.ensureSSHDirectory(); err != nil {
+		return err
+	}
+
+	if err := km.walkSSHDirectory(); err != nil {
+		return err
+	}
+
+	if km.autoLoad {
+		_ = km.LoadKeysToAgent()
+	}
+
+	return nil
+}
+
+// ensureSSHDirectory creates the SSH directory if it doesn't exist
+func (km *KeyManager) ensureSSHDirectory() error {
 	if _, err := os.Stat(km.keyDir); os.IsNotExist(err) {
-		// Create SSH directory if it doesn't exist
 		if err := os.MkdirAll(km.keyDir, 0700); err != nil {
 			return fmt.Errorf("failed to create SSH directory: %w", err)
 		}
-		return nil
 	}
+	return nil
+}
 
+// walkSSHDirectory walks the SSH directory and discovers keys
+func (km *KeyManager) walkSSHDirectory() error {
 	err := filepath.WalkDir(km.keyDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -143,43 +162,50 @@ func (km *KeyManager) DiscoverKeys() error {
 			return nil
 		}
 
-		// Skip known files that aren't private keys
-		basename := filepath.Base(path)
-		if strings.HasSuffix(basename, ".pub") ||
-			strings.HasSuffix(basename, ".ppk") ||
-			basename == "known_hosts" ||
-			basename == "authorized_keys" ||
-			basename == "config" {
-			return nil
-		}
-
-		// Try to parse as SSH private key
-		if km.isPrivateKey(path) {
-			key, err := km.parseKey(path)
-			if err != nil {
-				// Log but don't fail
-				fmt.Printf("Warning: Could not parse key %s: %v\n", path, err)
-				return nil
-			}
-
-			km.mu.Lock()
-			km.keys[key.Name] = key
-			km.mu.Unlock()
-		}
-
+		km.processKeyFile(path, entry)
 		return nil
 	})
 
 	if err != nil {
 		return fmt.Errorf("failed to walk SSH directory: %w", err)
 	}
+	return nil
+}
 
-	// Auto-load keys to agent if enabled
-	if km.autoLoad {
-		_ = km.LoadKeysToAgent()
+// processKeyFile processes a single file in the SSH directory
+func (km *KeyManager) processKeyFile(path string, entry fs.DirEntry) {
+	// Skip known non-key files
+	if km.shouldSkipFile(entry) {
+		return
 	}
 
-	return nil
+	// Try to parse as SSH private key
+	if !km.isPrivateKey(path) {
+		return
+	}
+
+	key, err := km.parseKey(path)
+	if err != nil {
+		fmt.Printf("Warning: Could not parse key %s: %v\n", path, err)
+		return
+	}
+
+	km.mu.Lock()
+	km.keys[key.Name] = key
+	km.mu.Unlock()
+}
+
+// shouldSkipFile checks if a file should be skipped during key discovery
+func (km *KeyManager) shouldSkipFile(entry fs.DirEntry) bool {
+	basename := entry.Name()
+	if strings.HasSuffix(basename, ".pub") ||
+		strings.HasSuffix(basename, ".ppk") ||
+		basename == "known_hosts" ||
+		basename == "authorized_keys" ||
+		basename == "config" {
+		return true
+	}
+	return false
 }
 
 // isPrivateKey checks if a file is likely an SSH private key
