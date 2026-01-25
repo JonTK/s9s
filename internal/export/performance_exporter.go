@@ -4,11 +4,12 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"html/template"
+	htmltemplate "html/template"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	texttemplate "text/template"
 	"time"
 
 	"github.com/jontk/s9s/internal/fileperms"
@@ -54,6 +55,75 @@ type SystemMetrics struct {
 	MemoryTotal    uint64        `json:"memory_total"`
 	GoroutineCount int           `json:"goroutine_count"`
 	ResponseTime   time.Duration `json:"response_time"`
+}
+
+// Text template for performance report
+const textReportTemplate = `S9s Performance Report
+=====================
+
+Generated: {{.GeneratedAt}}
+Period: {{.ReportPeriod}}
+
+System Metrics
+--------------
+CPU Usage: {{printf "%.2f" .SystemMetrics.CPUUsage}}%
+Memory Usage: {{printf "%.2f" .SystemMetrics.MemoryUsage}}% ({{.MemoryUsedFormatted}} / {{.MemoryTotalFormatted}})
+Goroutines: {{.SystemMetrics.GoroutineCount}}
+Response Time (avg): {{.SystemMetrics.ResponseTime}}
+
+Operation Statistics
+-------------------
+{{printf "%-30s %10s %15s %15s" "Operation" "Count" "Avg Time" "Total Time"}}
+{{.Separator}}
+{{range .OperationStats}}{{printf "%-30s %10d %15v %15v" .Name .Count .AverageTime .TotalTime}}
+{{end}}
+{{if .OptimizationTips}}
+Optimization Recommendations
+---------------------------
+{{range $i, $tip := .OptimizationTips}}{{add $i 1}}. {{$tip.Suggestion}}
+   Impact: {{$tip.Impact}} | Category: {{$tip.Category}}
+
+{{end}}{{end}}`
+
+// Markdown template for performance report
+const markdownReportTemplate = `# S9s Performance Report
+
+**Generated:** {{.GeneratedAt}}
+**Period:** {{.ReportPeriod}}
+
+## System Metrics
+
+| Metric | Value |
+|--------|-------|
+| CPU Usage | {{printf "%.2f" .SystemMetrics.CPUUsage}}% |
+| Memory Usage | {{printf "%.2f" .SystemMetrics.MemoryUsage}}% |
+| Memory Used | {{.MemoryUsedFormatted}} |
+| Memory Total | {{.MemoryTotalFormatted}} |
+| Goroutines | {{.SystemMetrics.GoroutineCount}} |
+| Avg Response Time | {{.SystemMetrics.ResponseTime}} |
+
+## Operation Statistics
+
+| Operation | Count | Avg Time | Total Time |
+|-----------|-------|----------|------------|
+{{range .OperationStats}}| {{.Name}} | {{.Count}} | {{.AverageTime}} | {{.TotalTime}} |
+{{end}}
+{{if .OptimizationTips}}## Optimization Recommendations
+
+{{range $i, $tip := .OptimizationTips}}### {{add $i 1}}. {{$tip.Suggestion}}
+
+- **Impact:** {{$tip.Impact}}
+- **Category:** {{$tip.Category}}
+
+{{end}}{{end}}`
+
+// ExportTemplateData wraps PerformanceReportData with additional formatting
+type ExportTemplateData struct {
+	*PerformanceReportData
+	MemoryUsedFormatted   string
+	MemoryTotalFormatted  string
+	Separator             string
+	GeneratedAt           string
 }
 
 // ExportPerformanceReport exports a performance report in the specified format
@@ -167,89 +237,24 @@ func (pe *PerformanceExporter) exportText(data PerformanceReportData, outputPath
 	}
 	defer func() { _ = file.Close() }()
 
-	// Write header
-	if _, err := fmt.Fprintf(file, "S9s Performance Report\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "=====================\n\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "Generated: %s\n", data.GeneratedAt.Format("2006-01-02 15:04:05")); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "Period: %s\n\n", data.ReportPeriod); err != nil {
-		return err
+	// Prepare template data
+	templateData := ExportTemplateData{
+		PerformanceReportData: &data,
+		MemoryUsedFormatted:   formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryUsed)),
+		MemoryTotalFormatted:  formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryTotal)),
+		Separator:             strings.Repeat("-", 80),
+		GeneratedAt:           data.GeneratedAt.Format("2006-01-02 15:04:05"),
 	}
 
-	// System Metrics
-	if _, err := fmt.Fprintf(file, "System Metrics\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "--------------\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "CPU Usage: %.2f%%\n", data.SystemMetrics.CPUUsage); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "Memory Usage: %.2f%% (%s / %s)\n",
-		data.SystemMetrics.MemoryUsage,
-		formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryUsed)),
-		formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryTotal))); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "Goroutines: %d\n", data.SystemMetrics.GoroutineCount); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "Response Time (avg): %v\n\n", data.SystemMetrics.ResponseTime); err != nil {
-		return err
+	// Parse and execute template
+	tmpl, err := texttemplate.New("textReport").Funcs(texttemplate.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	}).Parse(textReportTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	// Operation Statistics
-	if _, err := fmt.Fprintf(file, "Operation Statistics\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "-------------------\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "%-30s %10s %15s %15s\n", "Operation", "Count", "Avg Time", "Total Time"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "%s\n", strings.Repeat("-", 80)); err != nil {
-		return err
-	}
-
-	for _, op := range data.OperationStats {
-		if _, err := fmt.Fprintf(file, "%-30s %10d %15v %15v\n",
-			op.Name,
-			op.Count,
-			op.AverageTime,
-			op.TotalTime); err != nil {
-			return err
-		}
-	}
-	if _, err := fmt.Fprintf(file, "\n"); err != nil {
-		return err
-	}
-
-	// Optimization Tips
-	if len(data.OptimizationTips) > 0 {
-		if _, err := fmt.Fprintf(file, "Optimization Recommendations\n"); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(file, "---------------------------\n"); err != nil {
-			return err
-		}
-		for i, tip := range data.OptimizationTips {
-			if _, err := fmt.Fprintf(file, "%d. %s\n", i+1, tip.Suggestion); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(file, "   Impact: %s | Category: %s\n\n", tip.Impact, tip.Category); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return tmpl.Execute(file, templateData)
 }
 
 // exportJSON exports performance report as JSON
@@ -353,85 +358,23 @@ func (pe *PerformanceExporter) exportMarkdown(data PerformanceReportData, output
 	}
 	defer func() { _ = file.Close() }()
 
-	// Write Markdown content
-	if _, err := fmt.Fprintf(file, "# S9s Performance Report\n\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "**Generated:** %s  \n", data.GeneratedAt.Format("2006-01-02 15:04:05")); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "**Period:** %s\n\n", data.ReportPeriod); err != nil {
-		return err
+	// Prepare template data
+	templateData := ExportTemplateData{
+		PerformanceReportData: &data,
+		MemoryUsedFormatted:   formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryUsed)),
+		MemoryTotalFormatted:  formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryTotal)),
+		GeneratedAt:           data.GeneratedAt.Format("2006-01-02 15:04:05"),
 	}
 
-	// System Metrics
-	if _, err := fmt.Fprintf(file, "## System Metrics\n\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Metric | Value |\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "|--------|-------|\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| CPU Usage | %.2f%% |\n", data.SystemMetrics.CPUUsage); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Memory Usage | %.2f%% |\n", data.SystemMetrics.MemoryUsage); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Memory Used | %s |\n", formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryUsed))); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Memory Total | %s |\n", formatBytes(mathutil.Uint64ToInt64(data.SystemMetrics.MemoryTotal))); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Goroutines | %d |\n", data.SystemMetrics.GoroutineCount); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Avg Response Time | %v |\n\n", data.SystemMetrics.ResponseTime); err != nil {
-		return err
+	// Parse and execute template
+	tmpl, err := texttemplate.New("markdownReport").Funcs(texttemplate.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	}).Parse(markdownReportTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	// Operation Statistics
-	if _, err := fmt.Fprintf(file, "## Operation Statistics\n\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "| Operation | Count | Avg Time | Total Time |\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(file, "|-----------|-------|----------|------------|\n"); err != nil {
-		return err
-	}
-	for _, op := range data.OperationStats {
-		if _, err := fmt.Fprintf(file, "| %s | %d | %v | %v |\n",
-			op.Name, op.Count, op.AverageTime, op.TotalTime); err != nil {
-			return err
-		}
-	}
-	if _, err := fmt.Fprintf(file, "\n"); err != nil {
-		return err
-	}
-
-	// Optimization Tips
-	if len(data.OptimizationTips) > 0 {
-		if _, err := fmt.Fprintf(file, "## Optimization Recommendations\n\n"); err != nil {
-			return err
-		}
-		for i, tip := range data.OptimizationTips {
-			if _, err := fmt.Fprintf(file, "### %d. %s\n\n", i+1, tip.Suggestion); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(file, "- **Impact:** %s\n", tip.Impact); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(file, "- **Category:** %s\n\n", tip.Category); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return tmpl.Execute(file, templateData)
 }
 
 // exportHTML exports performance report as HTML
@@ -518,7 +461,7 @@ func (pe *PerformanceExporter) exportHTML(data PerformanceReportData, outputPath
 </html>`
 
 	// Parse and execute template
-	funcMap := template.FuncMap{
+	funcMap := htmltemplate.FuncMap{
 		"formatBytes": func(b interface{}) string {
 			switch v := b.(type) {
 			case int64:
@@ -533,7 +476,7 @@ func (pe *PerformanceExporter) exportHTML(data PerformanceReportData, outputPath
 		"lower": strings.ToLower,
 	}
 
-	tmpl, err := template.New("report").Funcs(funcMap).Parse(htmlTemplate)
+	tmpl, err := htmltemplate.New("report").Funcs(funcMap).Parse(htmlTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse HTML template: %w", err)
 	}
