@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -314,42 +315,22 @@ func (vm *ViewManager) AddView(view View) error {
 
 // setViewReferences sets app and pages references on views that support it
 func (vm *ViewManager) setViewReferences(view View) {
-	switch v := view.(type) {
-	case *JobsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *NodesView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *PartitionsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *ReservationsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *QoSView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *AccountsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *UsersView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *PerformanceView:
-		v.BaseView.SetApp(vm.app)
-		if v.app == nil {
-			v.app = vm.app
-		}
-		if v.pages == nil {
-			v.pages = vm.pages
+	// Set BaseView reference
+	view.(interface{ SetApp(*tview.Application) }).SetApp(vm.app)
+
+	// Set app and pages fields on view if they exist
+	rv := reflect.ValueOf(view).Elem()
+
+	// Set app field
+	if appField := rv.FieldByName("app"); appField.IsValid() && appField.CanSet() {
+		appField.Set(reflect.ValueOf(vm.app))
+	}
+
+	// Set pages field - handle both unconditional and conditional assignment
+	if pagesField := rv.FieldByName("pages"); pagesField.IsValid() && pagesField.CanSet() {
+		// For PerformanceView, only set if nil
+		if pagesField.IsNil() {
+			pagesField.Set(reflect.ValueOf(vm.pages))
 		}
 	}
 }
