@@ -200,9 +200,9 @@ func (v *AccountsView) Hints() []string {
 
 // OnKey handles keyboard events
 func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
-	// Check if a modal is open - if so, don't process view shortcuts
+	// Check if a modal is open
 	if v.pages != nil && v.pages.GetPageCount() > 1 {
-		return event // Let modal handle it
+		return event
 	}
 
 	// Handle advanced filter mode
@@ -211,6 +211,7 @@ func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	}
 
+	// Dispatch by key type
 	switch event.Key() {
 	case tcell.KeyF3:
 		v.showAdvancedFilter()
@@ -219,15 +220,7 @@ func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		v.showGlobalSearch()
 		return nil
 	case tcell.KeyRune:
-		switch event.Rune() {
-		case 'R':
-			go func() { _ = v.Refresh() }()
-			return nil
-		case '/':
-			v.app.SetFocus(v.filterInput)
-			return nil
-		case 'h', 'H':
-			v.showAccountHierarchy()
+		if handled := v.handleAccountsRune(event.Rune()); handled {
 			return nil
 		}
 	case tcell.KeyEnter:
@@ -241,6 +234,21 @@ func (v *AccountsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	return event
+}
+
+func (v *AccountsView) handleAccountsRune(r rune) bool {
+	switch r {
+	case 'R':
+		go func() { _ = v.Refresh() }()
+		return true
+	case '/':
+		v.app.SetFocus(v.filterInput)
+		return true
+	case 'h', 'H':
+		v.showAccountHierarchy()
+		return true
+	}
+	return false
 }
 
 // OnFocus handles focus events

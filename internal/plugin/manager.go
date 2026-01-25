@@ -397,58 +397,71 @@ func (m *Manager) Stop() error {
 	m.cancel()
 
 	// Stop all plugins in reverse dependency order
+	m.stopPluginsInOrder()
+
+	debug.Logger.Printf("Plugin manager stopped")
+	return nil
+}
+
+func (m *Manager) stopPluginsInOrder() {
 	stopped := make(map[string]bool)
 
 	for {
-		stoppedAny := false
-
-		for name, plugin := range m.plugins {
-			if stopped[name] {
-				continue
-			}
-
-			state := m.states[name]
-			if !state.Running {
-				stopped[name] = true
-				continue
-			}
-
-			// Check if any plugins depend on this one
-			canStop := true
-			for otherName, otherPlugin := range m.plugins {
-				if stopped[otherName] || otherName == name {
-					continue
-				}
-
-				otherInfo := otherPlugin.GetInfo()
-				for _, req := range otherInfo.Requires {
-					if req == name {
-						canStop = false
-						break
-					}
-				}
-				if !canStop {
-					break
-				}
-			}
-
-			if canStop {
-				debug.Logger.Printf("Stopping plugin: %s", name)
-				if err := plugin.Stop(context.Background()); err != nil {
-					debug.Logger.Printf("Error stopping plugin %s: %v", name, err)
-				}
-				stopped[name] = true
-				stoppedAny = true
-			}
-		}
-
+		stoppedAny := m.stopAvailablePlugins(stopped)
 		if !stoppedAny {
 			break
 		}
 	}
+}
 
-	debug.Logger.Printf("Plugin manager stopped")
-	return nil
+func (m *Manager) stopAvailablePlugins(stopped map[string]bool) bool {
+	stoppedAny := false
+
+	for name, plugin := range m.plugins {
+		if stopped[name] {
+			continue
+		}
+
+		// Mark non-running plugins as stopped
+		state := m.states[name]
+		if !state.Running {
+			stopped[name] = true
+			continue
+		}
+
+		// Check if we can stop this plugin
+		if m.canStopPlugin(name, stopped) {
+			m.stopSinglePlugin(name, plugin)
+			stopped[name] = true
+			stoppedAny = true
+		}
+	}
+
+	return stoppedAny
+}
+
+func (m *Manager) canStopPlugin(name string, stopped map[string]bool) bool {
+	for otherName, otherPlugin := range m.plugins {
+		if stopped[otherName] || otherName == name {
+			continue
+		}
+
+		otherInfo := otherPlugin.GetInfo()
+		for _, req := range otherInfo.Requires {
+			if req == name {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (m *Manager) stopSinglePlugin(name string, plugin Plugin) {
+	debug.Logger.Printf("Stopping plugin: %s", name)
+	if err := plugin.Stop(context.Background()); err != nil {
+		debug.Logger.Printf("Error stopping plugin %s: %v", name, err)
+	}
 }
 
 //nolint:revive // type alias for backward compatibility
