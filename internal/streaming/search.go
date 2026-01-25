@@ -305,14 +305,21 @@ func HighlightLine(line string, highlights map[string][]int, colors map[string]s
 		return line
 	}
 
-	// Collect all highlight ranges
-	type highlightRange struct {
-		start    int
-		end      int
-		color    string
-		priority int
-	}
+	ranges := collectHighlightRanges(highlights, colors)
+	sortHighlightRanges(ranges)
+	return buildHighlightedLine(line, ranges)
+}
 
+// highlightRange represents a single highlight range with color and priority
+type highlightRange struct {
+	start    int
+	end      int
+	color    string
+	priority int
+}
+
+// collectHighlightRanges collects all highlight ranges from the highlights map
+func collectHighlightRanges(highlights map[string][]int, colors map[string]string) []highlightRange {
 	ranges := make([]highlightRange, 0)
 	priority := 0
 
@@ -335,7 +342,11 @@ func HighlightLine(line string, highlights map[string][]int, colors map[string]s
 		priority++
 	}
 
-	// Sort ranges by start position
+	return ranges
+}
+
+// sortHighlightRanges sorts ranges by start position using bubble sort
+func sortHighlightRanges(ranges []highlightRange) {
 	for i := 0; i < len(ranges); i++ {
 		for j := i + 1; j < len(ranges); j++ {
 			if ranges[i].start > ranges[j].start {
@@ -343,8 +354,10 @@ func HighlightLine(line string, highlights map[string][]int, colors map[string]s
 			}
 		}
 	}
+}
 
-	// Build highlighted line
+// buildHighlightedLine builds the final highlighted line with color codes
+func buildHighlightedLine(line string, ranges []highlightRange) string {
 	highlighted := ""
 	lastEnd := 0
 
