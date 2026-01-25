@@ -202,14 +202,7 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 		zScore := deviation / stdDev
 
 		if zScore > sensitivity {
-			severity := "low"
-			if zScore > sensitivity*1.5 {
-				severity = "medium"
-			}
-			if zScore > sensitivity*2 {
-				severity = "high"
-			}
-
+			severity := ha.calculateAnomalySeverity(zScore, sensitivity)
 			anomaly := AnomalyPoint{
 				Timestamp: dataPoints[i].Timestamp,
 				Value:     val,
@@ -217,7 +210,6 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 				Deviation: deviation,
 				Severity:  severity,
 			}
-
 			anomalies = append(anomalies, anomaly)
 		}
 	}
@@ -232,6 +224,16 @@ func (ha *HistoricalAnalyzer) DetectAnomalies(metricName string, duration time.D
 		Threshold:    threshold,
 		Sensitivity:  sensitivity,
 	}, nil
+}
+
+func (ha *HistoricalAnalyzer) calculateAnomalySeverity(zScore, sensitivity float64) string {
+	if zScore > sensitivity*2 {
+		return "high"
+	}
+	if zScore > sensitivity*1.5 {
+		return "medium"
+	}
+	return "low"
 }
 
 // AnalyzeSeasonality detects seasonal patterns in historical data
@@ -356,68 +358,67 @@ func (ha *HistoricalAnalyzer) CompareMetrics(metricNames []string, duration time
 	var allStats []map[string]interface{}
 
 	for _, metricName := range metricNames {
-		series, err := ha.collector.GetHistoricalData(metricName, start, end)
-		if err != nil {
-			comparison[metricName] = map[string]interface{}{
-				"error": err.Error(),
-			}
-			continue
-		}
-
-		// Calculate basic statistics
-		var values []float64
-		for _, dp := range series.DataPoints {
-			if val, ok := convertToFloat64(dp.Value); ok {
-				values = append(values, val)
-			}
-		}
-
-		if len(values) == 0 {
-			comparison[metricName] = map[string]interface{}{
-				"error": "no numeric data points",
-			}
-			continue
-		}
-
-		stats := map[string]interface{}{
-			"metric":   metricName,
-			"count":    len(values),
-			"mean":     average(values),
-			"min":      minimum(values),
-			"max":      maximum(values),
-			"std_dev":  standardDeviation(values),
-			"variance": variance(values),
-		}
-
+		stats := ha.processMetricForComparison(metricName, start, end)
 		comparison[metricName] = stats
-		allStats = append(allStats, stats)
+		if _, isError := stats["error"]; !isError {
+			allStats = append(allStats, stats)
+		}
 	}
 
-	// Add correlation analysis if we have multiple valid metrics
 	if len(allStats) >= 2 {
-		// Simple correlation between first two metrics with valid data
-		correlations := make(map[string]float64)
-
-		for i := 0; i < len(allStats); i++ {
-			for j := i + 1; j < len(allStats); j++ {
-				metric1 := allStats[i]["metric"].(string)
-				metric2 := allStats[j]["metric"].(string)
-
-				// Get data for correlation calculation
-				series1, _ := ha.collector.GetHistoricalData(metric1, start, end)
-				series2, _ := ha.collector.GetHistoricalData(metric2, start, end)
-
-				if series1 != nil && series2 != nil {
-					corr := calculateCorrelation(series1.DataPoints, series2.DataPoints)
-					correlations[fmt.Sprintf("%s_vs_%s", metric1, metric2)] = corr
-				}
-			}
-		}
-
-		comparison["correlations"] = correlations
+		ha.addCorrelationAnalysis(comparison, allStats, start, end)
 	}
 
 	return comparison, nil
+}
+
+func (ha *HistoricalAnalyzer) processMetricForComparison(metricName string, start, end time.Time) map[string]interface{} {
+	series, err := ha.collector.GetHistoricalData(metricName, start, end)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	var values []float64
+	for _, dp := range series.DataPoints {
+		if val, ok := convertToFloat64(dp.Value); ok {
+			values = append(values, val)
+		}
+	}
+
+	if len(values) == 0 {
+		return map[string]interface{}{"error": "no numeric data points"}
+	}
+
+	return map[string]interface{}{
+		"metric":   metricName,
+		"count":    len(values),
+		"mean":     average(values),
+		"min":      minimum(values),
+		"max":      maximum(values),
+		"std_dev":  standardDeviation(values),
+		"variance": variance(values),
+	}
+}
+
+func (ha *HistoricalAnalyzer) addCorrelationAnalysis(comparison map[string]interface{}, allStats []map[string]interface{}, start, end time.Time) {
+	correlations := make(map[string]float64)
+
+	for i := 0; i < len(allStats); i++ {
+		for j := i + 1; j < len(allStats); j++ {
+			metric1 := allStats[i]["metric"].(string)
+			metric2 := allStats[j]["metric"].(string)
+
+			series1, _ := ha.collector.GetHistoricalData(metric1, start, end)
+			series2, _ := ha.collector.GetHistoricalData(metric2, start, end)
+
+			if series1 != nil && series2 != nil {
+				corr := calculateCorrelation(series1.DataPoints, series2.DataPoints)
+				correlations[fmt.Sprintf("%s_vs_%s", metric1, metric2)] = corr
+			}
+		}
+	}
+
+	comparison["correlations"] = correlations
 }
 
 // Helper functions for statistical calculations
