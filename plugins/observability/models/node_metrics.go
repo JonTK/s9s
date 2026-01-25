@@ -70,52 +70,75 @@ func (nmc *NodeMetricsCollector) extractResourceMetrics(metrics map[string]*Time
 		Timestamp: time.Now(),
 	}
 
-	// CPU metrics
-	if cpuUsage, ok := metrics["node_cpu_usage"]; ok && cpuUsage.Latest() != nil {
-		rm.CPU.Usage = cpuUsage.Latest().Value
-	}
-	if cpuCores, ok := metrics["node_cpu_cores"]; ok && cpuCores.Latest() != nil {
-		rm.CPU.Cores = int(cpuCores.Latest().Value)
-	}
-	if load1m, ok := metrics["node_load_1m"]; ok && load1m.Latest() != nil {
-		rm.CPU.Load1m = load1m.Latest().Value
-	}
-	if load5m, ok := metrics["node_load_5m"]; ok && load5m.Latest() != nil {
-		rm.CPU.Load5m = load5m.Latest().Value
-	}
-	if load15m, ok := metrics["node_load_15m"]; ok && load15m.Latest() != nil {
-		rm.CPU.Load15m = load15m.Latest().Value
-	}
+	nmc.extractCPUMetrics(&rm, metrics)
+	nmc.extractMemoryMetrics(&rm, metrics)
+	nmc.extractDiskMetrics(&rm, metrics)
+	nmc.extractNetworkMetrics(&rm, metrics)
 
-	// Memory metrics
-	if memTotal, ok := metrics["node_memory_total"]; ok && memTotal.Latest() != nil {
-		rm.Memory.Total = uint64(memTotal.Latest().Value)
+	return rm
+}
+
+// extractCPUMetrics extracts CPU-related metrics from time series data
+func (nmc *NodeMetricsCollector) extractCPUMetrics(rm *ResourceMetrics, metrics map[string]*TimeSeries) {
+	if val := getMetricValue(metrics, "node_cpu_usage"); val != nil {
+		rm.CPU.Usage = *val
 	}
-	if memAvailable, ok := metrics["node_memory_available"]; ok && memAvailable.Latest() != nil {
-		rm.Memory.Available = uint64(memAvailable.Latest().Value)
+	if val := getMetricValue(metrics, "node_cpu_cores"); val != nil {
+		rm.CPU.Cores = int(*val)
+	}
+	if val := getMetricValue(metrics, "node_load_1m"); val != nil {
+		rm.CPU.Load1m = *val
+	}
+	if val := getMetricValue(metrics, "node_load_5m"); val != nil {
+		rm.CPU.Load5m = *val
+	}
+	if val := getMetricValue(metrics, "node_load_15m"); val != nil {
+		rm.CPU.Load15m = *val
+	}
+}
+
+// extractMemoryMetrics extracts memory-related metrics from time series data
+func (nmc *NodeMetricsCollector) extractMemoryMetrics(rm *ResourceMetrics, metrics map[string]*TimeSeries) {
+	if val := getMetricValue(metrics, "node_memory_total"); val != nil {
+		rm.Memory.Total = uint64(*val)
+	}
+	if val := getMetricValue(metrics, "node_memory_available"); val != nil {
+		rm.Memory.Available = uint64(*val)
 	}
 	if rm.Memory.Total > 0 && rm.Memory.Available > 0 {
 		rm.Memory.Used = rm.Memory.Total - rm.Memory.Available
 		rm.Memory.Usage = float64(rm.Memory.Used) / float64(rm.Memory.Total) * 100
 	}
+}
 
-	// Disk I/O metrics
-	if diskRead, ok := metrics["node_disk_read_bytes"]; ok && diskRead.Latest() != nil {
-		rm.Disk.ReadBytesPerSec = diskRead.Latest().Value
+// extractDiskMetrics extracts disk I/O metrics from time series data
+func (nmc *NodeMetricsCollector) extractDiskMetrics(rm *ResourceMetrics, metrics map[string]*TimeSeries) {
+	if val := getMetricValue(metrics, "node_disk_read_bytes"); val != nil {
+		rm.Disk.ReadBytesPerSec = *val
 	}
-	if diskWrite, ok := metrics["node_disk_write_bytes"]; ok && diskWrite.Latest() != nil {
-		rm.Disk.WriteBytesPerSec = diskWrite.Latest().Value
+	if val := getMetricValue(metrics, "node_disk_write_bytes"); val != nil {
+		rm.Disk.WriteBytesPerSec = *val
 	}
+}
 
-	// Network metrics
-	if netRx, ok := metrics["node_network_receive_bytes"]; ok && netRx.Latest() != nil {
-		rm.Network.ReceiveBytesPerSec = netRx.Latest().Value
+// extractNetworkMetrics extracts network metrics from time series data
+func (nmc *NodeMetricsCollector) extractNetworkMetrics(rm *ResourceMetrics, metrics map[string]*TimeSeries) {
+	if val := getMetricValue(metrics, "node_network_receive_bytes"); val != nil {
+		rm.Network.ReceiveBytesPerSec = *val
 	}
-	if netTx, ok := metrics["node_network_transmit_bytes"]; ok && netTx.Latest() != nil {
-		rm.Network.TransmitBytesPerSec = netTx.Latest().Value
+	if val := getMetricValue(metrics, "node_network_transmit_bytes"); val != nil {
+		rm.Network.TransmitBytesPerSec = *val
 	}
+}
 
-	return rm
+// getMetricValue safely retrieves a metric value from the time series map
+func getMetricValue(metrics map[string]*TimeSeries, key string) *float64 {
+	if ts, ok := metrics[key]; ok && ts != nil {
+		if latest := ts.Latest(); latest != nil {
+			return &latest.Value
+		}
+	}
+	return nil
 }
 
 // GetNode returns metrics for a specific node
