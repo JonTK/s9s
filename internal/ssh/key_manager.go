@@ -35,7 +35,6 @@ type Key struct {
 	LastUsed    time.Time
 }
 
-//nolint:revive // type alias for backward compatibility
 type SSHKey = Key
 
 // Agent represents an SSH agent connection
@@ -45,7 +44,6 @@ type Agent struct {
 	mu     sync.RWMutex
 }
 
-//nolint:revive // type alias for backward compatibility
 type SSHAgent = Agent
 
 // KeyManager manages SSH keys and agent integration

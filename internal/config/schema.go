@@ -28,7 +28,6 @@ type Field struct {
 	Examples    []string     `json:"examples,omitempty"` // Usage examples
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigField = Field
 
 // FieldType represents the type of a configuration field
@@ -80,7 +79,6 @@ type Schema struct {
 	Fields []Field `json:"fields"`
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigSchema = Schema
 
 // Group represents a group of related configuration fields
@@ -92,7 +90,6 @@ type Group struct {
 	Order       int    `json:"order"`
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigGroup = Group
 
 // GetConfigSchema returns the complete configuration schema

@@ -259,7 +259,6 @@ type Exporter struct {
 	metrics *PluginMetrics
 }
 
-//nolint:revive // type alias for backward compatibility
 type MetricsExporter = Exporter
 
 // NewMetricsExporter creates a new metrics exporter
