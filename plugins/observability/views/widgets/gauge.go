@@ -66,57 +66,71 @@ func (g *GaugeWidget) Draw(screen tcell.Screen) {
 		return
 	}
 
-	// Calculate percentage
+	percentage := g.calculatePercentage()
+	gaugeY := g.calculateGaugeY(y, height)
+	filledWidth := int(float64(width) * percentage)
+	color := g.colorFunc(g.value)
+
+	g.drawGaugeBar(screen, x, gaugeY, width, filledWidth, color)
+	g.drawGaugeText(screen, x, gaugeY, width, filledWidth, color)
+}
+
+func (g *GaugeWidget) calculatePercentage() float64 {
 	percentage := (g.value - g.min) / (g.max - g.min)
 	if math.IsNaN(percentage) || math.IsInf(percentage, 0) {
 		percentage = 0
 	}
-	percentage = math.Max(0, math.Min(1, percentage))
+	return math.Max(0, math.Min(1, percentage))
+}
 
-	// Draw gauge on first line
-	gaugeY := y
+func (g *GaugeWidget) calculateGaugeY(y, height int) int {
 	if height > 1 {
-		// Center vertically if we have space
-		gaugeY = y + (height-1)/2
+		return y + (height-1)/2
 	}
+	return y
+}
 
-	// Calculate filled width
-	filledWidth := int(float64(width) * percentage)
-
-	// Get color based on value
-	color := g.colorFunc(g.value)
-
-	// Draw the gauge
+func (g *GaugeWidget) drawGaugeBar(screen tcell.Screen, x, gaugeY, width, filledWidth int, color tcell.Color) {
 	for i := 0; i < width; i++ {
 		if i < filledWidth {
-			// Filled part
-			style := tcell.StyleDefault.Background(color).Foreground(tcell.ColorBlack)
-			if color == tcell.ColorBlack {
-				style = style.Foreground(tcell.ColorWhite)
-			}
+			style := g.getFilledStyle(color)
 			screen.SetContent(x+i, gaugeY, '█', nil, style)
 		} else {
-			// Empty part
 			screen.SetContent(x+i, gaugeY, '░', nil, tcell.StyleDefault.Foreground(tcell.ColorGray))
 		}
 	}
+}
 
-	// Draw value text centered on the gauge
+func (g *GaugeWidget) getFilledStyle(color tcell.Color) tcell.Style {
+	style := tcell.StyleDefault.Background(color).Foreground(tcell.ColorBlack)
+	if color == tcell.ColorBlack {
+		style = style.Foreground(tcell.ColorWhite)
+	}
+	return style
+}
+
+func (g *GaugeWidget) drawGaugeText(screen tcell.Screen, x, gaugeY, width, filledWidth int, color tcell.Color) {
 	valueText := g.formatValue()
-	if len(valueText) < width {
-		textX := x + (width-len(valueText))/2
-		for i, ch := range valueText {
-			style := tcell.StyleDefault.Bold(true)
-			if textX+i < x+filledWidth {
-				// Text over filled part
-				style = style.Background(color).Foreground(tcell.ColorBlack)
-				if color == tcell.ColorBlack {
-					style = style.Foreground(tcell.ColorWhite)
-				}
-			}
-			screen.SetContent(textX+i, gaugeY, ch, nil, style)
+	if len(valueText) >= width {
+		return
+	}
+
+	textX := x + (width-len(valueText))/2
+	for i, ch := range valueText {
+		style := g.getTextStyle(textX+i, x+filledWidth, color)
+		screen.SetContent(textX+i, gaugeY, ch, nil, style)
+	}
+}
+
+func (g *GaugeWidget) getTextStyle(textPos, filledEnd int, color tcell.Color) tcell.Style {
+	style := tcell.StyleDefault.Bold(true)
+	if textPos < filledEnd {
+		style = style.Background(color).Foreground(tcell.ColorBlack)
+		if color == tcell.ColorBlack {
+			style = style.Foreground(tcell.ColorWhite)
 		}
 	}
+	return style
 }
 
 // formatValue formats the current value for display
