@@ -246,7 +246,7 @@ func (o *OAuth2Authenticator) waitForCallback(ctx context.Context, tokenEndpoint
 		return o.exchangeCodeForToken(tokenEndpoint, authCode, codeVerifier, redirectURI, config)
 
 	case <-ctx.Done():
-		return nil, fmt.Errorf("authentication timeout or cancelled")
+		return nil, fmt.Errorf("authentication timeout or canceled")
 	}
 }
 

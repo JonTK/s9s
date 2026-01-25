@@ -206,7 +206,7 @@ func (v *BatchOperationsView) getStateColor(state string) string {
 		return "blue"
 	case "FAILED", "F":
 		return "red"
-	case "CANCELLED", "CA":
+	case "CANCELED", "CA":
 		return "red"
 	case "HELD", "H":
 		return "orange"

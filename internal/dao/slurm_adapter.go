@@ -359,7 +359,7 @@ func (j *jobManager) buildStateOutput(job *Job) string {
 		return j.addCompletedOutput(job)
 	case "FAILED":
 		return j.addFailedOutput(job)
-	case "CANCELLED":
+	case "CANCELLED": //nolint:misspell // matches SLURM official job state spelling
 		return j.addCancelledOutput()
 	default:
 		return fmt.Sprintf("Job state: %s\n", job.State)
@@ -403,6 +403,7 @@ func (j *jobManager) addFailedOutput(job *Job) string {
 }
 
 // addCancelledOutput returns output for cancelled jobs
+//nolint:misspell // "cancelled" matches SLURM official job state spelling
 func (j *jobManager) addCancelledOutput() string {
 	return "Job was cancelled by user.\n"
 }

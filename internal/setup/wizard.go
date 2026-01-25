@@ -50,7 +50,7 @@ func (w *Wizard) Run() error {
 	// Check if configuration already exists
 	if w.configExists() {
 		if !w.confirmOverwrite() {
-			fmt.Println("Setup cancelled. Use 's9s config edit' to modify existing configuration.")
+			fmt.Println("Setup canceled. Use 's9s config edit' to modify existing configuration.")
 			return nil
 		}
 	}

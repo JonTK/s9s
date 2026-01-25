@@ -33,7 +33,7 @@ func TestGetJobStateColor(t *testing.T) {
 			expected: "red",
 		},
 		{
-			name:     "cancelled job should be gray",
+			name:     "canceled job should be gray",
 			state:    JobStateCancelled,
 			expected: "gray",
 		},
@@ -180,7 +180,7 @@ func TestIsJobActive(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "cancelled job is not active",
+			name:     "canceled job is not active",
 			state:    JobStateCancelled,
 			expected: false,
 		},
@@ -327,7 +327,7 @@ func TestJobStateConstants(t *testing.T) {
 	assert.Equal(t, "RUNNING", JobStateRunning)
 	assert.Equal(t, "COMPLETED", JobStateCompleted)
 	assert.Equal(t, "FAILED", JobStateFailed)
-	assert.Equal(t, "CANCELLED", JobStateCancelled)
+	assert.Equal(t, "CANCELLED", JobStateCancelled) //nolint:misspell // matches SLURM official job state spelling
 	assert.Equal(t, "SUSPENDED", JobStateSuspended)
 	assert.Equal(t, "COMPLETING", JobStateCompleting)
 	assert.Equal(t, "CONFIGURING", JobStateConfiguring)

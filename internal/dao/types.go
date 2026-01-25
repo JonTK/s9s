@@ -177,7 +177,7 @@ const (
 	JobStateRunning     = "RUNNING"
 	JobStateCompleted   = "COMPLETED"
 	JobStateFailed      = "FAILED"
-	JobStateCancelled   = "CANCELLED"
+	JobStateCancelled   = "CANCELLED" //nolint:misspell // matches SLURM official job state spelling
 	JobStateSuspended   = "SUSPENDED"
 	JobStateCompleting  = "COMPLETING"
 	JobStateConfiguring = "CONFIGURING"

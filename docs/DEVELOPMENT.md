@@ -314,7 +314,7 @@ func TestJobsView_CancelJob(t *testing.T) {
     assert.NoError(t, err)
     
     job, _ := mockClient.Jobs().Get("123")
-    assert.Equal(t, dao.JobStateCancelled, job.State)
+    assert.Equal(t, dao.JobStateCanceled, job.State)
 }
 ```
 

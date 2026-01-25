@@ -593,7 +593,7 @@ func (v *JobsView) cancelSelectedJob() {
 	cleanState = strings.ReplaceAll(strings.ReplaceAll(cleanState, "[cyan]", ""), "[gray]", "")
 	debug.Logger.Printf("cancelSelectedJob() - clean state: %s", cleanState)
 
-	// Check if job can be cancelled
+	// Check if job can be canceled
 	if !strings.Contains(cleanState, dao.JobStateRunning) && !strings.Contains(cleanState, dao.JobStatePending) {
 		if v.mainStatusBar != nil {
 			v.mainStatusBar.Warning(fmt.Sprintf("Job %s is not in a cancellable state (current: %s)", jobID, cleanState))
@@ -627,7 +627,7 @@ func (v *JobsView) cancelSelectedJob() {
 // performCancelJob performs the job cancel operation
 func (v *JobsView) performCancelJob(jobID string) {
 	if v.mainStatusBar != nil {
-		v.mainStatusBar.Info(fmt.Sprintf("Cancelling job %s...", jobID))
+		v.mainStatusBar.Info(fmt.Sprintf("Canceling job %s...", jobID))
 	}
 
 	// First attempt to cancel
@@ -639,22 +639,22 @@ func (v *JobsView) performCancelJob(jobID string) {
 		return
 	}
 
-	// Verify the job was actually cancelled by checking its state
+	// Verify the job was actually canceled by checking its state
 	time.Sleep(500 * time.Millisecond) // Give SLURM time to update
 	job, getErr := v.client.Jobs().Get(jobID)
 	if getErr == nil && job != nil {
 		debug.Logger.Printf("Post-cancel job state: %s", job.State)
 		if job.State != dao.JobStateCancelled {
-			// Job wasn't actually cancelled, might be held
+			// Job wasn't actually canceled, might be held
 			if v.mainStatusBar != nil {
-				v.mainStatusBar.Warning(fmt.Sprintf("Job %s could not be cancelled. It may be held by admin. Try releasing it first.", jobID))
+				v.mainStatusBar.Warning(fmt.Sprintf("Job %s could not be canceled. It may be held by admin. Try releasing it first.", jobID))
 			}
 			return
 		}
 	}
 
 	if v.mainStatusBar != nil {
-		v.mainStatusBar.Success(fmt.Sprintf("Job %s cancelled", jobID))
+		v.mainStatusBar.Success(fmt.Sprintf("Job %s canceled", jobID))
 	}
 
 	// Refresh the view
