@@ -149,43 +149,67 @@ func (p *Parser) parsePrometheusConfig(config *PrometheusConfig) error {
 // parseDisplayConfig parses Display-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseDisplayConfig(config *DisplayConfig) error {
-	if val, ok := p.getValue("display.refreshInterval"); ok {
+	p.parseRefreshInterval("display.refreshInterval", config)
+	p.parseShowOverlays("display.showOverlays", config)
+	p.parseShowSparklines("display.showSparklines", config)
+	p.parseSparklinePoints("display.sparklinePoints", config)
+	p.parseColorScheme("display.colorScheme", config)
+	p.parseDecimalPrecision("display.decimalPrecision", config)
+	return nil
+}
+
+// parseRefreshInterval parses the display refresh interval
+func (p *Parser) parseRefreshInterval(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.RefreshInterval = duration
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.showOverlays"); ok {
+// parseShowOverlays parses the show overlays flag
+func (p *Parser) parseShowOverlays(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowOverlays = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.showSparklines"); ok {
+// parseShowSparklines parses the show sparklines flag
+func (p *Parser) parseShowSparklines(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowSparklines = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.sparklinePoints"); ok {
+// parseSparklinePoints parses the sparkline points configuration
+func (p *Parser) parseSparklinePoints(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if i, err := p.parseInt(val); err == nil {
 			config.SparklinePoints = i
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.colorScheme"); ok {
+// parseColorScheme parses the color scheme configuration
+func (p *Parser) parseColorScheme(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if str, ok := val.(string); ok {
 			config.ColorScheme = str
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.decimalPrecision"); ok {
+// parseDecimalPrecision parses the decimal precision configuration
+func (p *Parser) parseDecimalPrecision(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if i, err := p.parseInt(val); err == nil {
 			config.DecimalPrecision = i
 		}
 	}
-
-	return nil
 }
 
 // parseAlertsConfig parses Alerts-specific configuration
