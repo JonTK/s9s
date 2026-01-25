@@ -100,7 +100,7 @@ func TestLogEvent(t *testing.T) {
 		Sensitive: true,
 	}
 
-	logger.LogEvent(event)
+	logger.LogEvent(&event)
 
 	// Verify event was logged
 	output := buffer.String()
@@ -142,7 +142,7 @@ func TestLogEventSensitiveFiltering(t *testing.T) {
 		EventType: EventTypeAPIAccess,
 		Sensitive: false,
 	}
-	logger.LogEvent(nonSensitiveEvent)
+	logger.LogEvent(&nonSensitiveEvent)
 
 	// Should not be logged
 	if buffer.Len() > 0 {
@@ -155,7 +155,7 @@ func TestLogEventSensitiveFiltering(t *testing.T) {
 		EventType: EventTypeSecretAccess,
 		Sensitive: true,
 	}
-	logger.LogEvent(sensitiveEvent)
+	logger.LogEvent(&sensitiveEvent)
 
 	// Should be logged
 	if buffer.Len() == 0 {

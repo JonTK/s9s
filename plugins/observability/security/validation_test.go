@@ -370,7 +370,8 @@ func TestParseTimeParameter(t *testing.T) {
 }
 
 func TestValidateAnomalyParameters(t *testing.T) {
-	validator, _ := NewRequestValidator(&DefaultValidationConfig())
+	config := DefaultValidationConfig()
+	validator, _ := NewRequestValidator(&config)
 
 	tests := []struct {
 		name        string
@@ -494,7 +495,8 @@ func TestValidateMetricPatterns(t *testing.T) {
 }
 
 func TestValidateGenericRequest(t *testing.T) {
-	validator, _ := NewRequestValidator(&DefaultValidationConfig())
+	config := DefaultValidationConfig()
+	validator, _ := NewRequestValidator(&config)
 
 	tests := []struct {
 		name    string
