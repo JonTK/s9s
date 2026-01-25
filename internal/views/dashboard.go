@@ -661,85 +661,127 @@ type Alert struct {
 func (v *DashboardView) generateAlerts() []Alert {
 	var alerts []Alert
 
-	// Check for down nodes
-	if len(v.nodes) > 0 {
-		downNodes := 0
-		for _, node := range v.nodes {
-			if node.State == dao.NodeStateDown {
-				downNodes++
-			}
-		}
-		if downNodes > 0 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "yellow",
-				Message: fmt.Sprintf("%d node(s) are down", downNodes),
-			})
-		}
+	// Check each alert condition and collect non-empty alerts
+	if alert := v.checkDownNodesAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for high resource utilization
-	if v.clusterMetrics != nil {
-		if v.clusterMetrics.CPUUsage > 90 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "orange",
-				Message: fmt.Sprintf("High CPU utilization: %.1f%%", v.clusterMetrics.CPUUsage),
-			})
-		}
-		if v.clusterMetrics.MemoryUsage > 90 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "orange",
-				Message: fmt.Sprintf("High memory utilization: %.1f%%", v.clusterMetrics.MemoryUsage),
-			})
-		}
+	if alert := v.checkResourceUtilizationAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for long waiting jobs
-	if len(v.jobs) > 0 {
-		longWaitingJobs := 0
-		now := time.Now()
-		for _, job := range v.jobs {
-			if job.State == dao.JobStatePending {
-				waitTime := now.Sub(job.SubmitTime)
-				if waitTime > 24*time.Hour {
-					longWaitingJobs++
-				}
-			}
-		}
-		if longWaitingJobs > 0 {
-			alerts = append(alerts, Alert{
-				Level:   "INFO",
-				Icon:    "ℹ",
-				Color:   "cyan",
-				Message: fmt.Sprintf("%d job(s) waiting >24h", longWaitingJobs),
-			})
-		}
+	if alert := v.checkCPUAlertIfHigh(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for failed jobs
-	if len(v.jobs) > 0 {
-		failedJobs := 0
-		for _, job := range v.jobs {
-			if job.State == dao.JobStateFailed {
-				failedJobs++
-			}
-		}
-		if failedJobs > 10 {
-			alerts = append(alerts, Alert{
-				Level:   "ERROR",
-				Icon:    "✗",
-				Color:   "red",
-				Message: fmt.Sprintf("%d failed jobs detected", failedJobs),
-			})
-		}
+	if alert := v.checkLongWaitingJobsAlert(); alert != nil {
+		alerts = append(alerts, *alert)
+	}
+
+	if alert := v.checkFailedJobsAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
 	return alerts
+}
+
+func (v *DashboardView) checkDownNodesAlert() *Alert {
+	if len(v.nodes) == 0 {
+		return nil
+	}
+
+	downNodes := 0
+	for _, node := range v.nodes {
+		if node.State == dao.NodeStateDown {
+			downNodes++
+		}
+	}
+
+	if downNodes == 0 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "yellow",
+		Message: fmt.Sprintf("%d node(s) are down", downNodes),
+	}
+}
+
+func (v *DashboardView) checkResourceUtilizationAlert() *Alert {
+	if v.clusterMetrics == nil || v.clusterMetrics.MemoryUsage <= 90 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "orange",
+		Message: fmt.Sprintf("High memory utilization: %.1f%%", v.clusterMetrics.MemoryUsage),
+	}
+}
+
+func (v *DashboardView) checkCPUAlertIfHigh() *Alert {
+	if v.clusterMetrics == nil || v.clusterMetrics.CPUUsage <= 90 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "orange",
+		Message: fmt.Sprintf("High CPU utilization: %.1f%%", v.clusterMetrics.CPUUsage),
+	}
+}
+
+func (v *DashboardView) checkLongWaitingJobsAlert() *Alert {
+	if len(v.jobs) == 0 {
+		return nil
+	}
+
+	longWaitingJobs := 0
+	now := time.Now()
+	for _, job := range v.jobs {
+		if job.State == dao.JobStatePending && now.Sub(job.SubmitTime) > 24*time.Hour {
+			longWaitingJobs++
+		}
+	}
+
+	if longWaitingJobs == 0 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "INFO",
+		Icon:    "ℹ",
+		Color:   "cyan",
+		Message: fmt.Sprintf("%d job(s) waiting >24h", longWaitingJobs),
+	}
+}
+
+func (v *DashboardView) checkFailedJobsAlert() *Alert {
+	if len(v.jobs) == 0 {
+		return nil
+	}
+
+	failedJobs := 0
+	for _, job := range v.jobs {
+		if job.State == dao.JobStateFailed {
+			failedJobs++
+		}
+	}
+
+	if failedJobs <= 10 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "ERROR",
+		Icon:    "✗",
+		Color:   "red",
+		Message: fmt.Sprintf("%d failed jobs detected", failedJobs),
+	}
 }
 
 // showAdvancedAnalytics shows advanced analytics modal
