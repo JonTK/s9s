@@ -28,7 +28,6 @@ type Field struct {
 	Examples    []string     `json:"examples,omitempty"` // Usage examples
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigField = Field
 
 // FieldType represents the type of a configuration field
@@ -80,7 +79,6 @@ type Schema struct {
 	Fields []Field `json:"fields"`
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigSchema = Schema
 
 // Group represents a group of related configuration fields
@@ -92,7 +90,6 @@ type Group struct {
 	Order       int    `json:"order"`
 }
 
-//nolint:revive // type alias for backward compatibility
 type ConfigGroup = Group
 
 // GetConfigSchema returns the complete configuration schema
@@ -368,46 +365,31 @@ func (cf *Field) ValidateField(value interface{}) FieldValidationResult {
 		return result
 	}
 
-	// Type-specific validation
-	switch cf.Type {
-	case FieldTypeString:
-		if err := cf.validateString(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeInt:
-		if err := cf.validateInt(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeFloat:
-		if err := cf.validateFloat(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeBool:
-		if err := cf.validateBool(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeDuration:
-		if err := cf.validateDuration(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeSelect:
-		if err := cf.validateSelect(value); err != nil {
-			result.Valid = false
-			result.Errors = append(result.Errors, err.Error())
-		}
-	case FieldTypeArray:
-		if err := cf.validateArray(value); err != nil {
+	// Get type-specific validator and apply it
+	if validator, ok := cf.getValidator(cf.Type); ok {
+		if err := validator(value); err != nil {
 			result.Valid = false
 			result.Errors = append(result.Errors, err.Error())
 		}
 	}
 
 	return result
+}
+
+// getValidator returns the appropriate validation function for a field type
+func (cf *Field) getValidator(fieldType FieldType) (func(interface{}) error, bool) {
+	validators := map[FieldType]func(interface{}) error{
+		FieldTypeString:   cf.validateString,
+		FieldTypeInt:      cf.validateInt,
+		FieldTypeFloat:    cf.validateFloat,
+		FieldTypeBool:     cf.validateBool,
+		FieldTypeDuration: cf.validateDuration,
+		FieldTypeSelect:   cf.validateSelect,
+		FieldTypeArray:    cf.validateArray,
+	}
+
+	validator, exists := validators[fieldType]
+	return validator, exists
 }
 
 // validateString validates string field values
@@ -433,65 +415,83 @@ func (cf *Field) validateString(value interface{}) error {
 
 // validateInt validates integer field values
 func (cf *Field) validateInt(value interface{}) error {
-	var num int64
-
-	switch v := value.(type) {
-	case int:
-		num = int64(v)
-	case int64:
-		num = v
-	case float64:
-		num = int64(v)
-	case string:
-		var err error
-		num, err = strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			return fmt.Errorf("%s must be a valid integer", cf.Label)
-		}
-	default:
-		return fmt.Errorf("%s must be an integer", cf.Label)
+	num, err := cf.parseIntValue(value)
+	if err != nil {
+		return err
 	}
 
-	// Range validation
+	return cf.validateIntRange(num)
+}
+
+// parseIntValue converts a value to int64 with proper type handling
+func (cf *Field) parseIntValue(value interface{}) (int64, error) {
+	switch v := value.(type) {
+	case int:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case float64:
+		return int64(v), nil
+	case string:
+		num, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s must be a valid integer", cf.Label)
+		}
+		return num, nil
+	default:
+		return 0, fmt.Errorf("%s must be an integer", cf.Label)
+	}
+}
+
+// validateIntRange validates integer is within configured min/max bounds
+func (cf *Field) validateIntRange(num int64) error {
 	if cf.Min != nil && float64(num) < *cf.Min {
 		return fmt.Errorf("%s must be at least %.0f", cf.Label, *cf.Min)
 	}
 	if cf.Max != nil && float64(num) > *cf.Max {
 		return fmt.Errorf("%s must be at most %.0f", cf.Label, *cf.Max)
 	}
-
 	return nil
 }
 
 // validateFloat validates float field values
 func (cf *Field) validateFloat(value interface{}) error {
-	var num float64
-
-	switch v := value.(type) {
-	case float64:
-		num = v
-	case float32:
-		num = float64(v)
-	case int:
-		num = float64(v)
-	case string:
-		var err error
-		num, err = strconv.ParseFloat(v, 64)
-		if err != nil {
-			return fmt.Errorf("%s must be a valid number", cf.Label)
-		}
-	default:
-		return fmt.Errorf("%s must be a number", cf.Label)
+	num, err := cf.parseFloatValue(value)
+	if err != nil {
+		return err
 	}
 
-	// Range validation
+	return cf.validateFloatRange(num)
+}
+
+// parseFloatValue converts a value to float64 with proper type handling
+func (cf *Field) parseFloatValue(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case string:
+		num, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s must be a valid number", cf.Label)
+		}
+		return num, nil
+	default:
+		return 0, fmt.Errorf("%s must be a number", cf.Label)
+	}
+}
+
+// validateFloatRange validates float is within configured min/max bounds
+func (cf *Field) validateFloatRange(num float64) error {
 	if cf.Min != nil && num < *cf.Min {
 		return fmt.Errorf("%s must be at least %.2f", cf.Label, *cf.Min)
 	}
 	if cf.Max != nil && num > *cf.Max {
 		return fmt.Errorf("%s must be at most %.2f", cf.Label, *cf.Max)
 	}
-
 	return nil
 }
 

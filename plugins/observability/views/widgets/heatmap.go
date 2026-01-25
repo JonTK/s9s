@@ -146,7 +146,28 @@ func (h *HeatmapWidget) Draw(screen tcell.Screen) {
 		return
 	}
 
-	// Calculate layout
+	// Calculate layout parameters
+	layout := h.calculateHeatmapLayout(x, y, width, height)
+
+	// Draw column headers
+	h.drawColumnHeaders(screen, layout)
+
+	// Draw rows with cells
+	h.drawRowsWithCells(screen, layout)
+}
+
+type heatmapLayout struct {
+	x                 int
+	y                 int
+	maxRowLabelWidth  int
+	colsToShow        int
+	rowsToShow        int
+	availableWidth    int
+	availableHeight   int
+}
+
+func (h *HeatmapWidget) calculateHeatmapLayout(x, y, width, height int) *heatmapLayout {
+	// Calculate max row label width
 	maxRowLabelWidth := 0
 	for _, row := range h.rows {
 		if len(row) > maxRowLabelWidth {
@@ -155,7 +176,7 @@ func (h *HeatmapWidget) Draw(screen tcell.Screen) {
 	}
 	maxRowLabelWidth++ // Add padding
 
-	// Check if we have enough space
+	// Calculate columns to show
 	availableWidth := width - maxRowLabelWidth
 	availableCols := availableWidth / h.cellWidth
 	colsToShow := len(h.cols)
@@ -163,17 +184,29 @@ func (h *HeatmapWidget) Draw(screen tcell.Screen) {
 		colsToShow = availableCols
 	}
 
+	// Calculate rows to show
 	availableHeight := height - 1 // Reserve one line for column headers
 	rowsToShow := len(h.rows)
 	if rowsToShow > availableHeight/h.cellHeight {
 		rowsToShow = availableHeight / h.cellHeight
 	}
 
-	// Draw column headers
-	headerY := y
-	for i := 0; i < colsToShow; i++ {
+	return &heatmapLayout{
+		x:                x,
+		y:                y,
+		maxRowLabelWidth: maxRowLabelWidth,
+		colsToShow:       colsToShow,
+		rowsToShow:       rowsToShow,
+		availableWidth:   availableWidth,
+		availableHeight:  availableHeight,
+	}
+}
+
+func (h *HeatmapWidget) drawColumnHeaders(screen tcell.Screen, layout *heatmapLayout) {
+	headerY := layout.y
+	for i := 0; i < layout.colsToShow; i++ {
 		col := h.cols[i]
-		cellX := x + maxRowLabelWidth + i*h.cellWidth
+		cellX := layout.x + layout.maxRowLabelWidth + i*h.cellWidth
 
 		// Truncate column label if needed
 		label := col
@@ -188,81 +221,110 @@ func (h *HeatmapWidget) Draw(screen tcell.Screen) {
 				tcell.StyleDefault.Foreground(tcell.ColorYellow))
 		}
 	}
+}
 
-	// Draw rows
-	for rowIdx := 0; rowIdx < rowsToShow; rowIdx++ {
+func (h *HeatmapWidget) drawRowsWithCells(screen tcell.Screen, layout *heatmapLayout) {
+	for rowIdx := 0; rowIdx < layout.rowsToShow; rowIdx++ {
 		row := h.rows[rowIdx]
-		rowY := y + 1 + rowIdx*h.cellHeight
+		rowY := layout.y + 1 + rowIdx*h.cellHeight
 
-		// Draw row label
-		label := row
-		if len(label) > maxRowLabelWidth-1 {
-			label = label[:maxRowLabelWidth-1]
-		}
-		for i, ch := range label {
-			screen.SetContent(x+i, rowY, ch, nil,
-				tcell.StyleDefault.Foreground(tcell.ColorYellow))
-		}
+		h.drawRowLabel(screen, layout, row, rowY)
+		h.drawRowCells(screen, layout, rowIdx, row, rowY)
+	}
+}
 
-		// Draw cells
-		for colIdx := 0; colIdx < colsToShow; colIdx++ {
-			col := h.cols[colIdx]
-			cellX := x + maxRowLabelWidth + colIdx*h.cellWidth
+func (h *HeatmapWidget) drawRowLabel(screen tcell.Screen, layout *heatmapLayout, row string, rowY int) {
+	label := row
+	if len(label) > layout.maxRowLabelWidth-1 {
+		label = label[:layout.maxRowLabelWidth-1]
+	}
+	for i, ch := range label {
+		screen.SetContent(layout.x+i, rowY, ch, nil,
+			tcell.StyleDefault.Foreground(tcell.ColorYellow))
+	}
+}
 
-			// Get value
-			value := 0.0
-			if rowData, ok := h.data[row]; ok {
-				if v, ok := rowData[col]; ok {
-					value = v
-				}
-			}
+func (h *HeatmapWidget) drawRowCells(screen tcell.Screen, layout *heatmapLayout, rowIdx int, row string, rowY int) {
+	for colIdx := 0; colIdx < layout.colsToShow; colIdx++ {
+		col := h.cols[colIdx]
+		cellX := layout.x + layout.maxRowLabelWidth + colIdx*h.cellWidth
 
-			// Draw cell
-			h.drawCell(screen, cellX, rowY, h.cellWidth, h.cellHeight, value,
-				rowIdx == h.selectedRow && colIdx == h.selectedCol)
+		// Get value
+		value := h.getCellValue(row, col)
+
+		// Draw cell
+		h.drawCell(screen, cellX, rowY, h.cellWidth, h.cellHeight, value,
+			rowIdx == h.selectedRow && colIdx == h.selectedCol)
+	}
+}
+
+func (h *HeatmapWidget) getCellValue(row, col string) float64 {
+	if rowData, ok := h.data[row]; ok {
+		if v, ok := rowData[col]; ok {
+			return v
 		}
 	}
+	return 0.0
 }
 
 // drawCell draws a single heatmap cell
 func (h *HeatmapWidget) drawCell(screen tcell.Screen, x, y, width, height int, value float64, selected bool) {
-	// Get color
+	// Get color and style
 	color := h.colorFunc(value, h.min, h.max)
+	style := h.buildCellStyle(color, selected)
 
-	// Fill cell with color
+	// Fill background
+	h.fillCellBackground(screen, x, y, width, height, style)
+
+	// Draw value if enabled
+	if h.showValues && width > 4 {
+		h.drawCellValue(screen, x, y, width, height, value, style)
+	}
+}
+
+func (h *HeatmapWidget) buildCellStyle(color tcell.Color, selected bool) tcell.Style {
 	style := tcell.StyleDefault.Background(color)
+
 	if selected && h.selectable {
 		style = style.Reverse(true)
 	}
 
-	// Determine text color based on background
-	textColor := tcell.ColorBlack
-	if color == tcell.ColorBlack || color == tcell.ColorDarkBlue || color == tcell.ColorDarkRed {
-		textColor = tcell.ColorWhite
-	}
-	style = style.Foreground(textColor)
+	textColor := h.getTextColorForBackground(color)
+	return style.Foreground(textColor)
+}
 
-	// Fill cell
+func (h *HeatmapWidget) getTextColorForBackground(color tcell.Color) tcell.Color {
+	// Use white text on dark backgrounds for better contrast
+	switch color {
+	case tcell.ColorBlack, tcell.ColorDarkBlue, tcell.ColorDarkRed:
+		return tcell.ColorWhite
+	default:
+		return tcell.ColorBlack
+	}
+}
+
+func (h *HeatmapWidget) fillCellBackground(screen tcell.Screen, x, y, width, height int, style tcell.Style) {
 	for dy := 0; dy < height; dy++ {
 		for dx := 0; dx < width; dx++ {
 			screen.SetContent(x+dx, y+dy, ' ', nil, style)
 		}
 	}
+}
 
-	// Draw value if enabled
-	if h.showValues && width > 4 {
-		valueStr := formatHeatmapValue(value)
-		if len(valueStr) > width-2 {
-			valueStr = valueStr[:width-2]
-		}
+func (h *HeatmapWidget) drawCellValue(screen tcell.Screen, x, y, width, height int, value float64, style tcell.Style) {
+	valueStr := formatHeatmapValue(value)
 
-		// Center the value
-		valueX := x + (width-len(valueStr))/2
-		valueY := y + height/2
+	// Truncate if too long
+	if len(valueStr) > width-2 {
+		valueStr = valueStr[:width-2]
+	}
 
-		for i, ch := range valueStr {
-			screen.SetContent(valueX+i, valueY, ch, nil, style)
-		}
+	// Center the value
+	valueX := x + (width-len(valueStr))/2
+	valueY := y + height/2
+
+	for i, ch := range valueStr {
+		screen.SetContent(valueX+i, valueY, ch, nil, style)
 	}
 }
 
@@ -309,27 +371,51 @@ func (h *HeatmapWidget) InputHandler() func(event *tcell.EventKey, setFocus func
 			return
 		}
 
-		switch event.Key() {
-		case tcell.KeyUp:
-			if h.selectedRow > 0 {
-				h.selectedRow--
-			}
-		case tcell.KeyDown:
-			if h.selectedRow < len(h.rows)-1 {
-				h.selectedRow++
-			}
-		case tcell.KeyLeft:
-			if h.selectedCol > 0 {
-				h.selectedCol--
-			}
-		case tcell.KeyRight:
-			if h.selectedCol < len(h.cols)-1 {
-				h.selectedCol++
-			}
-		case tcell.KeyEnter:
-			// Could trigger a callback here
+		keyHandlers := map[tcell.Key]func(){
+			tcell.KeyUp:    h.handleKeyUp,
+			tcell.KeyDown:  h.handleKeyDown,
+			tcell.KeyLeft:  h.handleKeyLeft,
+			tcell.KeyRight: h.handleKeyRight,
+			tcell.KeyEnter: h.handleKeyEnter,
+		}
+
+		if handler, ok := keyHandlers[event.Key()]; ok {
+			handler()
 		}
 	})
+}
+
+// handleKeyUp moves selection up
+func (h *HeatmapWidget) handleKeyUp() {
+	if h.selectedRow > 0 {
+		h.selectedRow--
+	}
+}
+
+// handleKeyDown moves selection down
+func (h *HeatmapWidget) handleKeyDown() {
+	if h.selectedRow < len(h.rows)-1 {
+		h.selectedRow++
+	}
+}
+
+// handleKeyLeft moves selection left
+func (h *HeatmapWidget) handleKeyLeft() {
+	if h.selectedCol > 0 {
+		h.selectedCol--
+	}
+}
+
+// handleKeyRight moves selection right
+func (h *HeatmapWidget) handleKeyRight() {
+	if h.selectedCol < len(h.cols)-1 {
+		h.selectedCol++
+	}
+}
+
+// handleKeyEnter handles Enter key press
+func (h *HeatmapWidget) handleKeyEnter() {
+	// Could trigger a callback here
 }
 
 // GetSelectedCell returns the currently selected cell

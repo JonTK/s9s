@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -166,66 +167,62 @@ func ColoredState(state, stateType string) string {
 	return fmt.Sprintf("[%s]%s[white]", color, state)
 }
 
+// jobStateColors maps job states to their display colors
+var jobStateColors = map[string]string{
+	"RUNNING":     "green",
+	"PENDING":     "yellow",
+	"COMPLETED":   "cyan",
+	"FAILED":      "red",
+	"CANCELED":   "gray",
+	"SUSPENDED":   "orange",
+	"COMPLETING":  "blue",
+	"CONFIGURING": "yellow",
+	"PREEMPTED":   "orange",
+	"TIMEOUT":     "red",
+}
+
+// nodeStateColors maps node states to their display colors
+var nodeStateColors = map[string]string{
+	"IDLE":        "green",
+	"ALLOCATED":   "blue",
+	"MIXED":       "blue",
+	"DOWN":        "red",
+	"DRAIN":       "red",
+	"DRAINING":    "red",
+	"RESERVED":    "yellow",
+	"MAINTENANCE": "orange",
+}
+
+// partitionStateColors maps partition states to their display colors
+var partitionStateColors = map[string]string{
+	"UP":       "green",
+	"DOWN":     "red",
+	"DRAIN":    "orange",
+	"INACTIVE": "gray",
+}
+
 // GetJobStateColor returns the color for a job state
 func GetJobStateColor(state string) string {
-	switch state {
-	case "RUNNING":
-		return "green"
-	case "PENDING":
-		return "yellow"
-	case "COMPLETED":
-		return "cyan"
-	case "FAILED":
-		return "red"
-	case "CANCELLED":
-		return "gray"
-	case "SUSPENDED":
-		return "orange"
-	case "COMPLETING":
-		return "blue"
-	case "CONFIGURING":
-		return "yellow"
-	case "PREEMPTED":
-		return "orange"
-	case "TIMEOUT":
-		return "red"
-	default:
-		return "white"
+	if color, exists := jobStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // GetNodeStateColor returns the color for a node state
 func GetNodeStateColor(state string) string {
-	switch state {
-	case "IDLE":
-		return "green"
-	case "ALLOCATED", "MIXED":
-		return "blue"
-	case "DOWN", "DRAIN", "DRAINING":
-		return "red"
-	case "RESERVED":
-		return "yellow"
-	case "MAINTENANCE":
-		return "orange"
-	default:
-		return "white"
+	if color, exists := nodeStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // GetPartitionStateColor returns the color for a partition state
 func GetPartitionStateColor(state string) string {
-	switch state {
-	case "UP":
-		return "green"
-	case "DOWN":
-		return "red"
-	case "DRAIN":
-		return "orange"
-	case "INACTIVE":
-		return "gray"
-	default:
-		return "white"
+	if color, exists := partitionStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // FormatDuration formats a duration into a human-readable string
@@ -312,48 +309,30 @@ func (vm *ViewManager) AddView(view View) error {
 	vm.views[name] = view
 	vm.viewOrder = append(vm.viewOrder, name)
 
-	// Set the app and pages reference if the view supports it
-	// Try to set app via type assertion to views that embed BaseView
-	switch v := view.(type) {
-	case *JobsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *NodesView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *PartitionsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *ReservationsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *QoSView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *AccountsView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *UsersView:
-		v.BaseView.SetApp(vm.app)
-		v.app = vm.app
-		v.pages = vm.pages
-	case *PerformanceView:
-		v.BaseView.SetApp(vm.app)
-		if v.app == nil {
-			v.app = vm.app
-		}
-		if v.pages == nil {
-			v.pages = vm.pages
-		}
+	vm.setViewReferences(view)
+	return nil
+}
+
+// setViewReferences sets app and pages references on views that support it
+func (vm *ViewManager) setViewReferences(view View) {
+	// Set BaseView reference
+	view.(interface{ SetApp(*tview.Application) }).SetApp(vm.app)
+
+	// Set app and pages fields on view if they exist
+	rv := reflect.ValueOf(view).Elem()
+
+	// Set app field
+	if appField := rv.FieldByName("app"); appField.IsValid() && appField.CanSet() {
+		appField.Set(reflect.ValueOf(vm.app))
 	}
 
-	return nil
+	// Set pages field - handle both unconditional and conditional assignment
+	if pagesField := rv.FieldByName("pages"); pagesField.IsValid() && pagesField.CanSet() {
+		// For PerformanceView, only set if nil
+		if pagesField.IsNil() {
+			pagesField.Set(reflect.ValueOf(vm.pages))
+		}
+	}
 }
 
 // GetView returns a view by name

@@ -122,17 +122,7 @@ func (sd *ScontrolDiscovery) Discover(ctx context.Context) ([]*DiscoveredCluster
 // Alternative format: "Slurmctld(primary/backup) at hostname is UP/DOWN"
 func (sd *ScontrolDiscovery) parsePingOutput(output string) ([]ScontrolResult, error) {
 	var results []ScontrolResult
-
-	// Regex patterns for different scontrol ping output formats
-	// Format 1: "Slurmctld(primary) at hostname is UP"
-	// Format 2: "Slurmctld(backup) at hostname is DOWN"
-	// Format 3: "Slurmctld at hostname is UP"
-	patterns := []*regexp.Regexp{
-		// Primary format with role in parentheses
-		regexp.MustCompile(`Slurmctld\((\w+)\)\s+at\s+(\S+)\s+is\s+(\w+)`),
-		// Alternative format without role
-		regexp.MustCompile(`Slurmctld\s+at\s+(\S+)\s+is\s+(\w+)`),
-	}
+	patterns := sd.getPingPatterns()
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
@@ -141,35 +131,10 @@ func (sd *ScontrolDiscovery) parsePingOutput(output string) ([]ScontrolResult, e
 			continue
 		}
 
-		var matched bool
-		for i, pattern := range patterns {
-			matches := pattern.FindStringSubmatch(line)
-			if len(matches) > 0 {
-				var result ScontrolResult
-				if i == 0 && len(matches) >= 4 {
-					// Format with role
-					result = ScontrolResult{
-						Role:     strings.ToLower(matches[1]),
-						Hostname: matches[2],
-						Status:   strings.ToUpper(matches[3]),
-					}
-				} else if i == 1 && len(matches) >= 3 {
-					// Format without role
-					result = ScontrolResult{
-						Role:     "primary",
-						Hostname: matches[1],
-						Status:   strings.ToUpper(matches[2]),
-					}
-				}
-				if result.Hostname != "" {
-					results = append(results, result)
-					matched = true
-					break
-				}
-			}
-		}
-
-		if !matched {
+		result, matched := sd.parsePingLine(line, patterns)
+		if matched && result.Hostname != "" {
+			results = append(results, result)
+		} else if !matched {
 			debug.Logger.Printf("Could not parse scontrol line: %s", line)
 		}
 	}
@@ -179,6 +144,48 @@ func (sd *ScontrolDiscovery) parsePingOutput(output string) ([]ScontrolResult, e
 	}
 
 	return results, nil
+}
+
+// getPingPatterns returns the regex patterns for parsing scontrol ping output
+func (sd *ScontrolDiscovery) getPingPatterns() []*regexp.Regexp {
+	return []*regexp.Regexp{
+		// Format with role in parentheses: "Slurmctld(primary) at hostname is UP"
+		regexp.MustCompile(`Slurmctld\((\w+)\)\s+at\s+(\S+)\s+is\s+(\w+)`),
+		// Format without role: "Slurmctld at hostname is UP"
+		regexp.MustCompile(`Slurmctld\s+at\s+(\S+)\s+is\s+(\w+)`),
+	}
+}
+
+// parsePingLine parses a single line of scontrol ping output
+func (sd *ScontrolDiscovery) parsePingLine(line string, patterns []*regexp.Regexp) (ScontrolResult, bool) {
+	for i, pattern := range patterns {
+		matches := pattern.FindStringSubmatch(line)
+		if len(matches) > 0 {
+			result := sd.createResultFromMatches(i, matches)
+			return result, true
+		}
+	}
+	return ScontrolResult{}, false
+}
+
+// createResultFromMatches creates a ScontrolResult from regex match groups
+func (sd *ScontrolDiscovery) createResultFromMatches(patternIdx int, matches []string) ScontrolResult {
+	if patternIdx == 0 && len(matches) >= 4 {
+		// Format with role
+		return ScontrolResult{
+			Role:     strings.ToLower(matches[1]),
+			Hostname: matches[2],
+			Status:   strings.ToUpper(matches[3]),
+		}
+	} else if patternIdx == 1 && len(matches) >= 3 {
+		// Format without role
+		return ScontrolResult{
+			Role:     "primary",
+			Hostname: matches[1],
+			Status:   strings.ToUpper(matches[2]),
+		}
+	}
+	return ScontrolResult{}
 }
 
 // resultToCluster converts a ScontrolResult to a DiscoveredCluster

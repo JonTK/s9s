@@ -201,80 +201,79 @@ func (c *Client) processStreamingResponse(ctx context.Context, body io.ReadClose
 
 // streamifyMatrixData converts matrix data into streaming chunks
 func (c *Client) streamifyMatrixData(ctx context.Context, rawData json.RawMessage, dataStream chan<- StreamingDataChunk, config StreamingConfig) {
-	// Parse the matrix data
 	var matrix Matrix
 	if err := json.Unmarshal(rawData, &matrix); err != nil {
-		dataStream <- StreamingDataChunk{
-			ChunkID:   -1,
-			Error:     fmt.Errorf("failed to parse matrix data: %w", err),
-			Timestamp: time.Now(),
-		}
+		c.sendStreamChunkError(dataStream, -1, fmt.Errorf("failed to parse matrix data: %w", err))
 		return
 	}
 
 	chunkID := 0
-
-	// Stream each series as separate chunks
 	for seriesIdx, series := range matrix {
-		select {
-		case <-ctx.Done():
-			dataStream <- StreamingDataChunk{
-				ChunkID:   chunkID,
-				Error:     ctx.Err(),
-				Timestamp: time.Now(),
-			}
+		if !c.checkStreamContext(ctx, dataStream, chunkID) {
 			return
-		default:
 		}
 
-		// Split large series into smaller chunks
 		valueChunks := c.chunkValues(series.Values, config.ChunkSize)
-
 		for chunkIdx, valueChunk := range valueChunks {
-			chunkSeries := MatrixSeries{
-				Metric: series.Metric,
-				Values: valueChunk,
-			}
-
-			chunkData, err := json.Marshal([]MatrixSeries{chunkSeries})
-			if err != nil {
-				dataStream <- StreamingDataChunk{
-					ChunkID:   chunkID,
-					Error:     fmt.Errorf("failed to marshal chunk: %w", err),
-					Timestamp: time.Now(),
-				}
+			if !c.processAndStreamChunk(ctx, dataStream, &series, valueChunk, seriesIdx, chunkIdx, len(matrix), len(valueChunks), &chunkID, config) {
 				return
 			}
-
-			isLastChunk := (seriesIdx == len(matrix)-1) && (chunkIdx == len(valueChunks)-1)
-
-			chunk := StreamingDataChunk{
-				ChunkID:    chunkID,
-				Data:       json.RawMessage(chunkData),
-				IsComplete: isLastChunk,
-				Timestamp:  time.Now(),
-			}
-
-			select {
-			case dataStream <- chunk:
-			case <-ctx.Done():
-				dataStream <- StreamingDataChunk{
-					ChunkID:   chunkID,
-					Error:     ctx.Err(),
-					Timestamp: time.Now(),
-				}
-				return
-			case <-time.After(config.WriteTimeout):
-				dataStream <- StreamingDataChunk{
-					ChunkID:   chunkID,
-					Error:     fmt.Errorf("write timeout for chunk %d", chunkID),
-					Timestamp: time.Now(),
-				}
-				return
-			}
-
-			chunkID++
 		}
+	}
+}
+
+func (c *Client) checkStreamContext(ctx context.Context, dataStream chan<- StreamingDataChunk, chunkID int) bool {
+	select {
+	case <-ctx.Done():
+		c.sendStreamChunkError(dataStream, chunkID, ctx.Err())
+		return false
+	default:
+		return true
+	}
+}
+
+func (c *Client) processAndStreamChunk(ctx context.Context, dataStream chan<- StreamingDataChunk, series *MatrixSeries, valueChunk []SamplePair, seriesIdx, chunkIdx, matrixLen, numChunks int, chunkID *int, config StreamingConfig) bool {
+	chunkSeries := MatrixSeries{
+		Metric: series.Metric,
+		Values: valueChunk,
+	}
+
+	chunkData, err := json.Marshal([]MatrixSeries{chunkSeries})
+	if err != nil {
+		c.sendStreamChunkError(dataStream, *chunkID, fmt.Errorf("failed to marshal chunk: %w", err))
+		return false
+	}
+
+	isLastChunk := (seriesIdx == matrixLen-1) && (chunkIdx == numChunks-1)
+	chunk := StreamingDataChunk{
+		ChunkID:    *chunkID,
+		Data:       json.RawMessage(chunkData),
+		IsComplete: isLastChunk,
+		Timestamp:  time.Now(),
+	}
+
+	return c.sendStreamChunkWithTimeout(ctx, dataStream, chunk, config.WriteTimeout, chunkID)
+}
+
+func (c *Client) sendStreamChunkError(dataStream chan<- StreamingDataChunk, chunkID int, err error) {
+	dataStream <- StreamingDataChunk{
+		ChunkID:   chunkID,
+		Error:     err,
+		Timestamp: time.Now(),
+	}
+}
+
+func (c *Client) sendStreamChunkWithTimeout(ctx context.Context, dataStream chan<- StreamingDataChunk, chunk StreamingDataChunk, timeout time.Duration, chunkID *int) bool {
+	select {
+	case dataStream <- chunk:
+		*chunkID++
+		return true
+	case <-ctx.Done():
+		c.sendStreamChunkError(dataStream, chunk.ChunkID, ctx.Err())
+		return false
+	case <-time.After(timeout):
+		c.sendStreamChunkError(dataStream, chunk.ChunkID, fmt.Errorf("write timeout for chunk %d", chunk.ChunkID))
+		return false
 	}
 }
 

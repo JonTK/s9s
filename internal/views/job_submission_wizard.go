@@ -105,11 +105,10 @@ func (w *JobSubmissionWizard) showTemplateSelection() {
 
 // showJobForm shows the job submission form
 func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
-	// Create form
 	form := tview.NewForm()
 	w.form = form
 
-	// Initialize with template values or defaults
+	// Initialize job from template or defaults
 	job := &dao.JobSubmission{
 		TimeLimit: "01:00:00",
 		Memory:    "4G",
@@ -124,46 +123,61 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 		form.SetTitle(" Submit Job - Custom ")
 	}
 
-	// Job Name
+	// Add form fields
+	w.addJobFormFields(form, job)
+
+	// Add buttons
+	w.addJobFormButtons(form, job)
+
+	// Set styling and input handling
+	form.SetBorder(true).SetTitleAlign(tview.AlignCenter)
+	w.setupJobFormHandlers(form, job)
+
+	centered := createCenteredModal(form, 80, 35)
+	w.pages.AddPage("job-wizard-form", centered, true, true)
+	w.pages.RemovePage("job-wizard-templates")
+}
+
+// addJobFormFields adds all form fields for job configuration
+func (w *JobSubmissionWizard) addJobFormFields(form *tview.Form, job *dao.JobSubmission) {
 	form.AddInputField("Job Name", job.Name, 50, nil, func(text string) {
 		job.Name = text
 	})
 
-	// Script/Command
 	form.AddTextArea("Script/Command", job.Script, 50, 5, 0, func(text string) {
 		job.Script = text
 	})
 
-	// Partition
 	form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
 		job.Partition = text
 	})
 
-	// Time Limit
 	form.AddInputField("Time Limit (HH:MM:SS)", job.TimeLimit, 30, nil, func(text string) {
 		job.TimeLimit = text
 	})
 
-	// Nodes
 	form.AddInputField("Nodes", fmt.Sprintf("%d", job.Nodes), 15, nil, func(text string) {
 		if n, err := strconv.Atoi(text); err == nil && n > 0 {
 			job.Nodes = n
 		}
 	})
 
-	// CPUs per Node
 	form.AddInputField("CPUs per Node", fmt.Sprintf("%d", job.CPUs), 15, nil, func(text string) {
 		if n, err := strconv.Atoi(text); err == nil && n > 0 {
 			job.CPUs = n
 		}
 	})
 
-	// Memory
 	form.AddInputField("Memory (e.g., 4G, 1024M)", job.Memory, 30, nil, func(text string) {
 		job.Memory = text
 	})
 
-	// GPUs (optional)
+	w.addOptionalJobFields(form, job)
+	w.addEmailNotificationFields(form, job)
+}
+
+// addOptionalJobFields adds optional fields for advanced job configuration
+func (w *JobSubmissionWizard) addOptionalJobFields(form *tview.Form, job *dao.JobSubmission) {
 	gpusStr := ""
 	if job.GPUs > 0 {
 		gpusStr = fmt.Sprintf("%d", job.GPUs)
@@ -176,44 +190,42 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 		}
 	})
 
-	// QoS (optional)
 	form.AddInputField("QoS (optional)", job.QoS, 30, nil, func(text string) {
 		job.QoS = text
 	})
 
-	// Account (optional)
 	form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
 		job.Account = text
 	})
 
-	// Working Directory
 	form.AddInputField("Working Directory", job.WorkingDir, 50, nil, func(text string) {
 		job.WorkingDir = text
 	})
 
-	// Output File
 	form.AddInputField("Output File", job.OutputFile, 50, nil, func(text string) {
 		job.OutputFile = text
 	})
 
-	// Error File
 	form.AddInputField("Error File", job.ErrorFile, 50, nil, func(text string) {
 		job.ErrorFile = text
 	})
+}
 
-	// Email notifications
+// addEmailNotificationFields adds email notification configuration fields
+func (w *JobSubmissionWizard) addEmailNotificationFields(form *tview.Form, job *dao.JobSubmission) {
 	form.AddCheckbox("Email Notifications", job.EmailNotify, func(checked bool) {
 		job.EmailNotify = checked
 	})
 
-	// Email address (if notifications enabled)
 	if job.EmailNotify {
 		form.AddInputField("Email Address", job.Email, 40, nil, func(text string) {
 			job.Email = text
 		})
 	}
+}
 
-	// Add buttons
+// addJobFormButtons adds buttons for form submission
+func (w *JobSubmissionWizard) addJobFormButtons(form *tview.Form, job *dao.JobSubmission) {
 	form.AddButton("Submit", func() {
 		if err := w.validateAndSubmitJob(job); err != nil {
 			w.showError(err.Error())
@@ -226,14 +238,12 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 
 	form.AddButton("Cancel", func() {
 		w.pages.RemovePage("job-wizard-form")
-		w.showTemplateSelection() // Go back to template selection
+		w.showTemplateSelection()
 	})
+}
 
-	// Set border and styling
-	form.SetBorder(true).
-		SetTitleAlign(tview.AlignCenter)
-
-	// Handle key events
+// setupJobFormHandlers configures keyboard event handling for the job form
+func (w *JobSubmissionWizard) setupJobFormHandlers(form *tview.Form, job *dao.JobSubmission) {
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEsc:
@@ -241,7 +251,6 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 			w.showTemplateSelection()
 			return nil
 		case tcell.KeyCtrlS:
-			// Quick submit
 			if err := w.validateAndSubmitJob(job); err != nil {
 				w.showError(err.Error())
 			}
@@ -249,11 +258,6 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 		}
 		return event
 	})
-
-	// Create centered layout - make it much larger to accommodate all fields
-	centered := createCenteredModal(form, 80, 35)
-	w.pages.AddPage("job-wizard-form", centered, true, true)
-	w.pages.RemovePage("job-wizard-templates") // Remove template selection
 }
 
 // validateAndSubmitJob validates and submits the job

@@ -16,7 +16,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-//nolint:revive // type alias for backward compatibility
 type SSHTerminal struct {
 	*tview.TextView
 	nodeID         string

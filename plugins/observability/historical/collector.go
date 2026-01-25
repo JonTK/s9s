@@ -50,7 +50,6 @@ type DataCollector struct {
 	stopChan chan struct{}
 }
 
-//nolint:revive // type alias for backward compatibility
 type HistoricalDataCollector = DataCollector
 
 // CollectorConfig configuration for historical data collector
@@ -146,6 +145,10 @@ func (hdc *HistoricalDataCollector) Start(ctx context.Context) error {
 
 // Stop stops the historical data collection
 func (hdc *HistoricalDataCollector) Stop() error {
+	if hdc == nil {
+		return nil
+	}
+
 	hdc.mu.Lock()
 	defer hdc.mu.Unlock()
 

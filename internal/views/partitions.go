@@ -196,67 +196,104 @@ func (v *PartitionsView) Hints() []string {
 
 // OnKey handles keyboard events
 func (v *PartitionsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
-	// Check if a modal is open - if so, don't process view shortcuts
-	if v.pages != nil && v.pages.GetPageCount() > 1 {
-		return event // Let modal handle it
-	}
-
-	// If filter input has focus, let it handle the key events (except ESC)
-	if v.filterInput != nil && v.filterInput.HasFocus() {
-		if event.Key() == tcell.KeyEsc {
-			// ESC should return focus to table
-			v.app.SetFocus(v.table.Table)
-			return nil
-		}
-		// For all other keys, let the filter input handle them
+	// Check if a modal is open
+	if v.isModalOpen() {
 		return event
 	}
 
-	// Handle advanced filter mode
+	// Handle filter input focus interactions
+	if result := v.handleFilterInputFocus(event); result != nil {
+		return result
+	}
+
+	// Handle other keyboard events
+	if result := v.handlePartitionKey(event); result != nil {
+		return result
+	}
+
+	return event
+}
+
+// isModalOpen checks if a modal page is currently open
+func (v *PartitionsView) isModalOpen() bool {
+	return v.pages != nil && v.pages.GetPageCount() > 1
+}
+
+// handlePartitionKey handles non-filter keyboard events
+func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventKey {
+	// Handle advanced filter mode ESC
 	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
 		v.closeAdvancedFilter()
 		return nil
 	}
 
-	switch event.Key() {
-	case tcell.KeyF3:
-		v.showAdvancedFilter()
+	// Handle mapped key handlers
+	if handler, ok := v.partitionsKeyHandlers()[event.Key()]; ok {
+		handler()
 		return nil
-	case tcell.KeyCtrlF:
-		v.showGlobalSearch()
-		return nil
-	case tcell.KeyRune:
-		switch event.Rune() {
-		case 'j', 'J':
-			v.showPartitionJobs()
-			return nil
-		case 'n', 'N':
-			v.showPartitionNodes()
-			return nil
-		case 'a', 'A':
-			v.showPartitionAnalytics()
-			return nil
-		case 'w', 'W':
-			v.showWaitTimeAnalytics()
-			return nil
-		case 'R':
-			go func() { _ = v.Refresh() }()
-			return nil
-		case '/':
-			v.app.SetFocus(v.filterInput)
-			return nil
-		}
-	case tcell.KeyEnter:
-		v.showPartitionDetails()
-		return nil
-	case tcell.KeyEsc:
-		if v.filterInput.HasFocus() {
-			v.app.SetFocus(v.table.Table)
-			return nil
-		}
 	}
 
+	// Handle rune commands
+	if event.Key() == tcell.KeyRune && v.handleRuneCommand(event.Rune()) {
+		return nil
+	}
+
+	// Handle ESC in filter input
+	if event.Key() == tcell.KeyEsc && v.filterInput.HasFocus() {
+		v.app.SetFocus(v.table.Table)
+		return nil
+	}
+
+	return nil
+}
+
+// partitionsKeyHandlers returns a map of function key handlers
+func (v *PartitionsView) partitionsKeyHandlers() map[tcell.Key]func() {
+	return map[tcell.Key]func(){
+		tcell.KeyF3:    v.showAdvancedFilter,
+		tcell.KeyCtrlF: v.showGlobalSearch,
+		tcell.KeyEnter: v.showPartitionDetails,
+	}
+}
+
+func (v *PartitionsView) handleFilterInputFocus(event *tcell.EventKey) *tcell.EventKey {
+	if v.filterInput == nil || !v.filterInput.HasFocus() {
+		return nil
+	}
+
+	if event.Key() == tcell.KeyEsc {
+		// ESC should return focus to table
+		v.app.SetFocus(v.table.Table)
+		return nil
+	}
+
+	// For all other keys, let the filter input handle them
 	return event
+}
+
+func (v *PartitionsView) handleRuneCommand(r rune) bool {
+	switch r {
+	case 'j', 'J':
+		v.showPartitionJobs()
+		return true
+	case 'n', 'N':
+		v.showPartitionNodes()
+		return true
+	case 'a', 'A':
+		v.showPartitionAnalytics()
+		return true
+	case 'w', 'W':
+		v.showWaitTimeAnalytics()
+		return true
+	case 'R':
+		go func() { _ = v.Refresh() }()
+		return true
+	case '/':
+		v.app.SetFocus(v.filterInput)
+		return true
+	}
+
+	return false // Unhandled rune
 }
 
 // OnFocus handles focus events
@@ -779,95 +816,137 @@ func (v *PartitionsView) formatPartitionAnalytics(partition *dao.Partition) stri
 	var analytics strings.Builder
 
 	analytics.WriteString(fmt.Sprintf("[yellow]Partition Analytics: %s[white]\n\n", partition.Name))
+	analytics.WriteString(v.formatBasicInformation(partition))
 
-	// Basic information
-	stateColor := dao.GetPartitionStateColor(partition.State)
-	analytics.WriteString("[teal]Basic Information:[white]\n")
-	analytics.WriteString(fmt.Sprintf("[yellow]  State:[white] [%s]%s[white]\n", stateColor, partition.State))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Total Nodes:[white] %d\n", partition.TotalNodes))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Total CPUs:[white] %d\n", partition.TotalCPUs))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Default Time Limit:[white] %s\n", partition.DefaultTime))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Maximum Time Limit:[white] %s\n", partition.MaxTime))
-
-	// Queue analytics
+	// Get queue info
 	v.mu.RLock()
 	queueInfo := v.queueInfo[partition.Name]
 	v.mu.RUnlock()
 
 	if queueInfo != nil {
-		analytics.WriteString("\n[teal]Queue Analytics:[white]\n")
-		analytics.WriteString(fmt.Sprintf("[yellow]  Total Jobs:[white] %d\n", queueInfo.TotalJobs))
-		analytics.WriteString(fmt.Sprintf("[yellow]  Running Jobs:[white] [green]%d[white]\n", queueInfo.RunningJobs))
-		analytics.WriteString(fmt.Sprintf("[yellow]  Pending Jobs:[white] [yellow]%d[white]\n", queueInfo.PendingJobs))
-
-		if queueInfo.TotalJobs > 0 {
-			runningPct := float64(queueInfo.RunningJobs) * 100.0 / float64(queueInfo.TotalJobs)
-			pendingPct := float64(queueInfo.PendingJobs) * 100.0 / float64(queueInfo.TotalJobs)
-			analytics.WriteString(fmt.Sprintf("[yellow]  Running Percentage:[white] %.1f%%\n", runningPct))
-			analytics.WriteString(fmt.Sprintf("[yellow]  Pending Percentage:[white] %.1f%%\n", pendingPct))
-		}
-
-		// Utilization analytics
-		if partition.TotalCPUs > 0 {
-			utilizationPct := float64(queueInfo.RunningJobs) * 100.0 / float64(partition.TotalCPUs)
-			analytics.WriteString("\n[teal]Resource Utilization:[white]\n")
-			analytics.WriteString(fmt.Sprintf("[yellow]  CPU Utilization:[white] %.1f%%\n", utilizationPct))
-
-			utilizationBar := v.createEfficiencyBar(utilizationPct)
-			analytics.WriteString(fmt.Sprintf("[yellow]  Utilization Visual:[white] %s\n", utilizationBar))
-
-			// Performance assessment
-			analytics.WriteString("\n[teal]Performance Assessment:[white]\n")
-			switch {
-			case utilizationPct < 30:
-				analytics.WriteString("[yellow]  Status:[white] [red]Under-utilized[white] - Consider job promotion or resource reallocation\n")
-			case utilizationPct < 70:
-				analytics.WriteString("[yellow]  Status:[white] [yellow]Moderate utilization[white] - Room for growth\n")
-			case utilizationPct < 95:
-				analytics.WriteString("[yellow]  Status:[white] [green]Well-utilized[white] - Optimal performance\n")
-			default:
-				analytics.WriteString("[yellow]  Status:[white] [red]Over-subscribed[white] - Consider expanding capacity\n")
-			}
-		}
-
-		// Wait time analytics
-		if queueInfo.AverageWait > 0 || queueInfo.LongestWait > 0 {
-			analytics.WriteString("\n[teal]Wait Time Analytics:[white]\n")
-			if queueInfo.AverageWait > 0 {
-				analytics.WriteString(fmt.Sprintf("[yellow]  Average Wait Time:[white] %s\n", FormatTimeDuration(queueInfo.AverageWait)))
-			}
-			if queueInfo.LongestWait > 0 {
-				analytics.WriteString(fmt.Sprintf("[yellow]  Longest Wait Time:[white] %s\n", FormatTimeDuration(queueInfo.LongestWait)))
-
-				// Wait time assessment
-				hours := queueInfo.LongestWait.Hours()
-				switch {
-				case hours < 1:
-					analytics.WriteString("[yellow]  Wait Assessment:[white] [green]Excellent[white] - Quick turnaround\n")
-				case hours < 6:
-					analytics.WriteString("[yellow]  Wait Assessment:[white] [yellow]Good[white] - Reasonable wait times\n")
-				case hours < 24:
-					analytics.WriteString("[yellow]  Wait Assessment:[white] [orange]Moderate[white] - Some delays expected\n")
-				default:
-					analytics.WriteString("[yellow]  Wait Assessment:[white] [red]Poor[white] - Long wait times detected\n")
-				}
-			}
-		}
+		analytics.WriteString(v.formatQueueAnalytics(queueInfo))
+		analytics.WriteString(v.formatResourceUtilization(partition, queueInfo))
+		analytics.WriteString(v.formatWaitTimeSection(queueInfo))
 	} else {
 		analytics.WriteString("\n[yellow]Queue information not available[white]\n")
 	}
 
-	// QoS and limits
-	if len(partition.QOS) > 0 {
-		analytics.WriteString("\n[teal]Quality of Service:[white]\n")
-		for _, qos := range partition.QOS {
-			analytics.WriteString(fmt.Sprintf("[yellow]  - %s[white]\n", qos))
-		}
-	}
-
+	analytics.WriteString(v.formatQoSSection(partition))
 	analytics.WriteString("\n[gray]Last updated: " + time.Now().Format("15:04:05") + "[white]")
 
 	return analytics.String()
+}
+
+func (v *PartitionsView) formatBasicInformation(partition *dao.Partition) string {
+	var output strings.Builder
+	stateColor := dao.GetPartitionStateColor(partition.State)
+
+	output.WriteString("[teal]Basic Information:[white]\n")
+	output.WriteString(fmt.Sprintf("[yellow]  State:[white] [%s]%s[white]\n", stateColor, partition.State))
+	output.WriteString(fmt.Sprintf("[yellow]  Total Nodes:[white] %d\n", partition.TotalNodes))
+	output.WriteString(fmt.Sprintf("[yellow]  Total CPUs:[white] %d\n", partition.TotalCPUs))
+	output.WriteString(fmt.Sprintf("[yellow]  Default Time Limit:[white] %s\n", partition.DefaultTime))
+	output.WriteString(fmt.Sprintf("[yellow]  Maximum Time Limit:[white] %s\n", partition.MaxTime))
+
+	return output.String()
+}
+
+func (v *PartitionsView) formatQueueAnalytics(queueInfo *dao.QueueInfo) string {
+	var output strings.Builder
+
+	output.WriteString("\n[teal]Queue Analytics:[white]\n")
+	output.WriteString(fmt.Sprintf("[yellow]  Total Jobs:[white] %d\n", queueInfo.TotalJobs))
+	output.WriteString(fmt.Sprintf("[yellow]  Running Jobs:[white] [green]%d[white]\n", queueInfo.RunningJobs))
+	output.WriteString(fmt.Sprintf("[yellow]  Pending Jobs:[white] [yellow]%d[white]\n", queueInfo.PendingJobs))
+
+	if queueInfo.TotalJobs > 0 {
+		runningPct := float64(queueInfo.RunningJobs) * 100.0 / float64(queueInfo.TotalJobs)
+		pendingPct := float64(queueInfo.PendingJobs) * 100.0 / float64(queueInfo.TotalJobs)
+		output.WriteString(fmt.Sprintf("[yellow]  Running Percentage:[white] %.1f%%\n", runningPct))
+		output.WriteString(fmt.Sprintf("[yellow]  Pending Percentage:[white] %.1f%%\n", pendingPct))
+	}
+
+	return output.String()
+}
+
+func (v *PartitionsView) formatResourceUtilization(partition *dao.Partition, queueInfo *dao.QueueInfo) string {
+	if partition.TotalCPUs == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	utilizationPct := float64(queueInfo.RunningJobs) * 100.0 / float64(partition.TotalCPUs)
+
+	output.WriteString("\n[teal]Resource Utilization:[white]\n")
+	output.WriteString(fmt.Sprintf("[yellow]  CPU Utilization:[white] %.1f%%\n", utilizationPct))
+
+	utilizationBar := v.createEfficiencyBar(utilizationPct)
+	output.WriteString(fmt.Sprintf("[yellow]  Utilization Visual:[white] %s\n", utilizationBar))
+
+	output.WriteString("\n[teal]Performance Assessment:[white]\n")
+	output.WriteString(v.formatPerformanceStatus(utilizationPct))
+
+	return output.String()
+}
+
+func (v *PartitionsView) formatPerformanceStatus(utilizationPct float64) string {
+	switch {
+	case utilizationPct < 30:
+		return "[yellow]  Status:[white] [red]Under-utilized[white] - Consider job promotion or resource reallocation\n"
+	case utilizationPct < 70:
+		return "[yellow]  Status:[white] [yellow]Moderate utilization[white] - Room for growth\n"
+	case utilizationPct < 95:
+		return "[yellow]  Status:[white] [green]Well-utilized[white] - Optimal performance\n"
+	default:
+		return "[yellow]  Status:[white] [red]Over-subscribed[white] - Consider expanding capacity\n"
+	}
+}
+
+func (v *PartitionsView) formatWaitTimeSection(queueInfo *dao.QueueInfo) string {
+	if queueInfo.AverageWait == 0 && queueInfo.LongestWait == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	output.WriteString("\n[teal]Wait Time Analytics:[white]\n")
+
+	if queueInfo.AverageWait > 0 {
+		output.WriteString(fmt.Sprintf("[yellow]  Average Wait Time:[white] %s\n", FormatTimeDuration(queueInfo.AverageWait)))
+	}
+
+	if queueInfo.LongestWait > 0 {
+		output.WriteString(fmt.Sprintf("[yellow]  Longest Wait Time:[white] %s\n", FormatTimeDuration(queueInfo.LongestWait)))
+		output.WriteString(v.formatWaitAssessment(queueInfo.LongestWait.Hours()))
+	}
+
+	return output.String()
+}
+
+func (v *PartitionsView) formatWaitAssessment(hours float64) string {
+	switch {
+	case hours < 1:
+		return "[yellow]  Wait Assessment:[white] [green]Excellent[white] - Quick turnaround\n"
+	case hours < 6:
+		return "[yellow]  Wait Assessment:[white] [yellow]Good[white] - Reasonable wait times\n"
+	case hours < 24:
+		return "[yellow]  Wait Assessment:[white] [orange]Moderate[white] - Some delays expected\n"
+	default:
+		return "[yellow]  Wait Assessment:[white] [red]Poor[white] - Long wait times detected\n"
+	}
+}
+
+func (v *PartitionsView) formatQoSSection(partition *dao.Partition) string {
+	if len(partition.QOS) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	output.WriteString("\n[teal]Quality of Service:[white]\n")
+	for _, qos := range partition.QOS {
+		output.WriteString(fmt.Sprintf("[yellow]  - %s[white]\n", qos))
+	}
+
+	return output.String()
 }
 
 // showWaitTimeAnalytics shows detailed wait time analytics for all partitions
@@ -940,7 +1019,31 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 		return analytics.String()
 	}
 
-	// Calculate cluster-wide statistics
+	totalPending, totalRunning, allWaitTimes, longestWait := v.calculateClusterStats()
+
+	// Cluster summary
+	v.writeClusterSummary(&analytics, totalPending, totalRunning, longestWait, allWaitTimes)
+
+	// Per-partition breakdown
+	analytics.WriteString("\n[teal]Per-Partition Breakdown:[white]\n")
+	analytics.WriteString("[yellow]Partition          Pending  Running  Avg Wait    Max Wait     Status[white]\n")
+	analytics.WriteString("─────────────────────────────────────────────────────────────────────\n")
+
+	for _, partition := range v.partitions {
+		info := v.queueInfo[partition.Name]
+		if info == nil {
+			continue
+		}
+		analytics.WriteString(v.formatPartitionRow(partition.Name, info))
+	}
+
+	analytics.WriteString("\n[gray]Last updated: " + time.Now().Format("15:04:05") + "[white]")
+
+	return analytics.String()
+}
+
+// calculateClusterStats calculates cluster-wide queue statistics
+func (v *PartitionsView) calculateClusterStats() (int, int, []time.Duration, time.Duration) {
 	var totalPending, totalRunning int
 	var allWaitTimes []time.Duration
 	var longestWait time.Duration
@@ -955,12 +1058,15 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 			longestWait = info.LongestWait
 		}
 	}
+	return totalPending, totalRunning, allWaitTimes, longestWait
+}
 
-	// Cluster summary
-	analytics.WriteString("[teal]Cluster Summary:[white]\n")
-	analytics.WriteString(fmt.Sprintf("[yellow]  Total Pending Jobs:[white] %d\n", totalPending))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Total Running Jobs:[white] %d\n", totalRunning))
-	analytics.WriteString(fmt.Sprintf("[yellow]  Cluster-wide Longest Wait:[white] %s\n", FormatTimeDuration(longestWait)))
+// writeClusterSummary writes cluster summary to the analytics output
+func (v *PartitionsView) writeClusterSummary(w *strings.Builder, totalPending, totalRunning int, longestWait time.Duration, allWaitTimes []time.Duration) {
+	w.WriteString("[teal]Cluster Summary:[white]\n")
+	fmt.Fprintf(w, "[yellow]  Total Pending Jobs:[white] %d\n", totalPending)
+	fmt.Fprintf(w, "[yellow]  Total Running Jobs:[white] %d\n", totalRunning)
+	fmt.Fprintf(w, "[yellow]  Cluster-wide Longest Wait:[white] %s\n", FormatTimeDuration(longestWait))
 
 	if len(allWaitTimes) > 0 {
 		var totalWait time.Duration
@@ -968,64 +1074,72 @@ func (v *PartitionsView) formatWaitTimeAnalytics() string {
 			totalWait += wait
 		}
 		avgClusterWait := totalWait / time.Duration(len(allWaitTimes))
-		analytics.WriteString(fmt.Sprintf("[yellow]  Average Wait Across Partitions:[white] %s\n", FormatTimeDuration(avgClusterWait)))
+		fmt.Fprintf(w, "[yellow]  Average Wait Across Partitions:[white] %s\n", FormatTimeDuration(avgClusterWait))
+	}
+}
+
+// formatPartitionRow formats a single partition row for analytics output
+func (v *PartitionsView) formatPartitionRow(partitionName string, info *dao.QueueInfo) string {
+	name := partitionName
+	if len(name) > 18 {
+		name = name[:15] + "..."
+	}
+	name = fmt.Sprintf("%-18s", name)
+
+	pending := fmt.Sprintf("%7d", info.PendingJobs)
+	running := fmt.Sprintf("%7d", info.RunningJobs)
+
+	avgWait := v.formatDurationField(info.AverageWait, 10)
+	maxWait := v.formatDurationField(info.LongestWait, 10)
+
+	statusColor, status := v.assessPartitionStatus(info)
+
+	return fmt.Sprintf("%s %s %s %s %s [%s]%s[white]\n",
+		name, pending, running, avgWait, maxWait, statusColor, status)
+}
+
+// formatDurationField formats a duration field with default value
+func (v *PartitionsView) formatDurationField(dur time.Duration, width int) string {
+	if dur > 0 {
+		return fmt.Sprintf("%*s", width, FormatTimeDuration(dur))
+	}
+	return fmt.Sprintf("%*s", width, "-")
+}
+
+// assessPartitionStatus assesses the status of a partition based on queue information
+func (v *PartitionsView) assessPartitionStatus(info *dao.QueueInfo) (string, string) {
+	statusChecks := []struct {
+		condition bool
+		color     string
+		status    string
+	}{
+		{v.isCriticalWaitTime(info.LongestWait), "red", "CRITICAL"},
+		{v.isWarningWaitTime(info.LongestWait), "yellow", "WARNING"},
+		{v.hasJobBacklog(info), "orange", "BACKLOG"},
 	}
 
-	// Per-partition breakdown
-	analytics.WriteString("\n[teal]Per-Partition Breakdown:[white]\n")
-	analytics.WriteString("[yellow]Partition          Pending  Running  Avg Wait    Max Wait     Status[white]\n")
-	analytics.WriteString("─────────────────────────────────────────────────────────────────────\n")
-
-	for _, partition := range v.partitions {
-		info := v.queueInfo[partition.Name]
-		if info == nil {
-			continue
+	for _, check := range statusChecks {
+		if check.condition {
+			return check.color, check.status
 		}
-
-		name := partition.Name
-		if len(name) > 18 {
-			name = name[:15] + "..."
-		}
-		name = fmt.Sprintf("%-18s", name)
-
-		pending := fmt.Sprintf("%7d", info.PendingJobs)
-		running := fmt.Sprintf("%7d", info.RunningJobs)
-
-		var avgWait string
-		if info.AverageWait > 0 {
-			avgWait = fmt.Sprintf("%10s", FormatTimeDuration(info.AverageWait))
-		} else {
-			avgWait = fmt.Sprintf("%10s", "-")
-		}
-		var maxWait string
-		if info.LongestWait > 0 {
-			maxWait = fmt.Sprintf("%10s", FormatTimeDuration(info.LongestWait))
-		} else {
-			maxWait = fmt.Sprintf("%10s", "-")
-		}
-
-		// Status assessment
-		status := "OK"
-		statusColor := "green"
-		switch {
-		case info.LongestWait.Hours() > 24:
-			status = "CRITICAL"
-			statusColor = "red"
-		case info.LongestWait.Hours() > 6:
-			status = "WARNING"
-			statusColor = "yellow"
-		case info.PendingJobs > info.RunningJobs*2:
-			status = "BACKLOG"
-			statusColor = "orange"
-		}
-
-		analytics.WriteString(fmt.Sprintf("%s %s %s %s %s [%s]%s[white]\n",
-			name, pending, running, avgWait, maxWait, statusColor, status))
 	}
 
-	analytics.WriteString("\n[gray]Last updated: " + time.Now().Format("15:04:05") + "[white]")
+	return "green", "OK"
+}
 
-	return analytics.String()
+// isCriticalWaitTime checks if wait time is critical (> 24 hours)
+func (v *PartitionsView) isCriticalWaitTime(wait time.Duration) bool {
+	return wait.Hours() > 24
+}
+
+// isWarningWaitTime checks if wait time is warning level (> 6 hours)
+func (v *PartitionsView) isWarningWaitTime(wait time.Duration) bool {
+	return wait.Hours() > 6
+}
+
+// hasJobBacklog checks if there's a job backlog
+func (v *PartitionsView) hasJobBacklog(info *dao.QueueInfo) bool {
+	return info.PendingJobs > info.RunningJobs*2
 }
 
 // showAdvancedFilter shows the advanced filter bar

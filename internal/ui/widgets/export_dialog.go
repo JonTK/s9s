@@ -46,11 +46,36 @@ func NewExportDialog(exportType ExportType) *ExportDialog {
 
 // setupUI creates the dialog UI
 func (ed *ExportDialog) setupUI() {
-	// Create form
 	ed.form = tview.NewForm()
 	ed.form.SetBorder(true)
 	ed.form.SetBorderPadding(1, 1, 2, 2)
+	ed.form.SetTitle(ed.getExportTitle())
+	ed.form.SetTitleAlign(tview.AlignCenter)
 
+	ed.setupExportOptions()
+	ed.setupExportButtons()
+
+	// Preview
+	preview := tview.NewTextView().
+		SetText(ed.getExportPreviewText()).
+		SetTextColor(tcell.ColorGray)
+	preview.SetBorder(true).SetTitle("Export Contents")
+
+	// Help text
+	help := tview.NewTextView().
+		SetText("[Tab] Navigate fields | [Enter] Select | [Esc] Cancel").
+		SetTextAlign(tview.AlignCenter).
+		SetTextColor(tcell.ColorGray)
+
+	// Layout
+	ed.SetDirection(tview.FlexRow)
+	ed.AddItem(ed.form, 0, 2, true)
+	ed.AddItem(preview, 0, 1, false)
+	ed.AddItem(help, 1, 0, false)
+}
+
+// getExportTitle returns the title based on export type
+func (ed *ExportDialog) getExportTitle() string {
 	title := "Export "
 	switch ed.exportType {
 	case ExportTypeJobOutput:
@@ -58,36 +83,42 @@ func (ed *ExportDialog) setupUI() {
 	case ExportTypePerformance:
 		title += "Performance Report"
 	}
-	ed.form.SetTitle(title)
-	ed.form.SetTitleAlign(tview.AlignCenter)
+	return title
+}
 
-	// Format dropdown
+// setupExportOptions configures format and path inputs
+func (ed *ExportDialog) setupExportOptions() {
 	formats := []string{"Text", "JSON", "CSV", "Markdown", "HTML"}
 	ed.form.AddDropDown("Format:", formats, 0, func(option string, _ int) {
-		switch option {
-		case "Text":
-			ed.selectedFormat = export.FormatText
-		case "JSON":
-			ed.selectedFormat = export.FormatJSON
-		case "CSV":
-			ed.selectedFormat = export.FormatCSV
-		case "Markdown":
-			ed.selectedFormat = export.FormatMarkdown
-		case "HTML":
-			ed.selectedFormat = export.FormatHTML
-		}
+		ed.selectedFormat = ed.parseFormatOption(option)
 	})
-	ed.selectedFormat = export.FormatText // Default
+	ed.selectedFormat = export.FormatText
 
-	// Path input
 	homeDir, _ := os.UserHomeDir()
 	defaultPath := filepath.Join(homeDir, "slurm_exports")
 	ed.form.AddInputField("Path:", defaultPath, 50, nil, func(text string) {
 		ed.customPath = text
 	})
 	ed.customPath = defaultPath
+}
 
-	// Preview text
+// setupExportButtons adds export and cancel buttons
+func (ed *ExportDialog) setupExportButtons() {
+	ed.form.AddButton("Export", func() {
+		if ed.onExport != nil {
+			ed.onExport(ed.selectedFormat, ed.customPath)
+		}
+	})
+
+	ed.form.AddButton("Cancel", func() {
+		if ed.onCancel != nil {
+			ed.onCancel()
+		}
+	})
+}
+
+// getExportPreviewText returns preview content based on export type
+func (ed *ExportDialog) getExportPreviewText() string {
 	previewText := "Preview:\n"
 	switch ed.exportType {
 	case ExportTypeJobOutput:
@@ -101,37 +132,24 @@ func (ed *ExportDialog) setupUI() {
 		previewText += "• Network performance\n"
 		previewText += "• Optimization recommendations"
 	}
+	return previewText
+}
 
-	preview := tview.NewTextView().
-		SetText(previewText).
-		SetTextColor(tcell.ColorGray)
-	preview.SetBorder(true).SetTitle("Export Contents")
-
-	// Buttons
-	ed.form.AddButton("Export", func() {
-		if ed.onExport != nil {
-			ed.onExport(ed.selectedFormat, ed.customPath)
-		}
-	})
-
-	ed.form.AddButton("Cancel", func() {
-		if ed.onCancel != nil {
-			ed.onCancel()
-		}
-	})
-
-	// Help text
-	helpText := "[Tab] Navigate fields | [Enter] Select | [Esc] Cancel"
-	help := tview.NewTextView().
-		SetText(helpText).
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.ColorGray)
-
-	// Layout
-	ed.SetDirection(tview.FlexRow)
-	ed.AddItem(ed.form, 0, 2, true)
-	ed.AddItem(preview, 0, 1, false)
-	ed.AddItem(help, 1, 0, false)
+// parseFormatOption converts format string to export format
+func (ed *ExportDialog) parseFormatOption(option string) export.ExportFormat {
+	switch option {
+	case "Text":
+		return export.FormatText
+	case "JSON":
+		return export.FormatJSON
+	case "CSV":
+		return export.FormatCSV
+	case "Markdown":
+		return export.FormatMarkdown
+	case "HTML":
+		return export.FormatHTML
+	}
+	return export.FormatText
 }
 
 // SetExportHandler sets the export callback
@@ -279,34 +297,46 @@ func NewBatchExportDialog(exportType ExportType, items []string) *BatchExportDia
 
 // setupBatchUI creates the batch export UI
 func (bd *BatchExportDialog) setupBatchUI(items []string) {
-	// Create item list
+	bd.setupItemList(items)
+	bd.setupExportForm()
+
+	// Layout
+	bd.SetDirection(tview.FlexRow)
+	bd.AddItem(bd.list, 0, 2, true)
+	bd.AddItem(bd.form, 0, 1, false)
+}
+
+// setupItemList initializes the item selection list
+func (bd *BatchExportDialog) setupItemList(items []string) {
 	bd.list = tview.NewList()
 	bd.list.ShowSecondaryText(false)
 	bd.list.SetBorder(true)
 	bd.list.SetTitle("Select Items to Export")
 
-	// Add items
 	for _, item := range items {
 		prefix := "[ ] "
 		bd.list.AddItem(prefix+item, "", 0, nil)
 	}
 
-	// Handle selection
-	bd.list.SetSelectedFunc(func(index int, mainText, _ string, _ rune) {
-		bd.selectedItems[index] = !bd.selectedItems[index]
+	bd.list.SetSelectedFunc(bd.handleItemSelection)
+}
 
-		// Update display
-		item := strings.TrimPrefix(mainText, "[ ] ")
-		item = strings.TrimPrefix(item, "[✓] ")
+// handleItemSelection handles item selection toggle
+func (bd *BatchExportDialog) handleItemSelection(index int, mainText, _ string, _ rune) {
+	bd.selectedItems[index] = !bd.selectedItems[index]
 
-		if bd.selectedItems[index] {
-			bd.list.SetItemText(index, "[✓] "+item, "")
-		} else {
-			bd.list.SetItemText(index, "[ ] "+item, "")
-		}
-	})
+	item := strings.TrimPrefix(mainText, "[ ] ")
+	item = strings.TrimPrefix(item, "[✓] ")
 
-	// Create form
+	if bd.selectedItems[index] {
+		bd.list.SetItemText(index, "[✓] "+item, "")
+	} else {
+		bd.list.SetItemText(index, "[ ] "+item, "")
+	}
+}
+
+// setupExportForm initializes the export options form
+func (bd *BatchExportDialog) setupExportForm() {
 	bd.form = tview.NewForm()
 	bd.form.SetBorder(true)
 	bd.form.SetTitle("Export Options")
@@ -314,18 +344,7 @@ func (bd *BatchExportDialog) setupBatchUI(items []string) {
 	// Format dropdown
 	formats := []string{"Text", "JSON", "CSV", "Markdown", "HTML"}
 	bd.form.AddDropDown("Format:", formats, 0, func(option string, _ int) {
-		switch option {
-		case "Text":
-			bd.selectedFormat = export.FormatText
-		case "JSON":
-			bd.selectedFormat = export.FormatJSON
-		case "CSV":
-			bd.selectedFormat = export.FormatCSV
-		case "Markdown":
-			bd.selectedFormat = export.FormatMarkdown
-		case "HTML":
-			bd.selectedFormat = export.FormatHTML
-		}
+		bd.selectedFormat = bd.parseFormatOption(option)
 	})
 
 	// Path input
@@ -336,51 +355,76 @@ func (bd *BatchExportDialog) setupBatchUI(items []string) {
 	})
 
 	// Buttons
-	bd.form.AddButton("Export Selected", func() {
-		if bd.onExport != nil {
-			// Get selected indices
-			indices := []int{}
-			for i, selected := range bd.selectedItems {
-				if selected {
-					indices = append(indices, i)
-				}
-			}
-			bd.onExport(indices, bd.selectedFormat, bd.customPath)
-		}
-	})
-
-	bd.form.AddButton("Select All", func() {
-		count := bd.list.GetItemCount()
-		for i := 0; i < count; i++ {
-			bd.selectedItems[i] = true
-			mainText, _ := bd.list.GetItemText(i)
-			item := strings.TrimPrefix(mainText, "[ ] ")
-			item = strings.TrimPrefix(item, "[✓] ")
-			bd.list.SetItemText(i, "[✓] "+item, "")
-		}
-	})
-
-	bd.form.AddButton("Clear All", func() {
-		count := bd.list.GetItemCount()
-		for i := 0; i < count; i++ {
-			bd.selectedItems[i] = false
-			mainText, _ := bd.list.GetItemText(i)
-			item := strings.TrimPrefix(mainText, "[ ] ")
-			item = strings.TrimPrefix(item, "[✓] ")
-			bd.list.SetItemText(i, "[ ] "+item, "")
-		}
-	})
-
+	bd.form.AddButton("Export Selected", bd.handleExportSelected)
+	bd.form.AddButton("Select All", bd.handleSelectAll)
+	bd.form.AddButton("Clear All", bd.handleClearAll)
 	bd.form.AddButton("Cancel", func() {
 		if bd.onCancel != nil {
 			bd.onCancel()
 		}
 	})
+}
 
-	// Layout
-	bd.SetDirection(tview.FlexRow)
-	bd.AddItem(bd.list, 0, 2, true)
-	bd.AddItem(bd.form, 0, 1, false)
+// parseFormatOption converts format string to export format
+func (bd *BatchExportDialog) parseFormatOption(option string) export.ExportFormat {
+	switch option {
+	case "Text":
+		return export.FormatText
+	case "JSON":
+		return export.FormatJSON
+	case "CSV":
+		return export.FormatCSV
+	case "Markdown":
+		return export.FormatMarkdown
+	case "HTML":
+		return export.FormatHTML
+	}
+	return export.FormatText
+}
+
+// handleExportSelected collects selected items and triggers export
+func (bd *BatchExportDialog) handleExportSelected() {
+	if bd.onExport == nil {
+		return
+	}
+
+	indices := []int{}
+	for i, selected := range bd.selectedItems {
+		if selected {
+			indices = append(indices, i)
+		}
+	}
+	bd.onExport(indices, bd.selectedFormat, bd.customPath)
+}
+
+// handleSelectAll selects all items in the list
+func (bd *BatchExportDialog) handleSelectAll() {
+	count := bd.list.GetItemCount()
+	for i := 0; i < count; i++ {
+		bd.updateItemSelection(i, true)
+	}
+}
+
+// handleClearAll clears all selected items
+func (bd *BatchExportDialog) handleClearAll() {
+	count := bd.list.GetItemCount()
+	for i := 0; i < count; i++ {
+		bd.updateItemSelection(i, false)
+	}
+}
+
+// updateItemSelection updates the selection state of an item
+func (bd *BatchExportDialog) updateItemSelection(index int, selected bool) {
+	bd.selectedItems[index] = selected
+	mainText, _ := bd.list.GetItemText(index)
+	item := strings.TrimPrefix(mainText, "[ ] ")
+	item = strings.TrimPrefix(item, "[✓] ")
+
+	if selected {
+		bd.list.SetItemText(index, "[✓] "+item, "")
+	} else {
+		bd.list.SetItemText(index, "[ ] "+item, "")
+	}
 }
 
 // SetBatchExportHandler sets the batch export callback

@@ -98,68 +98,70 @@ func ParseMemorySize(sizeStr string) (int64, error) {
 func ParseSlurmDuration(duration string) (time.Duration, error) {
 	duration = strings.TrimSpace(duration)
 
-	// Handle SLURM time formats: [DD-]HH:MM:SS
+	// Try parsing with colon-based time formats first
 	if strings.Contains(duration, ":") {
-		// Check for DD-HH:MM:SS format
+		// Try DD-HH:MM:SS format
 		if strings.Contains(duration, "-") {
-			parts := strings.SplitN(duration, "-", 2)
-			if len(parts) == 2 {
-				days, err := strconv.Atoi(parts[0])
-				if err != nil {
-					return 0, fmt.Errorf("invalid day format: %s", parts[0])
-				}
-
-				timePart := parts[1]
-				timeComponents := strings.Split(timePart, ":")
-				if len(timeComponents) != 3 {
-					return 0, fmt.Errorf("invalid time format: %s", timePart)
-				}
-
-				hours, err := strconv.Atoi(timeComponents[0])
-				if err != nil {
-					return 0, fmt.Errorf("invalid hour format: %s", timeComponents[0])
-				}
-
-				minutes, err := strconv.Atoi(timeComponents[1])
-				if err != nil {
-					return 0, fmt.Errorf("invalid minute format: %s", timeComponents[1])
-				}
-
-				seconds, err := strconv.Atoi(timeComponents[2])
-				if err != nil {
-					return 0, fmt.Errorf("invalid second format: %s", timeComponents[2])
-				}
-
-				totalSeconds := days*24*3600 + hours*3600 + minutes*60 + seconds
-				return time.Duration(totalSeconds) * time.Second, nil
+			if result, err := parseDayTimeFormat(duration); err == nil {
+				return result, nil
 			}
 		}
 
-		// Handle HH:MM:SS format
-		timeComponents := strings.Split(duration, ":")
-		if len(timeComponents) == 3 {
-			hours, err := strconv.Atoi(timeComponents[0])
-			if err != nil {
-				return 0, fmt.Errorf("invalid hour format: %s", timeComponents[0])
-			}
-
-			minutes, err := strconv.Atoi(timeComponents[1])
-			if err != nil {
-				return 0, fmt.Errorf("invalid minute format: %s", timeComponents[1])
-			}
-
-			seconds, err := strconv.Atoi(timeComponents[2])
-			if err != nil {
-				return 0, fmt.Errorf("invalid second format: %s", timeComponents[2])
-			}
-
-			totalSeconds := hours*3600 + minutes*60 + seconds
-			return time.Duration(totalSeconds) * time.Second, nil
+		// Try HH:MM:SS format
+		if result, err := parseHourMinSecFormat(duration); err == nil {
+			return result, nil
 		}
 	}
 
 	// Fall back to Go's duration parser for formats like "90m", "2h30m"
 	return time.ParseDuration(duration)
+}
+
+// parseDayTimeFormat parses DD-HH:MM:SS format
+func parseDayTimeFormat(duration string) (time.Duration, error) {
+	parts := strings.SplitN(duration, "-", 2)
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("invalid day format")
+	}
+
+	days, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, fmt.Errorf("invalid day format: %s", parts[0])
+	}
+
+	dur, err := parseHourMinSecFormat(parts[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid time format: %s", parts[1])
+	}
+
+	return time.Duration(days*24)*time.Hour + dur, nil
+}
+
+// parseHourMinSecFormat parses HH:MM:SS format
+func parseHourMinSecFormat(duration string) (time.Duration, error) {
+	timeComponents := strings.Split(duration, ":")
+	if len(timeComponents) != 3 {
+		return 0, fmt.Errorf("invalid time format")
+	}
+
+	hours, err := strconv.Atoi(timeComponents[0])
+	if err != nil {
+		return 0, fmt.Errorf("invalid hour format: %s", timeComponents[0])
+	}
+
+	minutes, err := strconv.Atoi(timeComponents[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid minute format: %s", timeComponents[1])
+	}
+
+	seconds, err := strconv.Atoi(timeComponents[2])
+	if err != nil {
+		return 0, fmt.Errorf("invalid second format: %s", timeComponents[2])
+	}
+
+	return time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second, nil
 }
 
 // ParseDateRange parses date range expressions like "2024-01-01..2024-01-31" or "last week"
@@ -225,59 +227,9 @@ func (p *AdvancedFilterParser) parseRelativeDate(relativeStr string) *DateRangeF
 	now := time.Now()
 	relativeStr = strings.ToLower(strings.TrimSpace(relativeStr))
 
-	switch relativeStr {
-	case "today":
-		start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		end := start.Add(24 * time.Hour).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "yesterday":
-		yesterday := now.AddDate(0, 0, -1)
-		start := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
-		end := start.Add(24 * time.Hour).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "this week":
-		weekday := int(now.Weekday())
-		if weekday == 0 { // Sunday
-			weekday = 7
-		}
-		start := now.AddDate(0, 0, -weekday+1) // Monday
-		start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
-		end := start.AddDate(0, 0, 7).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "last week":
-		weekday := int(now.Weekday())
-		if weekday == 0 {
-			weekday = 7
-		}
-		start := now.AddDate(0, 0, -weekday-6) // Previous Monday
-		start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
-		end := start.AddDate(0, 0, 7).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "this month":
-		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-		end := start.AddDate(0, 1, 0).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "last month":
-		start := time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, now.Location())
-		end := start.AddDate(0, 1, 0).Add(-time.Nanosecond)
-		return &DateRangeFilter{Start: &start, End: &end}
-
-	case "last 24h", "last 24 hours":
-		start := now.Add(-24 * time.Hour)
-		return &DateRangeFilter{Start: &start, End: &now}
-
-	case "last 7d", "last 7 days":
-		start := now.AddDate(0, 0, -7)
-		return &DateRangeFilter{Start: &start, End: &now}
-
-	case "last 30d", "last 30 days":
-		start := now.AddDate(0, 0, -30)
-		return &DateRangeFilter{Start: &start, End: &now}
+	// Try direct match cases first
+	if result := p.parseDirectDateCase(relativeStr, now); result != nil {
+		return result
 	}
 
 	// Handle "last N days/hours/minutes" patterns
@@ -286,6 +238,102 @@ func (p *AdvancedFilterParser) parseRelativeDate(relativeStr string) *DateRangeF
 	}
 
 	return nil
+}
+
+// parseDirectDateCase handles directly matched relative date expressions
+func (p *AdvancedFilterParser) parseDirectDateCase(caseStr string, now time.Time) *DateRangeFilter {
+	switch caseStr {
+	case "today":
+		return p.getToday(now)
+	case "yesterday":
+		return p.getYesterday(now)
+	case "this week":
+		return p.getThisWeek(now)
+	case "last week":
+		return p.getLastWeek(now)
+	case "this month":
+		return p.getThisMonth(now)
+	case "last month":
+		return p.getLastMonth(now)
+	case "last 24h", "last 24 hours":
+		return p.getLast24Hours(now)
+	case "last 7d", "last 7 days":
+		return p.getLast7Days(now)
+	case "last 30d", "last 30 days":
+		return p.getLast30Days(now)
+	}
+	return nil
+}
+
+// getToday returns today's date range
+func (p *AdvancedFilterParser) getToday(now time.Time) *DateRangeFilter {
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.Add(24 * time.Hour).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getYesterday returns yesterday's date range
+func (p *AdvancedFilterParser) getYesterday(now time.Time) *DateRangeFilter {
+	yesterday := now.AddDate(0, 0, -1)
+	start := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
+	end := start.Add(24 * time.Hour).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getThisWeek returns this week's date range (Monday to Sunday)
+func (p *AdvancedFilterParser) getThisWeek(now time.Time) *DateRangeFilter {
+	weekday := int(now.Weekday())
+	if weekday == 0 { // Sunday
+		weekday = 7
+	}
+	start := now.AddDate(0, 0, -weekday+1) // Monday
+	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+	end := start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getLastWeek returns last week's date range
+func (p *AdvancedFilterParser) getLastWeek(now time.Time) *DateRangeFilter {
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	start := now.AddDate(0, 0, -weekday-6) // Previous Monday
+	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+	end := start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getThisMonth returns this month's date range
+func (p *AdvancedFilterParser) getThisMonth(now time.Time) *DateRangeFilter {
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getLastMonth returns last month's date range
+func (p *AdvancedFilterParser) getLastMonth(now time.Time) *DateRangeFilter {
+	start := time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	return &DateRangeFilter{Start: &start, End: &end}
+}
+
+// getLast24Hours returns the last 24 hours
+func (p *AdvancedFilterParser) getLast24Hours(now time.Time) *DateRangeFilter {
+	start := now.Add(-24 * time.Hour)
+	return &DateRangeFilter{Start: &start, End: &now}
+}
+
+// getLast7Days returns the last 7 days
+func (p *AdvancedFilterParser) getLast7Days(now time.Time) *DateRangeFilter {
+	start := now.AddDate(0, 0, -7)
+	return &DateRangeFilter{Start: &start, End: &now}
+}
+
+// getLast30Days returns the last 30 days
+func (p *AdvancedFilterParser) getLast30Days(now time.Time) *DateRangeFilter {
+	start := now.AddDate(0, 0, -30)
+	return &DateRangeFilter{Start: &start, End: &now}
 }
 
 // parseLastNPattern handles patterns like "last 5 days", "last 2 hours"

@@ -55,7 +55,6 @@ type Config struct {
 	ClientConfig *ssh.ClientConfig // Native SSH client config
 }
 
-//nolint:revive // type alias for backward compatibility
 type SSHConfig = Config
 
 // Client handles SSH connections to cluster nodes
@@ -64,7 +63,6 @@ type Client struct {
 	sshCommandPath string // Validated absolute path to ssh command
 }
 
-//nolint:revive // type alias for backward compatibility
 type SSHClient = Client
 
 // NewSSHClient creates a new SSH client
@@ -304,41 +302,70 @@ func (c *SSHConfig) GetNativeClientConfig(_ string) (*ssh.ClientConfig, error) {
 		return c.ClientConfig, nil
 	}
 
-	var authMethods []ssh.AuthMethod
-
-	// Try SSH agent first if enabled
-	if c.UseAgent && IsAgentAvailable() {
-		if agentAuth, err := NewAgentAuth(); err == nil {
-			authMethods = append(authMethods, agentAuth.GetAuthMethod())
-		}
-	}
-
-	// Add key file authentication if available
-	if c.KeyFile != "" {
-		if keyAuth, err := c.getKeyFileAuth(); err == nil {
-			authMethods = append(authMethods, keyAuth)
-		}
-	}
-
-	// If no auth methods, try to use key manager
-	if len(authMethods) == 0 && c.KeyManager != nil {
-		if kmAuth, err := c.getKeyManagerAuth(); err == nil {
-			authMethods = append(authMethods, kmAuth...)
-		}
-	}
+	authMethods := c.buildAuthMethods()
 
 	if len(authMethods) == 0 {
 		return nil, fmt.Errorf("no authentication methods available")
 	}
 
-	clientConfig := &ssh.ClientConfig{
+	return c.createClientConfig(authMethods), nil
+}
+
+// buildAuthMethods builds a list of available authentication methods
+func (c *SSHConfig) buildAuthMethods() []ssh.AuthMethod {
+	var authMethods []ssh.AuthMethod
+
+	// Try SSH agent first if enabled
+	c.addAgentAuth(&authMethods)
+
+	// Add key file authentication if available
+	c.addKeyFileAuth(&authMethods)
+
+	// If no auth methods, try to use key manager
+	if len(authMethods) == 0 && c.KeyManager != nil {
+		c.addKeyManagerAuth(&authMethods)
+	}
+
+	return authMethods
+}
+
+// addAgentAuth adds SSH agent authentication if available
+func (c *SSHConfig) addAgentAuth(authMethods *[]ssh.AuthMethod) {
+	if !c.UseAgent || !IsAgentAvailable() {
+		return
+	}
+
+	if agentAuth, err := NewAgentAuth(); err == nil {
+		*authMethods = append(*authMethods, agentAuth.GetAuthMethod())
+	}
+}
+
+// addKeyFileAuth adds key file authentication if available
+func (c *SSHConfig) addKeyFileAuth(authMethods *[]ssh.AuthMethod) {
+	if c.KeyFile == "" {
+		return
+	}
+
+	if keyAuth, err := c.getKeyFileAuth(); err == nil {
+		*authMethods = append(*authMethods, keyAuth)
+	}
+}
+
+// addKeyManagerAuth adds authentication methods from key manager
+func (c *SSHConfig) addKeyManagerAuth(authMethods *[]ssh.AuthMethod) {
+	if kmAuth, err := c.getKeyManagerAuth(); err == nil {
+		*authMethods = append(*authMethods, kmAuth...)
+	}
+}
+
+// createClientConfig creates an SSH client configuration
+func (c *SSHConfig) createClientConfig(authMethods []ssh.AuthMethod) *ssh.ClientConfig {
+	return &ssh.ClientConfig{
 		User:            c.Username,
 		Auth:            authMethods,
 		HostKeyCallback: getHostKeyCallback(c),
 		Timeout:         c.Timeout,
 	}
-
-	return clientConfig, nil
 }
 
 // getKeyFileAuth creates authentication from key file

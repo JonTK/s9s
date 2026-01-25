@@ -34,7 +34,6 @@ type Persistence struct {
 	stopChan        chan struct{}
 }
 
-//nolint:revive // type alias for backward compatibility
 type SubscriptionPersistence = Persistence
 
 // PersistenceConfig configuration for subscription persistence
@@ -356,6 +355,9 @@ func (sp *Persistence) GetPersistenceStats() map[string]interface{} {
 
 // Stop stops the auto-save loop
 func (sp *Persistence) Stop() {
+	if sp == nil {
+		return
+	}
 	close(sp.stopChan)
 }
 
@@ -383,7 +385,6 @@ type Recovery struct {
 	retryDelay      time.Duration
 }
 
-//nolint:revive // type alias for backward compatibility
 type SubscriptionRecovery = Recovery
 
 // NewSubscriptionRecovery creates a new subscription recovery manager

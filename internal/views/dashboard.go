@@ -342,7 +342,7 @@ func (v *DashboardView) updateJobsSummary() {
 	content.WriteString(fmt.Sprintf("[yellow]Pending:[white] %d\n", jobStats[dao.JobStatePending]))
 	content.WriteString(fmt.Sprintf("[cyan]Completed:[white] %d\n", jobStats[dao.JobStateCompleted]))
 	content.WriteString(fmt.Sprintf("[red]Failed:[white] %d\n", jobStats[dao.JobStateFailed]))
-	content.WriteString(fmt.Sprintf("[orange]Cancelled:[white] %d\n", jobStats[dao.JobStateCancelled]))
+	content.WriteString(fmt.Sprintf("[orange]Canceled:[white] %d\n", jobStats[dao.JobStateCancelled]))
 
 	// Job state visualization
 	if totalJobs > 0 {
@@ -553,45 +553,66 @@ func (v *DashboardView) calculateHealthStatus() string {
 func (v *DashboardView) calculateHealthScore() float64 {
 	score := 100.0
 
-	// Deduct for down nodes
-	if len(v.nodes) > 0 {
-		downNodes := 0
-		for _, node := range v.nodes {
-			if node.State == dao.NodeStateDown {
-				downNodes++
-			}
-		}
-		downPercent := float64(downNodes) * 100.0 / float64(len(v.nodes))
-		score -= downPercent * 2 // Each down node % costs 2 points
-	}
-
-	// Deduct for failed jobs
-	if len(v.jobs) > 0 {
-		failedJobs := 0
-		for _, job := range v.jobs {
-			if job.State == dao.JobStateFailed {
-				failedJobs++
-			}
-		}
-		failedPercent := float64(failedJobs) * 100.0 / float64(len(v.jobs))
-		score -= failedPercent // Each failed job % costs 1 point
-	}
-
-	// Deduct for high resource utilization
-	if v.clusterMetrics != nil {
-		if v.clusterMetrics.CPUUsage > 95 {
-			score -= 10
-		}
-		if v.clusterMetrics.MemoryUsage > 95 {
-			score -= 10
-		}
-	}
+	score -= v.calculateNodeHealthDeduction()
+	score -= v.calculateJobHealthDeduction()
+	score -= v.calculateResourceHealthDeduction()
 
 	if score < 0 {
 		score = 0
 	}
 
 	return score
+}
+
+// calculateNodeHealthDeduction calculates health score deduction for down nodes
+func (v *DashboardView) calculateNodeHealthDeduction() float64 {
+	if len(v.nodes) == 0 {
+		return 0
+	}
+
+	downNodes := 0
+	for _, node := range v.nodes {
+		if node.State == dao.NodeStateDown {
+			downNodes++
+		}
+	}
+
+	downPercent := float64(downNodes) * 100.0 / float64(len(v.nodes))
+	return downPercent * 2 // Each down node % costs 2 points
+}
+
+// calculateJobHealthDeduction calculates health score deduction for failed jobs
+func (v *DashboardView) calculateJobHealthDeduction() float64 {
+	if len(v.jobs) == 0 {
+		return 0
+	}
+
+	failedJobs := 0
+	for _, job := range v.jobs {
+		if job.State == dao.JobStateFailed {
+			failedJobs++
+		}
+	}
+
+	failedPercent := float64(failedJobs) * 100.0 / float64(len(v.jobs))
+	return failedPercent // Each failed job % costs 1 point
+}
+
+// calculateResourceHealthDeduction calculates health score deduction for high resource utilization
+func (v *DashboardView) calculateResourceHealthDeduction() float64 {
+	if v.clusterMetrics == nil {
+		return 0
+	}
+
+	deduction := 0.0
+	if v.clusterMetrics.CPUUsage > 95 {
+		deduction += 10
+	}
+	if v.clusterMetrics.MemoryUsage > 95 {
+		deduction += 10
+	}
+
+	return deduction
 }
 
 func (v *DashboardView) getHealthColor(status string) string {
@@ -661,85 +682,127 @@ type Alert struct {
 func (v *DashboardView) generateAlerts() []Alert {
 	var alerts []Alert
 
-	// Check for down nodes
-	if len(v.nodes) > 0 {
-		downNodes := 0
-		for _, node := range v.nodes {
-			if node.State == dao.NodeStateDown {
-				downNodes++
-			}
-		}
-		if downNodes > 0 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "yellow",
-				Message: fmt.Sprintf("%d node(s) are down", downNodes),
-			})
-		}
+	// Check each alert condition and collect non-empty alerts
+	if alert := v.checkDownNodesAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for high resource utilization
-	if v.clusterMetrics != nil {
-		if v.clusterMetrics.CPUUsage > 90 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "orange",
-				Message: fmt.Sprintf("High CPU utilization: %.1f%%", v.clusterMetrics.CPUUsage),
-			})
-		}
-		if v.clusterMetrics.MemoryUsage > 90 {
-			alerts = append(alerts, Alert{
-				Level:   "WARNING",
-				Icon:    "⚠",
-				Color:   "orange",
-				Message: fmt.Sprintf("High memory utilization: %.1f%%", v.clusterMetrics.MemoryUsage),
-			})
-		}
+	if alert := v.checkResourceUtilizationAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for long waiting jobs
-	if len(v.jobs) > 0 {
-		longWaitingJobs := 0
-		now := time.Now()
-		for _, job := range v.jobs {
-			if job.State == dao.JobStatePending {
-				waitTime := now.Sub(job.SubmitTime)
-				if waitTime > 24*time.Hour {
-					longWaitingJobs++
-				}
-			}
-		}
-		if longWaitingJobs > 0 {
-			alerts = append(alerts, Alert{
-				Level:   "INFO",
-				Icon:    "ℹ",
-				Color:   "cyan",
-				Message: fmt.Sprintf("%d job(s) waiting >24h", longWaitingJobs),
-			})
-		}
+	if alert := v.checkCPUAlertIfHigh(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
-	// Check for failed jobs
-	if len(v.jobs) > 0 {
-		failedJobs := 0
-		for _, job := range v.jobs {
-			if job.State == dao.JobStateFailed {
-				failedJobs++
-			}
-		}
-		if failedJobs > 10 {
-			alerts = append(alerts, Alert{
-				Level:   "ERROR",
-				Icon:    "✗",
-				Color:   "red",
-				Message: fmt.Sprintf("%d failed jobs detected", failedJobs),
-			})
-		}
+	if alert := v.checkLongWaitingJobsAlert(); alert != nil {
+		alerts = append(alerts, *alert)
+	}
+
+	if alert := v.checkFailedJobsAlert(); alert != nil {
+		alerts = append(alerts, *alert)
 	}
 
 	return alerts
+}
+
+func (v *DashboardView) checkDownNodesAlert() *Alert {
+	if len(v.nodes) == 0 {
+		return nil
+	}
+
+	downNodes := 0
+	for _, node := range v.nodes {
+		if node.State == dao.NodeStateDown {
+			downNodes++
+		}
+	}
+
+	if downNodes == 0 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "yellow",
+		Message: fmt.Sprintf("%d node(s) are down", downNodes),
+	}
+}
+
+func (v *DashboardView) checkResourceUtilizationAlert() *Alert {
+	if v.clusterMetrics == nil || v.clusterMetrics.MemoryUsage <= 90 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "orange",
+		Message: fmt.Sprintf("High memory utilization: %.1f%%", v.clusterMetrics.MemoryUsage),
+	}
+}
+
+func (v *DashboardView) checkCPUAlertIfHigh() *Alert {
+	if v.clusterMetrics == nil || v.clusterMetrics.CPUUsage <= 90 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "WARNING",
+		Icon:    "⚠",
+		Color:   "orange",
+		Message: fmt.Sprintf("High CPU utilization: %.1f%%", v.clusterMetrics.CPUUsage),
+	}
+}
+
+func (v *DashboardView) checkLongWaitingJobsAlert() *Alert {
+	if len(v.jobs) == 0 {
+		return nil
+	}
+
+	longWaitingJobs := 0
+	now := time.Now()
+	for _, job := range v.jobs {
+		if job.State == dao.JobStatePending && now.Sub(job.SubmitTime) > 24*time.Hour {
+			longWaitingJobs++
+		}
+	}
+
+	if longWaitingJobs == 0 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "INFO",
+		Icon:    "ℹ",
+		Color:   "cyan",
+		Message: fmt.Sprintf("%d job(s) waiting >24h", longWaitingJobs),
+	}
+}
+
+func (v *DashboardView) checkFailedJobsAlert() *Alert {
+	if len(v.jobs) == 0 {
+		return nil
+	}
+
+	failedJobs := 0
+	for _, job := range v.jobs {
+		if job.State == dao.JobStateFailed {
+			failedJobs++
+		}
+	}
+
+	if failedJobs <= 10 {
+		return nil
+	}
+
+	return &Alert{
+		Level:   "ERROR",
+		Icon:    "✗",
+		Color:   "red",
+		Message: fmt.Sprintf("%d failed jobs detected", failedJobs),
+	}
 }
 
 // showAdvancedAnalytics shows advanced analytics modal
@@ -806,112 +869,134 @@ func (v *DashboardView) generateAdvancedAnalytics() string {
 
 	analytics.WriteString("[yellow]Advanced Cluster Analytics[white]\n\n")
 
-	// Resource efficiency analysis
-	analytics.WriteString("[teal]Resource Efficiency Analysis:[white]\n")
-	if v.clusterMetrics != nil {
-		cpuEfficiency := v.clusterMetrics.CPUUsage
-		memEfficiency := v.clusterMetrics.MemoryUsage
-		overallEfficiency := (cpuEfficiency + memEfficiency) / 2
-
-		analytics.WriteString(fmt.Sprintf("[yellow]  CPU Efficiency:[white] %.1f%% %s\n", cpuEfficiency, v.getEfficiencyAssessment(cpuEfficiency)))
-		analytics.WriteString(fmt.Sprintf("[yellow]  Memory Efficiency:[white] %.1f%% %s\n", memEfficiency, v.getEfficiencyAssessment(memEfficiency)))
-		analytics.WriteString(fmt.Sprintf("[yellow]  Overall Efficiency:[white] %.1f%% %s\n", overallEfficiency, v.getEfficiencyAssessment(overallEfficiency)))
-	}
-
-	// Job analysis
-	if len(v.jobs) > 0 {
-		analytics.WriteString("\n[teal]Job Analysis:[white]\n")
-
-		// Job states distribution
-		stateStats := make(map[string]int)
-		totalJobs := len(v.jobs)
-
-		for _, job := range v.jobs {
-			stateStats[job.State]++
-		}
-
-		for state, count := range stateStats {
-			percentage := float64(count) * 100.0 / float64(totalJobs)
-			color := dao.GetJobStateColor(state)
-			analytics.WriteString(fmt.Sprintf("[yellow]  %s:[white] [%s]%d[white] (%.1f%%)\n", state, color, count, percentage))
-		}
-
-		// Wait time analysis
-		now := time.Now()
-		var waitTimes []time.Duration
-		for _, job := range v.jobs {
-			if job.State == dao.JobStatePending {
-				waitTimes = append(waitTimes, now.Sub(job.SubmitTime))
-			}
-		}
-
-		if len(waitTimes) > 0 {
-			analytics.WriteString("\n[teal]Wait Time Analysis:[white]\n")
-
-			// Calculate statistics
-			var totalWait time.Duration
-			var maxWait time.Duration
-			for _, wait := range waitTimes {
-				totalWait += wait
-				if wait > maxWait {
-					maxWait = wait
-				}
-			}
-			avgWait := totalWait / time.Duration(len(waitTimes))
-
-			analytics.WriteString(fmt.Sprintf("[yellow]  Average Wait Time:[white] %s\n", FormatDurationDetailed(avgWait)))
-			analytics.WriteString(fmt.Sprintf("[yellow]  Maximum Wait Time:[white] %s\n", FormatDurationDetailed(maxWait)))
-			analytics.WriteString(fmt.Sprintf("[yellow]  Jobs Waiting >1h:[white] %d\n", v.countJobsWaitingLongerThan(time.Hour)))
-			analytics.WriteString(fmt.Sprintf("[yellow]  Jobs Waiting >24h:[white] %d\n", v.countJobsWaitingLongerThan(24*time.Hour)))
-		}
-	}
-
-	// Node analysis
-	if len(v.nodes) > 0 {
-		analytics.WriteString("\n[teal]Node Analysis:[white]\n")
-
-		stateStats := make(map[string]int)
-		totalCPUs := 0
-		allocatedCPUs := 0
-		totalMemory := int64(0)
-		allocatedMemory := int64(0)
-
-		for _, node := range v.nodes {
-			stateStats[node.State]++
-			totalCPUs += node.CPUsTotal
-			allocatedCPUs += node.CPUsAllocated
-			totalMemory += node.MemoryTotal
-			allocatedMemory += node.MemoryAllocated
-		}
-
-		for state, count := range stateStats {
-			percentage := float64(count) * 100.0 / float64(len(v.nodes))
-			color := dao.GetNodeStateColor(state)
-			analytics.WriteString(fmt.Sprintf("[yellow]  %s:[white] [%s]%d[white] (%.1f%%)\n", state, color, count, percentage))
-		}
-
-		if totalCPUs > 0 {
-			cpuUtilization := float64(allocatedCPUs) * 100.0 / float64(totalCPUs)
-			analytics.WriteString(fmt.Sprintf("[yellow]  CPU Utilization:[white] %.1f%% (%d/%d cores)\n", cpuUtilization, allocatedCPUs, totalCPUs))
-		}
-
-		if totalMemory > 0 {
-			memUtilization := float64(allocatedMemory) * 100.0 / float64(totalMemory)
-			analytics.WriteString(fmt.Sprintf("[yellow]  Memory Utilization:[white] %.1f%% (%s/%s)\n",
-				memUtilization, FormatMemory(allocatedMemory), FormatMemory(totalMemory)))
-		}
-	}
-
-	// Recommendations
-	analytics.WriteString("\n[teal]Recommendations:[white]\n")
-	recommendations := v.generateRecommendations()
-	for _, rec := range recommendations {
-		analytics.WriteString(fmt.Sprintf("[yellow]  •[white] %s\n", rec))
-	}
-
+	v.appendEfficiencyAnalysis(&analytics)
+	v.appendJobAnalysis(&analytics)
+	v.appendNodeAnalysis(&analytics)
+	v.appendRecommendations(&analytics)
 	analytics.WriteString(fmt.Sprintf("\n[gray]Generated: %s[white]", time.Now().Format("2006-01-02 15:04:05")))
 
 	return analytics.String()
+}
+
+// appendEfficiencyAnalysis appends resource efficiency analysis section
+func (v *DashboardView) appendEfficiencyAnalysis(w *strings.Builder) {
+	w.WriteString("[teal]Resource Efficiency Analysis:[white]\n")
+	if v.clusterMetrics == nil {
+		return
+	}
+
+	cpuEfficiency := v.clusterMetrics.CPUUsage
+	memEfficiency := v.clusterMetrics.MemoryUsage
+	overallEfficiency := (cpuEfficiency + memEfficiency) / 2
+
+	fmt.Fprintf(w, "[yellow]  CPU Efficiency:[white] %.1f%% %s\n", cpuEfficiency, v.getEfficiencyAssessment(cpuEfficiency))
+	fmt.Fprintf(w, "[yellow]  Memory Efficiency:[white] %.1f%% %s\n", memEfficiency, v.getEfficiencyAssessment(memEfficiency))
+	fmt.Fprintf(w, "[yellow]  Overall Efficiency:[white] %.1f%% %s\n", overallEfficiency, v.getEfficiencyAssessment(overallEfficiency))
+}
+
+// appendJobAnalysis appends job analysis section
+func (v *DashboardView) appendJobAnalysis(w *strings.Builder) {
+	if len(v.jobs) == 0 {
+		return
+	}
+
+	w.WriteString("\n[teal]Job Analysis:[white]\n")
+	v.appendJobStateDistribution(w)
+	v.appendWaitTimeAnalysis(w)
+}
+
+// appendJobStateDistribution appends job state distribution analysis
+func (v *DashboardView) appendJobStateDistribution(w *strings.Builder) {
+	stateStats := make(map[string]int)
+	totalJobs := len(v.jobs)
+
+	for _, job := range v.jobs {
+		stateStats[job.State]++
+	}
+
+	for state, count := range stateStats {
+		percentage := float64(count) * 100.0 / float64(totalJobs)
+		color := dao.GetJobStateColor(state)
+		fmt.Fprintf(w, "[yellow]  %s:[white] [%s]%d[white] (%.1f%%)\n", state, color, count, percentage)
+	}
+}
+
+// appendWaitTimeAnalysis appends wait time analysis section
+func (v *DashboardView) appendWaitTimeAnalysis(w *strings.Builder) {
+	now := time.Now()
+	var waitTimes []time.Duration
+	for _, job := range v.jobs {
+		if job.State == dao.JobStatePending {
+			waitTimes = append(waitTimes, now.Sub(job.SubmitTime))
+		}
+	}
+
+	if len(waitTimes) == 0 {
+		return
+	}
+
+	w.WriteString("\n[teal]Wait Time Analysis:[white]\n")
+
+	var totalWait, maxWait time.Duration
+	for _, wait := range waitTimes {
+		totalWait += wait
+		if wait > maxWait {
+			maxWait = wait
+		}
+	}
+	avgWait := totalWait / time.Duration(len(waitTimes))
+
+	fmt.Fprintf(w, "[yellow]  Average Wait Time:[white] %s\n", FormatDurationDetailed(avgWait))
+	fmt.Fprintf(w, "[yellow]  Maximum Wait Time:[white] %s\n", FormatDurationDetailed(maxWait))
+	fmt.Fprintf(w, "[yellow]  Jobs Waiting >1h:[white] %d\n", v.countJobsWaitingLongerThan(time.Hour))
+	fmt.Fprintf(w, "[yellow]  Jobs Waiting >24h:[white] %d\n", v.countJobsWaitingLongerThan(24*time.Hour))
+}
+
+// appendNodeAnalysis appends node analysis section
+func (v *DashboardView) appendNodeAnalysis(w *strings.Builder) {
+	if len(v.nodes) == 0 {
+		return
+	}
+
+	w.WriteString("\n[teal]Node Analysis:[white]\n")
+
+	stateStats := make(map[string]int)
+	totalCPUs, allocatedCPUs := 0, 0
+	var totalMemory, allocatedMemory int64
+
+	for _, node := range v.nodes {
+		stateStats[node.State]++
+		totalCPUs += node.CPUsTotal
+		allocatedCPUs += node.CPUsAllocated
+		totalMemory += node.MemoryTotal
+		allocatedMemory += node.MemoryAllocated
+	}
+
+	for state, count := range stateStats {
+		percentage := float64(count) * 100.0 / float64(len(v.nodes))
+		color := dao.GetNodeStateColor(state)
+		fmt.Fprintf(w, "[yellow]  %s:[white] [%s]%d[white] (%.1f%%)\n", state, color, count, percentage)
+	}
+
+	if totalCPUs > 0 {
+		cpuUtilization := float64(allocatedCPUs) * 100.0 / float64(totalCPUs)
+		fmt.Fprintf(w, "[yellow]  CPU Utilization:[white] %.1f%% (%d/%d cores)\n", cpuUtilization, allocatedCPUs, totalCPUs)
+	}
+
+	if totalMemory > 0 {
+		memUtilization := float64(allocatedMemory) * 100.0 / float64(totalMemory)
+		fmt.Fprintf(w, "[yellow]  Memory Utilization:[white] %.1f%% (%s/%s)\n",
+			memUtilization, FormatMemory(allocatedMemory), FormatMemory(totalMemory))
+	}
+}
+
+// appendRecommendations appends recommendations section
+func (v *DashboardView) appendRecommendations(w *strings.Builder) {
+	w.WriteString("\n[teal]Recommendations:[white]\n")
+	recommendations := v.generateRecommendations()
+	for _, rec := range recommendations {
+		fmt.Fprintf(w, "[yellow]  •[white] %s\n", rec)
+	}
 }
 
 // showHealthCheck shows health check modal
@@ -987,97 +1072,127 @@ func (v *DashboardView) generateHealthCheck() string {
 
 	// Detailed checks
 	health.WriteString("[teal]Component Health Checks:[white]\n")
-
-	// Node health
-	if len(v.nodes) > 0 {
-		downNodes := 0
-		drainNodes := 0
-		for _, node := range v.nodes {
-			switch node.State {
-			case dao.NodeStateDown:
-				downNodes++
-			case dao.NodeStateDrain, dao.NodeStateDraining:
-				drainNodes++
-			}
-		}
-
-		health.WriteString("[yellow]Nodes:[white]\n")
-		if downNodes == 0 {
-			health.WriteString("  [green]✓[white] All nodes operational\n")
-		} else {
-			health.WriteString(fmt.Sprintf("  [red]✗[white] %d node(s) down\n", downNodes))
-		}
-
-		if drainNodes > 0 {
-			health.WriteString(fmt.Sprintf("  [yellow]⚠[white] %d node(s) draining\n", drainNodes))
-		}
-	}
-
-	// Job queue health
-	if len(v.jobs) > 0 {
-		failedJobs := 0
-		stuckJobs := 0
-		now := time.Now()
-
-		for _, job := range v.jobs {
-			if job.State == dao.JobStateFailed {
-				failedJobs++
-			} else if job.State == dao.JobStatePending && now.Sub(job.SubmitTime) > 24*time.Hour {
-				stuckJobs++
-			}
-		}
-
-		health.WriteString("\n[yellow]Job Queue:[white]\n")
-		if failedJobs == 0 {
-			health.WriteString("  [green]✓[white] No failed jobs detected\n")
-		} else {
-			health.WriteString(fmt.Sprintf("  [red]✗[white] %d failed job(s)\n", failedJobs))
-		}
-
-		if stuckJobs == 0 {
-			health.WriteString("  [green]✓[white] No stuck jobs detected\n")
-		} else {
-			health.WriteString(fmt.Sprintf("  [yellow]⚠[white] %d job(s) waiting >24h\n", stuckJobs))
-		}
-	}
-
-	// Resource utilization health
-	if v.clusterMetrics != nil {
-		health.WriteString("\n[yellow]Resource Utilization:[white]\n")
-
-		if v.clusterMetrics.CPUUsage < 95 {
-			health.WriteString(fmt.Sprintf("  [green]✓[white] CPU utilization normal (%.1f%%)\n", v.clusterMetrics.CPUUsage))
-		} else {
-			health.WriteString(fmt.Sprintf("  [red]✗[white] CPU utilization critical (%.1f%%)\n", v.clusterMetrics.CPUUsage))
-		}
-
-		if v.clusterMetrics.MemoryUsage < 95 {
-			health.WriteString(fmt.Sprintf("  [green]✓[white] Memory utilization normal (%.1f%%)\n", v.clusterMetrics.MemoryUsage))
-		} else {
-			health.WriteString(fmt.Sprintf("  [red]✗[white] Memory utilization critical (%.1f%%)\n", v.clusterMetrics.MemoryUsage))
-		}
-	}
-
-	// Partition health
-	if len(v.partitions) > 0 {
-		downPartitions := 0
-		for _, partition := range v.partitions {
-			if partition.State == dao.PartitionStateDown {
-				downPartitions++
-			}
-		}
-
-		health.WriteString("\n[yellow]Partitions:[white]\n")
-		if downPartitions == 0 {
-			health.WriteString("  [green]✓[white] All partitions operational\n")
-		} else {
-			health.WriteString(fmt.Sprintf("  [red]✗[white] %d partition(s) down\n", downPartitions))
-		}
-	}
+	health.WriteString(v.generateNodeHealthSection())
+	health.WriteString(v.generateJobQueueHealthSection())
+	health.WriteString(v.generateResourceUtilizationSection())
+	health.WriteString(v.generatePartitionHealthSection())
 
 	health.WriteString(fmt.Sprintf("\n[gray]Health check completed: %s[white]", time.Now().Format("2006-01-02 15:04:05")))
 
 	return health.String()
+}
+
+func (v *DashboardView) generateNodeHealthSection() string {
+	if len(v.nodes) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	downNodes := 0
+	drainNodes := 0
+
+	for _, node := range v.nodes {
+		switch node.State {
+		case dao.NodeStateDown:
+			downNodes++
+		case dao.NodeStateDrain, dao.NodeStateDraining:
+			drainNodes++
+		}
+	}
+
+	output.WriteString("[yellow]Nodes:[white]\n")
+	if downNodes == 0 {
+		output.WriteString("  [green]✓[white] All nodes operational\n")
+	} else {
+		output.WriteString(fmt.Sprintf("  [red]✗[white] %d node(s) down\n", downNodes))
+	}
+
+	if drainNodes > 0 {
+		output.WriteString(fmt.Sprintf("  [yellow]⚠[white] %d node(s) draining\n", drainNodes))
+	}
+
+	return output.String()
+}
+
+func (v *DashboardView) generateJobQueueHealthSection() string {
+	if len(v.jobs) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	failedJobs := 0
+	stuckJobs := 0
+	now := time.Now()
+
+	for _, job := range v.jobs {
+		if job.State == dao.JobStateFailed {
+			failedJobs++
+		} else if job.State == dao.JobStatePending && now.Sub(job.SubmitTime) > 24*time.Hour {
+			stuckJobs++
+		}
+	}
+
+	output.WriteString("\n[yellow]Job Queue:[white]\n")
+	if failedJobs == 0 {
+		output.WriteString("  [green]✓[white] No failed jobs detected\n")
+	} else {
+		output.WriteString(fmt.Sprintf("  [red]✗[white] %d failed job(s)\n", failedJobs))
+	}
+
+	if stuckJobs == 0 {
+		output.WriteString("  [green]✓[white] No stuck jobs detected\n")
+	} else {
+		output.WriteString(fmt.Sprintf("  [yellow]⚠[white] %d job(s) waiting >24h\n", stuckJobs))
+	}
+
+	return output.String()
+}
+
+func (v *DashboardView) generateResourceUtilizationSection() string {
+	if v.clusterMetrics == nil {
+		return ""
+	}
+
+	var output strings.Builder
+	output.WriteString("\n[yellow]Resource Utilization:[white]\n")
+
+	if v.clusterMetrics.CPUUsage < 95 {
+		output.WriteString(fmt.Sprintf("  [green]✓[white] CPU utilization normal (%.1f%%)\n", v.clusterMetrics.CPUUsage))
+	} else {
+		output.WriteString(fmt.Sprintf("  [red]✗[white] CPU utilization critical (%.1f%%)\n", v.clusterMetrics.CPUUsage))
+	}
+
+	if v.clusterMetrics.MemoryUsage < 95 {
+		output.WriteString(fmt.Sprintf("  [green]✓[white] Memory utilization normal (%.1f%%)\n", v.clusterMetrics.MemoryUsage))
+	} else {
+		output.WriteString(fmt.Sprintf("  [red]✗[white] Memory utilization critical (%.1f%%)\n", v.clusterMetrics.MemoryUsage))
+	}
+
+	return output.String()
+}
+
+func (v *DashboardView) generatePartitionHealthSection() string {
+	if len(v.partitions) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	downPartitions := 0
+
+	for _, partition := range v.partitions {
+		if partition.State == dao.PartitionStateDown {
+			downPartitions++
+		}
+	}
+
+	output.WriteString("\n[yellow]Partitions:[white]\n")
+	if downPartitions == 0 {
+		output.WriteString("  [green]✓[white] All partitions operational\n")
+	} else {
+		output.WriteString(fmt.Sprintf("  [red]✗[white] %d partition(s) down\n", downPartitions))
+	}
+
+	return output.String()
 }
 
 // Helper functions for analytics
@@ -1109,53 +1224,82 @@ func (v *DashboardView) countJobsWaitingLongerThan(duration time.Duration) int {
 func (v *DashboardView) generateRecommendations() []string {
 	var recommendations []string
 
-	// Analyze resource utilization
-	if v.clusterMetrics != nil {
-		if v.clusterMetrics.CPUUsage < 30 {
-			recommendations = append(recommendations, "Consider consolidating workloads or reducing cluster size due to low CPU utilization")
-		} else if v.clusterMetrics.CPUUsage > 90 {
-			recommendations = append(recommendations, "Consider expanding CPU capacity due to high utilization")
-		}
-
-		if v.clusterMetrics.MemoryUsage > 90 {
-			recommendations = append(recommendations, "Consider expanding memory capacity due to high utilization")
-		}
-	}
-
-	// Analyze job queue
-	if len(v.jobs) > 0 {
-		longWaitingJobs := v.countJobsWaitingLongerThan(24 * time.Hour)
-		if longWaitingJobs > 10 {
-			recommendations = append(recommendations, "High number of jobs waiting >24h - review job priorities and resource allocation")
-		}
-
-		failedJobs := 0
-		for _, job := range v.jobs {
-			if job.State == dao.JobStateFailed {
-				failedJobs++
-			}
-		}
-		if failedJobs > 5 {
-			recommendations = append(recommendations, "Multiple failed jobs detected - review job scripts and resource requirements")
-		}
-	}
-
-	// Analyze node health
-	if len(v.nodes) > 0 {
-		downNodes := 0
-		for _, node := range v.nodes {
-			if node.State == dao.NodeStateDown {
-				downNodes++
-			}
-		}
-		if downNodes > 0 {
-			recommendations = append(recommendations, "Down nodes detected - investigate hardware issues and consider maintenance")
-		}
-	}
+	v.addResourceUtilizationRecommendations(&recommendations)
+	v.addJobQueueRecommendations(&recommendations)
+	v.addNodeHealthRecommendations(&recommendations)
 
 	if len(recommendations) == 0 {
 		recommendations = append(recommendations, "System is operating optimally - no immediate action required")
 	}
 
 	return recommendations
+}
+
+func (v *DashboardView) addResourceUtilizationRecommendations(recommendations *[]string) {
+	if v.clusterMetrics == nil {
+		return
+	}
+
+	if v.clusterMetrics.CPUUsage < 30 {
+		*recommendations = append(*recommendations,
+			"Consider consolidating workloads or reducing cluster size due to low CPU utilization")
+	} else if v.clusterMetrics.CPUUsage > 90 {
+		*recommendations = append(*recommendations,
+			"Consider expanding CPU capacity due to high utilization")
+	}
+
+	if v.clusterMetrics.MemoryUsage > 90 {
+		*recommendations = append(*recommendations,
+			"Consider expanding memory capacity due to high utilization")
+	}
+}
+
+func (v *DashboardView) addJobQueueRecommendations(recommendations *[]string) {
+	if len(v.jobs) == 0 {
+		return
+	}
+
+	longWaitingJobs := v.countJobsWaitingLongerThan(24 * time.Hour)
+	if longWaitingJobs > 10 {
+		*recommendations = append(*recommendations,
+			"High number of jobs waiting >24h - review job priorities and resource allocation")
+	}
+
+	failedJobs := v.countFailedJobs()
+	if failedJobs > 5 {
+		*recommendations = append(*recommendations,
+			"Multiple failed jobs detected - review job scripts and resource requirements")
+	}
+}
+
+func (v *DashboardView) addNodeHealthRecommendations(recommendations *[]string) {
+	if len(v.nodes) == 0 {
+		return
+	}
+
+	downNodes := v.countDownNodes()
+	if downNodes > 0 {
+		*recommendations = append(*recommendations,
+			"Down nodes detected - investigate hardware issues and consider maintenance")
+	}
+}
+
+func (v *DashboardView) countDownNodes() int {
+	count := 0
+	for _, node := range v.nodes {
+		if node.State == dao.NodeStateDown {
+			count++
+		}
+	}
+	return count
+}
+
+func (v *DashboardView) countFailedJobs() int {
+	count := 0
+	for _, job := range v.jobs {
+		if job.State == dao.JobStateFailed {
+			count++
+		}
+	}
+	return count
 }

@@ -239,72 +239,67 @@ func OLDShowJobTemplateSelector(v *JobsView) {
 	}
 
 	templates := v.templateManager.getTemplates()
-
 	list := tview.NewList()
 
-	// Add templates to list
-	for _, template := range templates {
-		template := template // Capture for closure
-		list.AddItem(template.Name, template.Description, 0, func() {
-			v.loadJobTemplate(&template)
-			if v.pages != nil {
-				v.pages.RemovePage("template-selector")
-			}
-		})
-	}
+	// Add templates
+	v.addTemplatesToList(list, templates)
 
-	// Add "Custom Job" option
+	// Add custom job and conditional save option
 	list.AddItem("Custom Job", "Create a new job from scratch", 0, func() {
 		v.showJobSubmissionForm()
-		if v.pages != nil {
-			v.pages.RemovePage("template-selector")
-		}
+		v.removeTemplateSelectorPage()
 	})
 
-	// Add "Save Current as Template" option if a job is selected
 	data := v.table.GetSelectedData()
 	if len(data) > 0 {
 		list.AddItem("Save Current Job as Template", "Save selected job as a reusable template", 0, func() {
 			v.saveJobAsTemplate(data[0])
-			if v.pages != nil {
-				v.pages.RemovePage("template-selector")
-			}
+			v.removeTemplateSelectorPage()
 		})
 	}
 
 	list.AddItem("Cancel", "Close template selector", 0, func() {
-		if v.pages != nil {
-			v.pages.RemovePage("template-selector")
-		}
+		v.removeTemplateSelectorPage()
 	})
 
-	list.SetBorder(true).
-		SetTitle(" Job Templates ").
-		SetTitleAlign(tview.AlignCenter)
+	// Configure list styling and input handling
+	list.SetBorder(true).SetTitle(" Job Templates ").SetTitleAlign(tview.AlignCenter)
+	v.setupTemplateSelectorInput(list)
 
-	// Create centered modal layout
-	centeredModal := tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			AddItem(list, 0, 6, true).
-			AddItem(nil, 0, 1, false), 0, 6, true).
-		AddItem(nil, 0, 1, false)
+	// Show modal
+	centeredModal := createCenteredModal(list, 0, 0)
+	if v.pages != nil {
+		v.pages.AddPage("template-selector", centeredModal, true, true)
+	}
+}
 
-	// Handle ESC key
+// addTemplatesToList adds template items to the list
+func (v *JobsView) addTemplatesToList(list *tview.List, templates []JobTemplate) {
+	for _, template := range templates {
+		template := template // Capture for closure
+		list.AddItem(template.Name, template.Description, 0, func() {
+			v.loadJobTemplate(&template)
+			v.removeTemplateSelectorPage()
+		})
+	}
+}
+
+// removeTemplateSelectorPage removes the template selector page
+func (v *JobsView) removeTemplateSelectorPage() {
+	if v.pages != nil {
+		v.pages.RemovePage("template-selector")
+	}
+}
+
+// setupTemplateSelectorInput configures keyboard event handling for template selector
+func (v *JobsView) setupTemplateSelectorInput(list *tview.List) {
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			if v.pages != nil {
-				v.pages.RemovePage("template-selector")
-			}
+			v.removeTemplateSelectorPage()
 			return nil
 		}
 		return event
 	})
-
-	if v.pages != nil {
-		v.pages.AddPage("template-selector", centeredModal, true, true)
-	}
 }
 
 // loadJobTemplate loads a template and shows the submission form

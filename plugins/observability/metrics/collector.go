@@ -62,6 +62,10 @@ func (c *Collector) Start() error {
 
 // Stop stops the metrics collection
 func (c *Collector) Stop() error {
+	if c == nil {
+		return nil
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -259,7 +263,6 @@ type Exporter struct {
 	metrics *PluginMetrics
 }
 
-//nolint:revive // type alias for backward compatibility
 type MetricsExporter = Exporter
 
 // NewMetricsExporter creates a new metrics exporter

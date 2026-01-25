@@ -88,7 +88,7 @@ Example:
 
 		// Require explicit confirmation in production
 		if !confirmMockInProduction() {
-			return fmt.Errorf("mock mode cancelled by user")
+			return fmt.Errorf("mock mode canceled by user")
 		}
 
 		fmt.Printf("✅ Proceeding with mock mode in production (user confirmed)\n\n")

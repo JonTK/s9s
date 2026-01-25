@@ -62,101 +62,77 @@ func (p *Parser) ParseConfig() (*Config, error) {
 	return config, nil
 }
 
+// Field binding helpers to reduce parsing complexity
+
+// parseStringField parses a string field from config and assigns it if present
+func (p *Parser) parseStringField(key string, target *string) {
+	if val, ok := p.getValue(key); ok {
+		if str, ok := val.(string); ok {
+			*target = str
+		}
+	}
+}
+
+// parseBoolField parses a boolean field from config and assigns it if present
+func (p *Parser) parseBoolField(key string, target *bool) {
+	if val, ok := p.getValue(key); ok {
+		if b, err := p.parseBool(val); err == nil {
+			*target = b
+		}
+	}
+}
+
+// parseIntField parses an integer field from config and assigns it if present
+func (p *Parser) parseIntField(key string, target *int) {
+	if val, ok := p.getValue(key); ok {
+		if i, err := p.parseInt(val); err == nil {
+			*target = i
+		}
+	}
+}
+
+// parseDurationField parses a duration field from config and assigns it if present
+func (p *Parser) parseDurationField(key string, target *time.Duration) {
+	if val, ok := p.getValue(key); ok {
+		if dur, err := p.parseDuration(val); err == nil {
+			*target = dur
+		}
+	}
+}
+
+// parseFloatField parses a float field from config and assigns it if present
+func (p *Parser) parseFloatField(key string, target *float64) {
+	if val, ok := p.getValue(key); ok {
+		if f, err := p.parseFloat(val); err == nil {
+			*target = f
+		}
+	}
+}
+
 // parsePrometheusConfig parses Prometheus-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parsePrometheusConfig(config *PrometheusConfig) error {
-	if val, ok := p.getValue("prometheus.endpoint"); ok {
-		if str, ok := val.(string); ok {
-			config.Endpoint = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.timeout"); ok {
-		if duration, err := p.parseDuration(val); err == nil {
-			config.Timeout = duration
-		}
-	}
+	p.parseStringField("prometheus.endpoint", &config.Endpoint)
+	p.parseDurationField("prometheus.timeout", &config.Timeout)
 
 	// Parse auth configuration
-	if val, ok := p.getValue("prometheus.auth.type"); ok {
-		if str, ok := val.(string); ok {
-			config.Auth.Type = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.auth.username"); ok {
-		if str, ok := val.(string); ok {
-			config.Auth.Username = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.auth.password"); ok {
-		if str, ok := val.(string); ok {
-			config.Auth.Password = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.auth.token"); ok {
-		if str, ok := val.(string); ok {
-			config.Auth.Token = str
-		}
-	}
+	p.parseStringField("prometheus.auth.type", &config.Auth.Type)
+	p.parseStringField("prometheus.auth.username", &config.Auth.Username)
+	p.parseStringField("prometheus.auth.password", &config.Auth.Password)
+	p.parseStringField("prometheus.auth.token", &config.Auth.Token)
 
 	// Parse TLS configuration
-	if val, ok := p.getValue("prometheus.tls.enabled"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.TLS.Enabled = b
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.tls.insecureSkipVerify"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.TLS.InsecureSkipVerify = b
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.tls.caFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.CAFile = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.tls.certFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.CertFile = str
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.tls.keyFile"); ok {
-		if str, ok := val.(string); ok {
-			config.TLS.KeyFile = str
-		}
-	}
+	p.parseBoolField("prometheus.tls.enabled", &config.TLS.Enabled)
+	p.parseBoolField("prometheus.tls.insecureSkipVerify", &config.TLS.InsecureSkipVerify)
+	p.parseStringField("prometheus.tls.caFile", &config.TLS.CAFile)
+	p.parseStringField("prometheus.tls.certFile", &config.TLS.CertFile)
+	p.parseStringField("prometheus.tls.keyFile", &config.TLS.KeyFile)
 
 	// Parse retry configuration
-	if val, ok := p.getValue("prometheus.retry.maxRetries"); ok {
-		if i, err := p.parseInt(val); err == nil {
-			config.Retry.MaxRetries = i
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.retry.initialDelay"); ok {
-		if duration, err := p.parseDuration(val); err == nil {
-			config.Retry.InitialDelay = duration
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.retry.maxDelay"); ok {
-		if duration, err := p.parseDuration(val); err == nil {
-			config.Retry.MaxDelay = duration
-		}
-	}
-
-	if val, ok := p.getValue("prometheus.retry.multiplier"); ok {
-		if f, err := p.parseFloat(val); err == nil {
-			config.Retry.Multiplier = f
-		}
-	}
+	p.parseIntField("prometheus.retry.maxRetries", &config.Retry.MaxRetries)
+	p.parseDurationField("prometheus.retry.initialDelay", &config.Retry.InitialDelay)
+	p.parseDurationField("prometheus.retry.maxDelay", &config.Retry.MaxDelay)
+	p.parseFloatField("prometheus.retry.multiplier", &config.Retry.Multiplier)
 
 	return nil
 }
@@ -164,108 +140,171 @@ func (p *Parser) parsePrometheusConfig(config *PrometheusConfig) error {
 // parseDisplayConfig parses Display-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseDisplayConfig(config *DisplayConfig) error {
-	if val, ok := p.getValue("display.refreshInterval"); ok {
+	p.parseRefreshInterval("display.refreshInterval", config)
+	p.parseShowOverlays("display.showOverlays", config)
+	p.parseShowSparklines("display.showSparklines", config)
+	p.parseSparklinePoints("display.sparklinePoints", config)
+	p.parseColorScheme("display.colorScheme", config)
+	p.parseDecimalPrecision("display.decimalPrecision", config)
+	return nil
+}
+
+// parseRefreshInterval parses the display refresh interval
+func (p *Parser) parseRefreshInterval(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.RefreshInterval = duration
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.showOverlays"); ok {
+// parseShowOverlays parses the show overlays flag
+func (p *Parser) parseShowOverlays(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowOverlays = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.showSparklines"); ok {
+// parseShowSparklines parses the show sparklines flag
+func (p *Parser) parseShowSparklines(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowSparklines = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.sparklinePoints"); ok {
+// parseSparklinePoints parses the sparkline points configuration
+func (p *Parser) parseSparklinePoints(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if i, err := p.parseInt(val); err == nil {
 			config.SparklinePoints = i
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.colorScheme"); ok {
+// parseColorScheme parses the color scheme configuration
+func (p *Parser) parseColorScheme(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if str, ok := val.(string); ok {
 			config.ColorScheme = str
 		}
 	}
+}
 
-	if val, ok := p.getValue("display.decimalPrecision"); ok {
+// parseDecimalPrecision parses the decimal precision configuration
+func (p *Parser) parseDecimalPrecision(key string, config *DisplayConfig) {
+	if val, ok := p.getValue(key); ok {
 		if i, err := p.parseInt(val); err == nil {
 			config.DecimalPrecision = i
 		}
 	}
-
-	return nil
 }
 
 // parseAlertsConfig parses Alerts-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseAlertsConfig(config *AlertConfig) error {
-	if val, ok := p.getValue("alerts.enabled"); ok {
+	p.parseAlertsEnabled("alerts.enabled", config)
+	p.parseCheckInterval("alerts.checkInterval", config)
+	p.parseShowNotifications("alerts.showNotifications", config)
+	p.parseHistoryRetention("alerts.historyRetention", config)
+	return nil
+}
+
+// parseAlertsEnabled parses the alerts enabled flag
+func (p *Parser) parseAlertsEnabled(key string, config *AlertConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.Enabled = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("alerts.checkInterval"); ok {
+// parseCheckInterval parses the alerts check interval
+func (p *Parser) parseCheckInterval(key string, config *AlertConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.CheckInterval = duration
 		}
 	}
+}
 
-	if val, ok := p.getValue("alerts.showNotifications"); ok {
+// parseShowNotifications parses the show notifications flag
+func (p *Parser) parseShowNotifications(key string, config *AlertConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.ShowNotifications = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("alerts.historyRetention"); ok {
+// parseHistoryRetention parses the history retention duration
+func (p *Parser) parseHistoryRetention(key string, config *AlertConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.HistoryRetention = duration
 		}
 	}
-
-	return nil
 }
 
 // parseCacheConfig parses Cache-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseCacheConfig(config *CacheConfig) error {
-	if val, ok := p.getValue("cache.enabled"); ok {
+	p.parseCacheEnabled("cache.enabled", config)
+	p.parseDefaultTTL("cache.defaultTTL", config)
+	p.parseMaxSize("cache.maxSize", config)
+	p.parseCleanupInterval("cache.cleanupInterval", config)
+	return nil
+}
+
+// parseCacheEnabled parses the cache enabled flag
+func (p *Parser) parseCacheEnabled(key string, config *CacheConfig) {
+	if val, ok := p.getValue(key); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.Enabled = b
 		}
 	}
+}
 
-	if val, ok := p.getValue("cache.defaultTTL"); ok {
+// parseDefaultTTL parses the default cache TTL
+func (p *Parser) parseDefaultTTL(key string, config *CacheConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.DefaultTTL = duration
 		}
 	}
+}
 
-	if val, ok := p.getValue("cache.maxSize"); ok {
+// parseMaxSize parses the maximum cache size
+func (p *Parser) parseMaxSize(key string, config *CacheConfig) {
+	if val, ok := p.getValue(key); ok {
 		if i, err := p.parseInt(val); err == nil {
 			config.MaxSize = i
 		}
 	}
+}
 
-	if val, ok := p.getValue("cache.cleanupInterval"); ok {
+// parseCleanupInterval parses the cache cleanup interval
+func (p *Parser) parseCleanupInterval(key string, config *CacheConfig) {
+	if val, ok := p.getValue(key); ok {
 		if duration, err := p.parseDuration(val); err == nil {
 			config.CleanupInterval = duration
 		}
 	}
-
-	return nil
 }
 
 // parseMetricsConfig parses Metrics-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseMetricsConfig(config *MetricsConfig) error {
+	p.parseNodeMetrics(config)
+	p.parseJobMetrics(config)
+	return nil
+}
+
+// parseNodeMetrics parses node-specific metrics configuration
+func (p *Parser) parseNodeMetrics(config *MetricsConfig) {
 	if val, ok := p.getValue("metrics.node.nodeLabel"); ok {
 		if str, ok := val.(string); ok {
 			config.Node.NodeLabel = str
@@ -283,7 +322,10 @@ func (p *Parser) parseMetricsConfig(config *MetricsConfig) error {
 			config.Node.EnabledMetrics = arr
 		}
 	}
+}
 
+// parseJobMetrics parses job-specific metrics configuration
+func (p *Parser) parseJobMetrics(config *MetricsConfig) {
 	if val, ok := p.getValue("metrics.job.enabled"); ok {
 		if b, err := p.parseBool(val); err == nil {
 			config.Job.Enabled = b
@@ -301,89 +343,39 @@ func (p *Parser) parseMetricsConfig(config *MetricsConfig) error {
 			config.Job.EnabledMetrics = arr
 		}
 	}
-
-	return nil
 }
 
 // parseSecurityConfig parses Security-specific configuration
 	//nolint:unparam // Designed for future extensibility; currently always returns nil
 func (p *Parser) parseSecurityConfig(config *SecurityConfig) error {
 	// Parse secrets configuration
-	if val, ok := p.getValue("security.secrets.storageDir"); ok {
-		if str, ok := val.(string); ok {
-			config.Secrets.StorageDir = str
-		}
-	}
+	p.parseStringField("security.secrets.storageDir", &config.Secrets.StorageDir)
+	p.parseBoolField("security.secrets.encryptAtRest", &config.Secrets.EncryptAtRest)
 
-	if val, ok := p.getValue("security.secrets.encryptAtRest"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.Secrets.EncryptAtRest = b
-		}
-	}
-
+	// Parse master key source (requires special handling for type conversion)
 	if val, ok := p.getValue("security.secrets.masterKeySource"); ok {
 		if str, ok := val.(string); ok {
 			config.Secrets.MasterKeySource = security.SecretSource(str)
 		}
 	}
 
-	if val, ok := p.getValue("security.secrets.masterKeyEnv"); ok {
-		if str, ok := val.(string); ok {
-			config.Secrets.MasterKeyEnv = str
-		}
-	}
+	p.parseStringField("security.secrets.masterKeyEnv", &config.Secrets.MasterKeyEnv)
 
 	// Parse API security configuration
-	if val, ok := p.getValue("security.api.enableAuth"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.API.EnableAuth = b
-		}
-	}
+	p.parseBoolField("security.api.enableAuth", &config.API.EnableAuth)
 
 	// Parse rate limit configuration
-	if val, ok := p.getValue("security.api.rateLimit.requestsPerMinute"); ok {
-		if i, err := p.parseInt(val); err == nil {
-			config.API.RateLimit.RequestsPerMinute = i
-		}
-	}
-
-	if val, ok := p.getValue("security.api.rateLimit.enableGlobalLimit"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.API.RateLimit.EnableGlobalLimit = b
-		}
-	}
-
-	if val, ok := p.getValue("security.api.rateLimit.globalRequestsPerMinute"); ok {
-		if i, err := p.parseInt(val); err == nil {
-			config.API.RateLimit.GlobalRequestsPerMinute = i
-		}
-	}
+	p.parseIntField("security.api.rateLimit.requestsPerMinute", &config.API.RateLimit.RequestsPerMinute)
+	p.parseBoolField("security.api.rateLimit.enableGlobalLimit", &config.API.RateLimit.EnableGlobalLimit)
+	p.parseIntField("security.api.rateLimit.globalRequestsPerMinute", &config.API.RateLimit.GlobalRequestsPerMinute)
 
 	// Parse validation configuration
-	if val, ok := p.getValue("security.api.validation.enabled"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.API.Validation.Enabled = b
-		}
-	}
-
-	if val, ok := p.getValue("security.api.validation.maxQueryLength"); ok {
-		if i, err := p.parseInt(val); err == nil {
-			config.API.Validation.MaxQueryLength = i
-		}
-	}
+	p.parseBoolField("security.api.validation.enabled", &config.API.Validation.Enabled)
+	p.parseIntField("security.api.validation.maxQueryLength", &config.API.Validation.MaxQueryLength)
 
 	// Parse audit configuration
-	if val, ok := p.getValue("security.api.audit.enabled"); ok {
-		if b, err := p.parseBool(val); err == nil {
-			config.API.Audit.Enabled = b
-		}
-	}
-
-	if val, ok := p.getValue("security.api.audit.logFile"); ok {
-		if str, ok := val.(string); ok {
-			config.API.Audit.LogFile = str
-		}
-	}
+	p.parseBoolField("security.api.audit.enabled", &config.API.Audit.Enabled)
+	p.parseStringField("security.api.audit.logFile", &config.API.Audit.LogFile)
 
 	return nil
 }

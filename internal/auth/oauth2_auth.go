@@ -145,11 +145,7 @@ func (o *OAuth2Authenticator) Initialize(_ context.Context, config AuthConfig) e
 
 // Authenticate performs OAuth2 authentication flow
 func (o *OAuth2Authenticator) Authenticate(ctx context.Context, config AuthConfig) (*Token, error) {
-	provider := config.GetString("provider")
-	if provider == "" {
-		provider = "custom"
-	}
-
+	provider := o.resolveProvider(config)
 	debug.Logger.Printf("Starting OAuth2 authentication flow for provider: %s", provider)
 
 	// Get OAuth2 endpoints
@@ -158,20 +154,62 @@ func (o *OAuth2Authenticator) Authenticate(ctx context.Context, config AuthConfi
 		return nil, fmt.Errorf("failed to get OAuth2 endpoints: %w", err)
 	}
 
-	// Generate state and PKCE parameters
+	// Generate authentication parameters
+	state, codeVerifier, codeChallenge, err := o.generateAuthParameters()
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup callback server
+	redirectURI, callbackPath, err := o.extractRedirectURI(config)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := o.startCallbackServer(redirectURI, state, callbackPath); err != nil {
+		return nil, fmt.Errorf("failed to start callback server: %w", err)
+	}
+	defer o.stopCallbackServer()
+
+	// Build and open authorization URL
+	authURL, err := o.buildAuthorizationURL(authEndpoint, config, state, codeChallenge, redirectURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build authorization URL: %w", err)
+	}
+
+	o.openBrowserForAuth(authURL)
+
+	// Wait for callback or timeout
+	return o.waitForCallback(ctx, tokenEndpoint, codeVerifier, redirectURI, config)
+}
+
+// resolveProvider returns the provider name or "custom" as default
+func (o *OAuth2Authenticator) resolveProvider(config AuthConfig) string {
+	provider := config.GetString("provider")
+	if provider == "" {
+		return "custom"
+	}
+	return provider
+}
+
+// generateAuthParameters generates state, code verifier, and code challenge
+func (o *OAuth2Authenticator) generateAuthParameters() (string, string, string, error) {
 	state, err := o.generateRandomString(32)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate state: %w", err)
+		return "", "", "", fmt.Errorf("failed to generate state: %w", err)
 	}
 
 	codeVerifier, err := o.generateRandomString(43)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate code verifier: %w", err)
+		return "", "", "", fmt.Errorf("failed to generate code verifier: %w", err)
 	}
 
 	codeChallenge := o.generateCodeChallenge(codeVerifier)
+	return state, codeVerifier, codeChallenge, nil
+}
 
-	// Start local callback server
+// extractRedirectURI extracts the redirect URI and callback path from config
+func (o *OAuth2Authenticator) extractRedirectURI(config AuthConfig) (string, string, error) {
 	redirectURI := config.GetString("redirect_uri")
 	if redirectURI == "" {
 		redirectURI = "http://localhost:8080/callback"
@@ -182,26 +220,21 @@ func (o *OAuth2Authenticator) Authenticate(ctx context.Context, config AuthConfi
 		callbackPath = u.Path
 	}
 
-	if err := o.startCallbackServer(redirectURI, state, callbackPath); err != nil {
-		return nil, fmt.Errorf("failed to start callback server: %w", err)
-	}
-	defer o.stopCallbackServer()
+	return redirectURI, callbackPath, nil
+}
 
-	// Build authorization URL
-	authURL, err := o.buildAuthorizationURL(authEndpoint, config, state, codeChallenge, redirectURI)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build authorization URL: %w", err)
-	}
-
-	// Open browser
+// openBrowserForAuth prints auth URL and attempts to open browser
+func (o *OAuth2Authenticator) openBrowserForAuth(authURL string) {
 	fmt.Printf("Opening browser for OAuth2 authentication...\n")
 	fmt.Printf("If the browser doesn't open automatically, visit: %s\n", authURL)
 
 	if err := o.openBrowser(authURL); err != nil {
 		debug.Logger.Printf("Failed to open browser automatically: %v", err)
 	}
+}
 
-	// Wait for callback or timeout
+// waitForCallback waits for the OAuth2 callback with timeout
+func (o *OAuth2Authenticator) waitForCallback(ctx context.Context, tokenEndpoint, codeVerifier, redirectURI string, config AuthConfig) (*Token, error) {
 	select {
 	case result := <-o.resultChan:
 		if result.err != nil {
@@ -213,7 +246,7 @@ func (o *OAuth2Authenticator) Authenticate(ctx context.Context, config AuthConfi
 		return o.exchangeCodeForToken(tokenEndpoint, authCode, codeVerifier, redirectURI, config)
 
 	case <-ctx.Done():
-		return nil, fmt.Errorf("authentication timeout or cancelled")
+		return nil, fmt.Errorf("authentication timeout or canceled")
 	}
 }
 
@@ -257,7 +290,7 @@ func (o *OAuth2Authenticator) getOAuth2Endpoints(config AuthConfig) (string, str
 func (o *OAuth2Authenticator) discoverEndpoints(discoveryURL string) (string, string, error) {
 	debug.Logger.Printf("Discovering OAuth2 endpoints from: %s", discoveryURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), "GET", discoveryURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", discoveryURL, http.NoBody)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create discovery request: %w", err)
 	}
@@ -424,7 +457,32 @@ func (o *OAuth2Authenticator) buildAuthorizationURL(authEndpoint string, config 
 func (o *OAuth2Authenticator) exchangeCodeForToken(tokenEndpoint, code, codeVerifier, redirectURI string, config AuthConfig) (*Token, error) {
 	debug.Logger.Printf("Exchanging authorization code for access token")
 
-	// Prepare token request
+	// Prepare and send token exchange request
+	req := o.prepareTokenExchangeRequest(tokenEndpoint, code, codeVerifier, redirectURI, config)
+
+	body, err := o.sendTokenRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse token response
+	var tokenResponse map[string]interface{}
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+
+	// Extract token from response
+	token, err := o.extractExchangeTokenResponse(tokenResponse, config)
+	if err != nil {
+		return nil, err
+	}
+
+	debug.Logger.Printf("Successfully obtained OAuth2 token, expires at: %v", token.ExpiresAt)
+	return token, nil
+}
+
+// prepareTokenExchangeRequest builds the token exchange request
+func (o *OAuth2Authenticator) prepareTokenExchangeRequest(tokenEndpoint, code, codeVerifier, redirectURI string, config AuthConfig) *http.Request {
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
@@ -433,16 +491,17 @@ func (o *OAuth2Authenticator) exchangeCodeForToken(tokenEndpoint, code, codeVeri
 	data.Set("client_secret", config.GetString("client_secret"))
 	data.Set("code_verifier", codeVerifier)
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", tokenEndpoint, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token request: %w", err)
-	}
-
+	// Note: We can safely ignore the error here as we control all inputs
+	req, _ := http.NewRequestWithContext(context.Background(), "POST", tokenEndpoint, strings.NewReader(data.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "s9s/1.0")
 
-	// Execute token request
+	return req
+}
+
+// sendTokenRequest executes the token request and validates the response
+func (o *OAuth2Authenticator) sendTokenRequest(req *http.Request) ([]byte, error) {
 	resp, err := o.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
@@ -459,43 +518,24 @@ func (o *OAuth2Authenticator) exchangeCodeForToken(tokenEndpoint, code, codeVeri
 		return nil, fmt.Errorf("token request failed with status %d", resp.StatusCode)
 	}
 
-	// Parse token response
-	var tokenResponse map[string]interface{}
-	if err := json.Unmarshal(body, &tokenResponse); err != nil {
-		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	return body, nil
+}
+
+// extractExchangeTokenResponse extracts all token fields from exchange response
+func (o *OAuth2Authenticator) extractExchangeTokenResponse(response map[string]interface{}, config AuthConfig) (*Token, error) {
+	// Extract and validate required access token
+	accessToken, err := o.extractRequiredAccessToken(response)
+	if err != nil {
+		return nil, err
 	}
 
-	// Extract token information
-	accessToken, ok := tokenResponse["access_token"].(string)
-	if !ok || accessToken == "" {
-		return nil, fmt.Errorf("missing or invalid access_token in response")
-	}
+	// Extract optional fields
+	refreshToken := o.extractRefreshToken(response)
+	expiresAt := o.extractExpiryTime(response)
+	tokenType := o.extractTokenType(response)
+	scopes := o.extractScopes(response)
 
-	var refreshToken string
-	if rt, ok := tokenResponse["refresh_token"].(string); ok {
-		refreshToken = rt
-	}
-
-	var expiresAt time.Time
-	if expiresIn, ok := tokenResponse["expires_in"].(float64); ok {
-		expiresAt = time.Now().Add(time.Duration(expiresIn) * time.Second)
-	} else {
-		// Default to 1 hour if no expiry provided
-		expiresAt = time.Now().Add(1 * time.Hour)
-	}
-
-	tokenType := "Bearer"
-	if tt, ok := tokenResponse["token_type"].(string); ok {
-		tokenType = tt
-	}
-
-	// Extract scopes
-	var scopes []string
-	if scopeStr, ok := tokenResponse["scope"].(string); ok {
-		scopes = strings.Fields(scopeStr)
-	}
-
-	token := &Token{
+	return &Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    tokenType,
@@ -506,10 +546,48 @@ func (o *OAuth2Authenticator) exchangeCodeForToken(tokenEndpoint, code, codeVeri
 			"auth_method": "oauth2",
 			"provider":    config.GetString("provider"),
 		},
-	}
+	}, nil
+}
 
-	debug.Logger.Printf("Successfully obtained OAuth2 token, expires at: %v", expiresAt)
-	return token, nil
+// extractRequiredAccessToken extracts the required access token from response
+func (o *OAuth2Authenticator) extractRequiredAccessToken(response map[string]interface{}) (string, error) {
+	accessToken, ok := response["access_token"].(string)
+	if !ok || accessToken == "" {
+		return "", fmt.Errorf("missing or invalid access_token in response")
+	}
+	return accessToken, nil
+}
+
+// extractRefreshToken extracts the optional refresh token from response
+func (o *OAuth2Authenticator) extractRefreshToken(response map[string]interface{}) string {
+	if rt, ok := response["refresh_token"].(string); ok {
+		return rt
+	}
+	return ""
+}
+
+// extractExpiryTime extracts the token expiry time from response
+func (o *OAuth2Authenticator) extractExpiryTime(response map[string]interface{}) time.Time {
+	if expiresIn, ok := response["expires_in"].(float64); ok {
+		return time.Now().Add(time.Duration(expiresIn) * time.Second)
+	}
+	return time.Now().Add(1 * time.Hour)
+}
+
+// extractTokenType extracts the token type from response with default
+func (o *OAuth2Authenticator) extractTokenType(response map[string]interface{}) string {
+	if tt, ok := response["token_type"].(string); ok {
+		return tt
+	}
+	return "Bearer"
+}
+
+// extractScopes extracts scopes from response
+func (o *OAuth2Authenticator) extractScopes(response map[string]interface{}) []string {
+	if scopeStr, ok := response["scope"].(string); ok {
+		return strings.Fields(scopeStr)
+	}
+	return nil
 }
 
 // RefreshToken refreshes an expired token using the refresh token
@@ -527,7 +605,41 @@ func (o *OAuth2Authenticator) RefreshToken(ctx context.Context, token *Token) (*
 		return nil, fmt.Errorf("failed to get token endpoint: %w", err)
 	}
 
-	// Prepare refresh request
+	// Prepare and send refresh request
+	req, err := o.prepareRefreshRequest(tokenEndpoint, token)
+	if err != nil {
+		return nil, err
+	}
+
+	statusCode, body, err := o.sendRefreshRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check response status - if not OK, re-authenticate
+	if statusCode != http.StatusOK {
+		debug.Logger.Printf("Token refresh failed with status %d, re-authenticating", statusCode)
+		return o.Authenticate(ctx, o.config)
+	}
+
+	// Parse refresh response
+	var tokenResponse map[string]interface{}
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse refresh response: %w", err)
+	}
+
+	// Extract token from response
+	newToken, err := o.extractRefreshTokenResponse(token, tokenResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	debug.Logger.Printf("Successfully refreshed OAuth2 token, expires at: %v", newToken.ExpiresAt)
+	return newToken, nil
+}
+
+// prepareRefreshRequest prepares the refresh token request
+func (o *OAuth2Authenticator) prepareRefreshRequest(tokenEndpoint string, token *Token) (*http.Request, error) {
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", token.RefreshToken)
@@ -543,60 +655,55 @@ func (o *OAuth2Authenticator) RefreshToken(ctx context.Context, token *Token) (*
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "s9s/1.0")
 
-	// Execute refresh request
+	return req, nil
+}
+
+// sendRefreshRequest executes the refresh request and reads the response
+func (o *OAuth2Authenticator) sendRefreshRequest(req *http.Request) (int, []byte, error) {
 	resp, err := o.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("refresh request failed: %w", err)
+		return 0, nil, fmt.Errorf("refresh request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read refresh response: %w", err)
+		return 0, nil, fmt.Errorf("failed to read refresh response: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		debug.Logger.Printf("Token refresh failed with status %d, re-authenticating", resp.StatusCode)
-		return o.Authenticate(ctx, o.config)
-	}
+	return resp.StatusCode, body, nil
+}
 
-	// Parse refresh response
-	var tokenResponse map[string]interface{}
-	if err := json.Unmarshal(body, &tokenResponse); err != nil {
-		return nil, fmt.Errorf("failed to parse refresh response: %w", err)
-	}
-
-	// Extract new token (similar to exchangeCodeForToken)
-	accessToken, ok := tokenResponse["access_token"].(string)
+// extractRefreshTokenResponse extracts token information from refresh response
+func (o *OAuth2Authenticator) extractRefreshTokenResponse(oldToken *Token, response map[string]interface{}) (*Token, error) {
+	accessToken, ok := response["access_token"].(string)
 	if !ok || accessToken == "" {
 		return nil, fmt.Errorf("missing or invalid access_token in refresh response")
 	}
 
 	// Use existing refresh token if new one not provided
-	refreshToken := token.RefreshToken
-	if rt, ok := tokenResponse["refresh_token"].(string); ok && rt != "" {
+	refreshToken := oldToken.RefreshToken
+	if rt, ok := response["refresh_token"].(string); ok && rt != "" {
 		refreshToken = rt
 	}
 
+	// Extract expiry with fallback
 	var expiresAt time.Time
-	if expiresIn, ok := tokenResponse["expires_in"].(float64); ok {
+	if expiresIn, ok := response["expires_in"].(float64); ok {
 		expiresAt = time.Now().Add(time.Duration(expiresIn) * time.Second)
 	} else {
 		expiresAt = time.Now().Add(1 * time.Hour)
 	}
 
-	newToken := &Token{
+	return &Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		TokenType:    token.TokenType,
+		TokenType:    oldToken.TokenType,
 		ExpiresAt:    expiresAt,
-		Scopes:       token.Scopes,
-		ClusterID:    token.ClusterID,
-		Metadata:     token.Metadata,
-	}
-
-	debug.Logger.Printf("Successfully refreshed OAuth2 token, expires at: %v", expiresAt)
-	return newToken, nil
+		Scopes:       oldToken.Scopes,
+		ClusterID:    oldToken.ClusterID,
+		Metadata:     oldToken.Metadata,
+	}, nil
 }
 
 // ValidateToken validates an OAuth2 token
@@ -671,7 +778,7 @@ func (o *OAuth2Authenticator) RevokeToken(_ context.Context, token *Token) error
 
 // getDiscoveryDocument fetches and parses OIDC discovery document
 func (o *OAuth2Authenticator) getDiscoveryDocument(discoveryURL string) (*oidcDiscovery, error) {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", discoveryURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", discoveryURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

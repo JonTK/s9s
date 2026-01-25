@@ -24,7 +24,6 @@ const (
 	NavigationModeSearch Mode = "search"
 )
 
-//nolint:revive // type alias for backward compatibility
 type NavigationMode = Mode
 
 // Target represents a navigable target
@@ -42,7 +41,6 @@ type Target struct {
 	OnDeactivate func()
 }
 
-//nolint:revive // type alias for backward compatibility
 type NavigationTarget = Target
 
 // History tracks navigation history
@@ -52,7 +50,6 @@ type History struct {
 	maxSize int
 }
 
-//nolint:revive // type alias for backward compatibility
 type NavigationHistory = History
 
 // Manager handles advanced navigation throughout the application
@@ -175,45 +172,76 @@ func (nm *Manager) RegisterTarget(target *NavigationTarget) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
 
-	if target.ID == "" {
-		return fmt.Errorf("target ID cannot be empty")
+	// Validate target
+	if err := nm.validateTargetID(target.ID); err != nil {
+		return err
+	}
+	if err := nm.validateShortcutNotInUse(target); err != nil {
+		return err
+	}
+	if err := nm.validateKeyBindingNotInUse(target); err != nil {
+		return err
 	}
 
-	// Check for duplicate shortcuts
+	// Setup and register
+	nm.setTargetDefaults(target)
+	nm.addTargetToRegistry(target)
+	nm.registerTargetMappings(target)
+	nm.updateQuickHelp()
+
+	return nil
+}
+
+// validateTargetID checks if target ID is valid
+func (nm *Manager) validateTargetID(id string) error {
+	if id == "" {
+		return fmt.Errorf("target ID cannot be empty")
+	}
+	return nil
+}
+
+// validateShortcutNotInUse checks if a shortcut is already assigned
+func (nm *Manager) validateShortcutNotInUse(target *NavigationTarget) error {
 	if target.Shortcut != 0 {
 		if existingID, exists := nm.quickAccessMap[target.Shortcut]; exists && existingID != "" {
 			return fmt.Errorf("shortcut '%c' already assigned to target %s", target.Shortcut, existingID)
 		}
 	}
+	return nil
+}
 
-	// Check for duplicate key bindings
+// validateKeyBindingNotInUse checks if a key binding is already assigned
+func (nm *Manager) validateKeyBindingNotInUse(target *NavigationTarget) error {
 	if target.KeyBinding != tcell.KeyNUL {
 		if existingID, exists := nm.keyBindings[target.KeyBinding]; exists && existingID != target.ID {
 			return fmt.Errorf("key binding already assigned to target %s", existingID)
 		}
 	}
+	return nil
+}
 
-	// Set defaults
+// setTargetDefaults sets default values for target
+func (nm *Manager) setTargetDefaults(target *NavigationTarget) {
 	if target.Priority == 0 {
 		target.Priority = 5
 	}
 	target.Visible = true
+}
 
-	// Register target
+// addTargetToRegistry adds the target to the internal registry
+func (nm *Manager) addTargetToRegistry(target *NavigationTarget) {
 	nm.targets[target.ID] = target
 	nm.targetOrder = append(nm.targetOrder, target.ID)
+}
 
-	// Register shortcuts
+// registerTargetMappings registers the target's shortcuts and key bindings
+func (nm *Manager) registerTargetMappings(target *NavigationTarget) {
 	if target.Shortcut != 0 {
 		nm.quickAccessMap[target.Shortcut] = target.ID
 	}
 	if target.KeyBinding != tcell.KeyNUL {
 		nm.keyBindings[target.KeyBinding] = target.ID
 	}
-
-	nm.updateQuickHelp()
-
-	return nil
 }
 
 // UnregisterTarget removes a navigation target
@@ -541,28 +569,19 @@ func (nm *Manager) defaultSearch(query string) []string {
 // executeCommand executes a command from the command palette
 // Assumes lock is already held by caller (via handleCommandInput from HandleInput)
 func (nm *Manager) executeCommand(command string) {
-	// Parse and execute command
 	parts := strings.Fields(command)
 	if len(parts) == 0 {
 		return
 	}
 
 	cmd := strings.ToLower(parts[0])
+	args := parts[1:]
 
 	switch cmd {
 	case "go", "nav", "navigate":
-		if len(parts) >= 2 {
-			targetName := strings.Join(parts[1:], " ")
-			if targetID := nm.findTargetByName(targetName); targetID != "" {
-				_ = nm.navigateToTargetLocked(targetID, true)
-			}
-		}
+		nm.handleNavigate(args)
 	case "search", "find":
-		if len(parts) >= 2 {
-			query := strings.Join(parts[1:], " ")
-			nm.searchQuery = query
-			nm.performSearch()
-		}
+		nm.handleSearch(args)
 	case "help":
 		nm.ShowHelp()
 	case "back":
@@ -571,6 +590,25 @@ func (nm *Manager) executeCommand(command string) {
 		nm.GoForward()
 	case "refresh":
 		nm.RefreshCurrentTarget()
+	}
+}
+
+// handleNavigate handles navigation commands
+func (nm *Manager) handleNavigate(args []string) {
+	if len(args) >= 1 {
+		targetName := strings.Join(args, " ")
+		if targetID := nm.findTargetByName(targetName); targetID != "" {
+			_ = nm.navigateToTargetLocked(targetID, true)
+		}
+	}
+}
+
+// handleSearch handles search commands
+func (nm *Manager) handleSearch(args []string) {
+	if len(args) >= 1 {
+		query := strings.Join(args, " ")
+		nm.searchQuery = query
+		nm.performSearch()
 	}
 }
 

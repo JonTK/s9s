@@ -262,61 +262,81 @@ func (t *Table) Clear() {
 // refresh updates the table display
 func (t *Table) refresh() {
 	t.Table.Clear()
+	t.renderHeader()
+	t.renderDataRows()
+}
 
-	// Add header row if configured
-	if t.config.ShowHeader && len(t.config.Columns) > 0 {
-		for col, column := range t.config.Columns {
-			if column.Hidden {
-				continue
-			}
-
-			header := column.Name
-			if column.Sortable && col == t.sortColumn {
-				if t.sortAscending {
-					header += " ▲"
-				} else {
-					header += " ▼"
-				}
-			}
-
-			cell := tview.NewTableCell(header).
-				SetTextColor(t.config.HeaderColor).
-				SetAlign(column.Alignment).
-				SetSelectable(false).
-				SetExpansion(1)
-
-			t.SetCell(0, col, cell)
-		}
+// renderHeader renders the table header row
+func (t *Table) renderHeader() {
+	if !t.config.ShowHeader || len(t.config.Columns) == 0 {
+		return
 	}
 
-	// Add data rows
+	for col, column := range t.config.Columns {
+		if column.Hidden {
+			continue
+		}
+
+		header := t.getHeaderText(col, column)
+		cell := tview.NewTableCell(header).
+			SetTextColor(t.config.HeaderColor).
+			SetAlign(column.Alignment).
+			SetSelectable(false).
+			SetExpansion(1)
+
+		t.SetCell(0, col, cell)
+	}
+}
+
+// getHeaderText returns the header text with sort indicator if applicable
+func (t *Table) getHeaderText(col int, column Column) string {
+	header := column.Name
+	if column.Sortable && col == t.sortColumn {
+		if t.sortAscending {
+			header += " ▲"
+		} else {
+			header += " ▼"
+		}
+	}
+	return header
+}
+
+// renderDataRows renders all data rows
+func (t *Table) renderDataRows() {
 	for rowIdx, rowData := range t.filteredData {
 		displayRow := rowIdx + t.config.FixedRows
+		t.renderRow(displayRow, rowIdx, rowData)
+	}
+}
 
-		for colIdx, cellData := range rowData {
-			if colIdx >= len(t.config.Columns) || t.config.Columns[colIdx].Hidden {
-				continue
-			}
-
-			// Truncate text if necessary, accounting for color codes
-			maxWidth := t.config.Columns[colIdx].Width
-			if maxWidth > 0 {
-				cellData = truncateWithColorCodes(cellData, maxWidth)
-			}
-
-			cell := tview.NewTableCell(cellData).
-				SetAlign(t.config.Columns[colIdx].Alignment).
-				SetExpansion(1)
-
-			// Apply row coloring
-			if rowIdx%2 == 0 && t.config.EvenRowColor != tcell.ColorDefault {
-				cell.SetTextColor(t.config.EvenRowColor)
-			} else if rowIdx%2 == 1 && t.config.OddRowColor != tcell.ColorDefault {
-				cell.SetTextColor(t.config.OddRowColor)
-			}
-
-			t.SetCell(displayRow, colIdx, cell)
+// renderRow renders a single data row
+func (t *Table) renderRow(displayRow, rowIdx int, rowData []string) {
+	for colIdx, cellData := range rowData {
+		if colIdx >= len(t.config.Columns) || t.config.Columns[colIdx].Hidden {
+			continue
 		}
+
+		// Truncate text if necessary, accounting for color codes
+		maxWidth := t.config.Columns[colIdx].Width
+		if maxWidth > 0 {
+			cellData = truncateWithColorCodes(cellData, maxWidth)
+		}
+
+		cell := tview.NewTableCell(cellData).
+			SetAlign(t.config.Columns[colIdx].Alignment).
+			SetExpansion(1)
+
+		t.applyRowColoring(cell, rowIdx)
+		t.SetCell(displayRow, colIdx, cell)
+	}
+}
+
+// applyRowColoring applies alternating row colors
+func (t *Table) applyRowColoring(cell *tview.TableCell, rowIdx int) {
+	if rowIdx%2 == 0 && t.config.EvenRowColor != tcell.ColorDefault {
+		cell.SetTextColor(t.config.EvenRowColor)
+	} else if rowIdx%2 == 1 && t.config.OddRowColor != tcell.ColorDefault {
+		cell.SetTextColor(t.config.OddRowColor)
 	}
 }
 
@@ -366,59 +386,104 @@ func (t *Table) applySort() {
 
 // handleInput handles keyboard input
 func (t *Table) handleInput(event *tcell.EventKey) *tcell.EventKey {
-	// Let vim mode handle the event first
-	vimEvent := t.vimMode.HandleKey(event)
-	if vimEvent == nil {
-		// Vim mode consumed the event
+	// Process vim mode first
+	event = t.processVimMode(event)
+	if event == nil {
 		return nil
 	}
-	if vimEvent != event {
-		// Vim mode translated the event
-		event = vimEvent
+
+	// Handle column sorting with number keys
+	if t.handleNumberKeySorting(event) {
+		return nil
 	}
 
-	// Handle column sorting with number keys (but skip if vim mode has repeat count)
-	if event.Key() >= tcell.KeyRune && event.Rune() >= '1' && event.Rune() <= '9' && !t.vimMode.IsWaitingForKey() {
-		col := int(event.Rune() - '1')
-		if col < len(t.config.Columns) {
-			t.Sort(col)
-			return nil
-		}
-	}
-
-	// Handle page navigation
-	switch event.Key() {
-	case tcell.KeyPgUp:
-		row, col := t.GetSelection()
-		newRow := row - 10
-		if newRow < t.config.FixedRows {
-			newRow = t.config.FixedRows
-		}
-		t.Select(newRow, col)
-		return nil
-
-	case tcell.KeyPgDn:
-		row, col := t.GetSelection()
-		newRow := row + 10
-		maxRow := t.GetRowCount() - 1
-		if newRow > maxRow {
-			newRow = maxRow
-		}
-		t.Select(newRow, col)
-		return nil
-
-	case tcell.KeyHome:
-		_, col := t.GetSelection()
-		t.Select(t.config.FixedRows, col)
-		return nil
-
-	case tcell.KeyEnd:
-		_, col := t.GetSelection()
-		t.Select(t.GetRowCount()-1, col)
+	// Handle navigation keys
+	if t.handleNavigationKeys(event) {
 		return nil
 	}
 
 	return event
+}
+
+// processVimMode processes the event through vim mode
+func (t *Table) processVimMode(event *tcell.EventKey) *tcell.EventKey {
+	vimEvent := t.vimMode.HandleKey(event)
+	if vimEvent == nil {
+		return nil
+	}
+	if vimEvent != event {
+		return vimEvent
+	}
+	return event
+}
+
+// handleNumberKeySorting handles column sorting with number keys
+func (t *Table) handleNumberKeySorting(event *tcell.EventKey) bool {
+	if event.Key() < tcell.KeyRune || event.Rune() < '1' || event.Rune() > '9' {
+		return false
+	}
+	if t.vimMode.IsWaitingForKey() {
+		return false
+	}
+
+	col := int(event.Rune() - '1')
+	if col < len(t.config.Columns) {
+		t.Sort(col)
+		return true
+	}
+	return false
+}
+
+// handleNavigationKeys handles navigation key events
+func (t *Table) handleNavigationKeys(event *tcell.EventKey) bool {
+	switch event.Key() {
+	case tcell.KeyPgUp:
+		t.handlePageUp()
+		return true
+	case tcell.KeyPgDn:
+		t.handlePageDown()
+		return true
+	case tcell.KeyHome:
+		t.handleHome()
+		return true
+	case tcell.KeyEnd:
+		t.handleEnd()
+		return true
+	}
+	return false
+}
+
+// handlePageUp handles page up navigation
+func (t *Table) handlePageUp() {
+	row, col := t.GetSelection()
+	newRow := row - 10
+	if newRow < t.config.FixedRows {
+		newRow = t.config.FixedRows
+	}
+	t.Select(newRow, col)
+}
+
+// handlePageDown handles page down navigation
+func (t *Table) handlePageDown() {
+	row, col := t.GetSelection()
+	newRow := row + 10
+	maxRow := t.GetRowCount() - 1
+	if newRow > maxRow {
+		newRow = maxRow
+	}
+	t.Select(newRow, col)
+}
+
+// handleHome handles home key navigation
+func (t *Table) handleHome() {
+	_, col := t.GetSelection()
+	t.Select(t.config.FixedRows, col)
+}
+
+// handleEnd handles end key navigation
+func (t *Table) handleEnd() {
+	_, col := t.GetSelection()
+	t.Select(t.GetRowCount()-1, col)
 }
 
 // Draw overrides the base Table Draw to add mutex protection

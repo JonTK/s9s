@@ -3,6 +3,7 @@ package monitoring
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -314,67 +315,62 @@ func (am *AlertManager) findSimilarAlert(newAlert *Alert) string {
 
 // matchesFilter checks if an alert matches the given filter
 func (am *AlertManager) matchesFilter(alert *Alert, filter AlertFilter) bool {
-	// Check types
-	if len(filter.Types) > 0 {
-		found := false
-		for _, t := range filter.Types {
-			if alert.Type == t {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
+	return am.matchesTypeFilter(alert, filter) &&
+		am.matchesSeverityFilter(alert, filter) &&
+		am.matchesComponentFilter(alert, filter) &&
+		am.matchesAcknowledgedFilter(alert, filter) &&
+		am.matchesResolvedFilter(alert, filter) &&
+		am.matchesTimeFilter(alert, filter)
+}
 
-	// Check severities
-	if len(filter.Severities) > 0 {
-		found := false
-		for _, s := range filter.Severities {
-			if alert.Severity == s {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+// matchesTypeFilter checks if alert type matches filter
+func (am *AlertManager) matchesTypeFilter(alert *Alert, filter AlertFilter) bool {
+	if len(filter.Types) == 0 {
+		return true
 	}
+	return slices.Contains(filter.Types, alert.Type)
+}
 
-	// Check components
-	if len(filter.Components) > 0 {
-		found := false
-		for _, c := range filter.Components {
-			if alert.Component == c {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+// matchesSeverityFilter checks if alert severity matches filter
+func (am *AlertManager) matchesSeverityFilter(alert *Alert, filter AlertFilter) bool {
+	if len(filter.Severities) == 0 {
+		return true
 	}
+	return slices.Contains(filter.Severities, alert.Severity)
+}
 
-	// Check acknowledged status
-	if filter.Acknowledged != nil && alert.Acknowledged != *filter.Acknowledged {
-		return false
+// matchesComponentFilter checks if alert component matches filter
+func (am *AlertManager) matchesComponentFilter(alert *Alert, filter AlertFilter) bool {
+	if len(filter.Components) == 0 {
+		return true
 	}
+	return slices.Contains(filter.Components, alert.Component)
+}
 
-	// Check resolved status
-	if filter.Resolved != nil && alert.Resolved != *filter.Resolved {
-		return false
+// matchesAcknowledgedFilter checks if alert acknowledged status matches filter
+func (am *AlertManager) matchesAcknowledgedFilter(alert *Alert, filter AlertFilter) bool {
+	if filter.Acknowledged == nil {
+		return true
 	}
+	return alert.Acknowledged == *filter.Acknowledged
+}
 
-	// Check time range
+// matchesResolvedFilter checks if alert resolved status matches filter
+func (am *AlertManager) matchesResolvedFilter(alert *Alert, filter AlertFilter) bool {
+	if filter.Resolved == nil {
+		return true
+	}
+	return alert.Resolved == *filter.Resolved
+}
+
+// matchesTimeFilter checks if alert timestamp is within filter time range
+func (am *AlertManager) matchesTimeFilter(alert *Alert, filter AlertFilter) bool {
 	if filter.SinceTime != nil && alert.Timestamp.Before(*filter.SinceTime) {
 		return false
 	}
-
 	if filter.UntilTime != nil && alert.Timestamp.After(*filter.UntilTime) {
 		return false
 	}
-
 	return true
 }
 
