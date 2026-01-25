@@ -239,8 +239,7 @@ func (v *NodesView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	// Handle by key type
-	switch event.Key() {
-	case tcell.KeyRune:
+	if event.Key() == tcell.KeyRune {
 		return v.handleNodesViewRune(event)
 	}
 

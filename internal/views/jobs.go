@@ -304,8 +304,7 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	// Handle by key type
-	switch event.Key() {
-	case tcell.KeyRune:
+	if event.Key() == tcell.KeyRune {
 		return v.handleJobsViewRune(event)
 	}
 
