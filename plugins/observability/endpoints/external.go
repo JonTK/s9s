@@ -89,7 +89,7 @@ func NewExternalAPI(
 	var auditLogger *security.AuditLogger
 	if config.Enabled && config.Audit.Enabled {
 		var err error
-		auditLogger, err = security.NewAuditLogger(config.Audit)
+		auditLogger, err = security.NewAuditLogger(&config.Audit)
 		if err != nil {
 			// Log error but don't fail initialization
 			auditLogger = nil
