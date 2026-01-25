@@ -84,43 +84,18 @@ func NewWithScreen(ctx context.Context, cfg *config.Config, screen tcell.Screen)
 	appCtx, cancel := context.WithCancel(ctx)
 
 	// Create SLURM client
-	var client dao.SlurmClient
-	if cfg.UseMockClient {
-		client = slurm.NewMockClient()
-	} else {
-		// Get current cluster config
-		var clusterConfig *config.ClusterConfig
-		if len(cfg.Contexts) > 0 {
-			for _, ctx := range cfg.Contexts {
-				if ctx.Name == cfg.CurrentContext {
-					clusterConfig = &ctx.Cluster
-					break
-				}
-			}
-		}
-
-		if clusterConfig == nil {
-			cancel()
-			return nil, errs.Configf("no cluster configuration found for context: %s", cfg.CurrentContext)
-		}
-
-		// Create real SLURM adapter
-		adapter, err := dao.NewSlurmAdapter(appCtx, clusterConfig)
-		if err != nil {
-			cancel()
-			return nil, errs.DAOError("create", "SLURM adapter", err)
-		}
-		client = adapter
+	client, err := createSlurmClient(appCtx, cfg, cancel)
+	if err != nil {
+		return nil, err
 	}
 
-	// Create tview application
+	// Create tview application and set screen if provided
 	app := tview.NewApplication()
-
-	// If a screen is provided (for testing), set it
 	if screen != nil {
 		app.SetScreen(screen)
 	}
 
+	// Initialize application structure
 	s9s := &S9s{
 		ctx:           appCtx,
 		cancel:        cancel,
@@ -133,26 +108,21 @@ func NewWithScreen(ctx context.Context, cfg *config.Config, screen tcell.Screen)
 		pluginManager: plugins.NewManager(appCtx, client),
 	}
 
-	// Initialize user preferences
-	prefsPath := filepath.Join(filepath.Join(os.Getenv("HOME"), ".s9s"), "preferences.json")
-	userPrefs, err := preferences.NewUserPreferences(prefsPath)
-	if err != nil {
+	// Load user preferences
+	if err := s9s.loadUserPreferences(); err != nil {
+		// Continue with defaults if loading fails
 		s9s.logger.Warn().Err(err).Msg("Failed to load user preferences, using defaults")
-		// Continue with defaults
-		userPrefs, _ = preferences.NewUserPreferences("")
 	}
-	s9s.userPrefs = userPrefs
 
 	// Initialize layout manager
 	s9s.layoutManager = layouts.NewLayoutManager(app)
 
-	// Initialize UI components
+	// Initialize UI and views
 	if err := s9s.initUI(); err != nil {
 		cancel()
 		return nil, errs.Wrap(err, errs.ErrorTypeInternal, "failed to initialize UI")
 	}
 
-	// Initialize views
 	if err := s9s.initViews(); err != nil {
 		cancel()
 		return nil, errs.ViewError("all", "initialization", err)
@@ -161,19 +131,64 @@ func NewWithScreen(ctx context.Context, cfg *config.Config, screen tcell.Screen)
 	// Setup keyboard shortcuts
 	s9s.setupKeyboardShortcuts()
 
-	// Load plugins
-	if err := s9s.loadPlugins(); err != nil {
-		// Don't fail startup for plugin errors, just log them
-		s9s.logger.Warn().Err(err).Msg("Failed to load plugins")
-	}
-
-	// Register plugin views
-	if err := s9s.registerPluginViews(); err != nil {
-		// Don't fail startup for plugin view registration errors, just log them
-		s9s.logger.Warn().Err(err).Msg("Failed to register plugin views")
-	}
+	// Load plugins (non-fatal if they fail)
+	s9s.loadAndRegisterPlugins()
 
 	return s9s, nil
+}
+
+func createSlurmClient(appCtx context.Context, cfg *config.Config, cancel context.CancelFunc) (dao.SlurmClient, error) {
+	if cfg.UseMockClient {
+		return slurm.NewMockClient(), nil
+	}
+
+	// Get current cluster config
+	clusterConfig := findClusterConfig(cfg)
+	if clusterConfig == nil {
+		cancel()
+		return nil, errs.Configf("no cluster configuration found for context: %s", cfg.CurrentContext)
+	}
+
+	// Create real SLURM adapter
+	adapter, err := dao.NewSlurmAdapter(appCtx, clusterConfig)
+	if err != nil {
+		cancel()
+		return nil, errs.DAOError("create", "SLURM adapter", err)
+	}
+
+	return adapter, nil
+}
+
+func findClusterConfig(cfg *config.Config) *config.ClusterConfig {
+	for _, ctx := range cfg.Contexts {
+		if ctx.Name == cfg.CurrentContext {
+			return &ctx.Cluster
+		}
+	}
+	return nil
+}
+
+func (s *S9s) loadUserPreferences() error {
+	prefsPath := filepath.Join(filepath.Join(os.Getenv("HOME"), ".s9s"), "preferences.json")
+	userPrefs, err := preferences.NewUserPreferences(prefsPath)
+	if err != nil {
+		// Continue with defaults
+		userPrefs, _ = preferences.NewUserPreferences("")
+	}
+	s.userPrefs = userPrefs
+	return err
+}
+
+func (s *S9s) loadAndRegisterPlugins() {
+	// Load plugins (non-fatal)
+	if err := s.loadPlugins(); err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to load plugins")
+	}
+
+	// Register plugin views (non-fatal)
+	if err := s.registerPluginViews(); err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to register plugin views")
+	}
 }
 
 // Run starts the application
