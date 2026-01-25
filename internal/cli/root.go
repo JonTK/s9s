@@ -232,50 +232,67 @@ func runApplicationWithShutdown(ctx context.Context, cancel context.CancelFunc, 
 // applyAutoDiscovery attempts to auto-discover slurmrestd endpoint and token
 // when they are not explicitly configured
 func applyAutoDiscovery(ctx context.Context, cfg *config.Config) *config.Config {
-	// Skip if endpoint is already configured
+	// If endpoint is configured, just try to discover token
 	if cfg.Cluster.Endpoint != "" {
-		// But still try to discover token if not set
-		if cfg.Cluster.Token == "" && cfg.Discovery.EnableToken {
-			if token := discoverToken(ctx, cfg); token != "" {
-				cfg.Cluster.Token = token
-				logging.Info("Auto-discovered SLURM token")
-			}
-		}
+		applyTokenDiscovery(ctx, cfg)
 		return cfg
 	}
 
-	// Try to discover endpoint
-	if cfg.Discovery.EnableEndpoint {
-		endpoint := discoverEndpoint(ctx, cfg)
-		if endpoint != nil {
-			cfg.Cluster.Endpoint = endpoint.URL
-			logging.Infof("Auto-discovered slurmrestd endpoint: %s (source: %s)", endpoint.URL, endpoint.Source)
+	// Discover endpoint and configure if found
+	applyEndpointDiscovery(ctx, cfg)
 
-			// Set API version if not already set
-			if cfg.Cluster.APIVersion == "" {
-				cfg.Cluster.APIVersion = "v0.0.43"
-			}
-
-			// Create a default context if none exists
-			if len(cfg.Contexts) == 0 {
-				cfg.Contexts = append(cfg.Contexts, config.ContextConfig{
-					Name:    "default",
-					Cluster: cfg.Cluster,
-				})
-				cfg.CurrentContext = "default"
-			}
-		}
+	// Try to discover token if still not set
+	if cfg.Cluster.Token == "" {
+		applyTokenDiscovery(ctx, cfg)
 	}
 
-	// Try to discover token if not set
+	return cfg
+}
+
+// applyTokenDiscovery discovers and applies SLURM token if enabled
+func applyTokenDiscovery(ctx context.Context, cfg *config.Config) {
 	if cfg.Cluster.Token == "" && cfg.Discovery.EnableToken {
 		if token := discoverToken(ctx, cfg); token != "" {
 			cfg.Cluster.Token = token
 			logging.Info("Auto-discovered SLURM token")
 		}
 	}
+}
 
-	return cfg
+// applyEndpointDiscovery discovers and applies slurmrestd endpoint if enabled
+func applyEndpointDiscovery(ctx context.Context, cfg *config.Config) {
+	if !cfg.Discovery.EnableEndpoint {
+		return
+	}
+
+	endpoint := discoverEndpoint(ctx, cfg)
+	if endpoint == nil {
+		return
+	}
+
+	cfg.Cluster.Endpoint = endpoint.URL
+	logging.Infof("Auto-discovered slurmrestd endpoint: %s (source: %s)", endpoint.URL, endpoint.Source)
+
+	setDefaultAPIVersion(cfg)
+	ensureDefaultContext(cfg)
+}
+
+// setDefaultAPIVersion sets API version if not already configured
+func setDefaultAPIVersion(cfg *config.Config) {
+	if cfg.Cluster.APIVersion == "" {
+		cfg.Cluster.APIVersion = "v0.0.43"
+	}
+}
+
+// ensureDefaultContext creates a default context if none exists
+func ensureDefaultContext(cfg *config.Config) {
+	if len(cfg.Contexts) == 0 {
+		cfg.Contexts = append(cfg.Contexts, config.ContextConfig{
+			Name:    "default",
+			Cluster: cfg.Cluster,
+		})
+		cfg.CurrentContext = "default"
+	}
 }
 
 // discoverEndpoint attempts to discover the slurmrestd endpoint

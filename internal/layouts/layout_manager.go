@@ -264,31 +264,59 @@ func (lm *LayoutManager) ImportLayout(data []byte) error {
 
 // validateLayout validates a layout configuration
 func (lm *LayoutManager) validateLayout(layout *Layout) error {
+	if err := lm.validateLayoutName(layout); err != nil {
+		return err
+	}
+
+	if err := lm.validateGridDimensions(layout); err != nil {
+		return err
+	}
+
+	return lm.validateWidgetPlacements(layout)
+}
+
+// validateLayoutName validates the layout name is not empty
+func (lm *LayoutManager) validateLayoutName(layout *Layout) error {
 	if layout.Name == "" {
 		return fmt.Errorf("layout name cannot be empty")
 	}
+	return nil
+}
 
+// validateGridDimensions validates grid dimensions are positive
+func (lm *LayoutManager) validateGridDimensions(layout *Layout) error {
 	if layout.Grid.Rows <= 0 || layout.Grid.Columns <= 0 {
 		return fmt.Errorf("grid dimensions must be positive")
 	}
+	return nil
+}
 
-	// Validate widget placements
+// validateWidgetPlacements validates all widget placements in the layout
+func (lm *LayoutManager) validateWidgetPlacements(layout *Layout) error {
 	for _, widget := range layout.Widgets {
-		if widget.WidgetID == "" {
-			return fmt.Errorf("widget ID cannot be empty")
+		if err := lm.validateWidgetPlacement(layout, &widget); err != nil {
+			return err
 		}
+	}
+	return nil
+}
 
-		if widget.Row < 0 || widget.Column < 0 {
-			return fmt.Errorf("widget position cannot be negative")
-		}
+// validateWidgetPlacement validates a single widget placement
+func (lm *LayoutManager) validateWidgetPlacement(layout *Layout, widget *WidgetPlacement) error {
+	if widget.WidgetID == "" {
+		return fmt.Errorf("widget ID cannot be empty")
+	}
 
-		if widget.Row >= layout.Grid.Rows || widget.Column >= layout.Grid.Columns {
-			return fmt.Errorf("widget position exceeds grid boundaries")
-		}
+	if widget.Row < 0 || widget.Column < 0 {
+		return fmt.Errorf("widget position cannot be negative")
+	}
 
-		if widget.RowSpan <= 0 || widget.ColSpan <= 0 {
-			return fmt.Errorf("widget span must be positive")
-		}
+	if widget.Row >= layout.Grid.Rows || widget.Column >= layout.Grid.Columns {
+		return fmt.Errorf("widget position exceeds grid boundaries")
+	}
+
+	if widget.RowSpan <= 0 || widget.ColSpan <= 0 {
+		return fmt.Errorf("widget span must be positive")
 	}
 
 	return nil
