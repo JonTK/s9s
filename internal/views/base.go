@@ -166,66 +166,62 @@ func ColoredState(state, stateType string) string {
 	return fmt.Sprintf("[%s]%s[white]", color, state)
 }
 
+// jobStateColors maps job states to their display colors
+var jobStateColors = map[string]string{
+	"RUNNING":     "green",
+	"PENDING":     "yellow",
+	"COMPLETED":   "cyan",
+	"FAILED":      "red",
+	"CANCELLED":   "gray",
+	"SUSPENDED":   "orange",
+	"COMPLETING":  "blue",
+	"CONFIGURING": "yellow",
+	"PREEMPTED":   "orange",
+	"TIMEOUT":     "red",
+}
+
+// nodeStateColors maps node states to their display colors
+var nodeStateColors = map[string]string{
+	"IDLE":        "green",
+	"ALLOCATED":   "blue",
+	"MIXED":       "blue",
+	"DOWN":        "red",
+	"DRAIN":       "red",
+	"DRAINING":    "red",
+	"RESERVED":    "yellow",
+	"MAINTENANCE": "orange",
+}
+
+// partitionStateColors maps partition states to their display colors
+var partitionStateColors = map[string]string{
+	"UP":       "green",
+	"DOWN":     "red",
+	"DRAIN":    "orange",
+	"INACTIVE": "gray",
+}
+
 // GetJobStateColor returns the color for a job state
 func GetJobStateColor(state string) string {
-	switch state {
-	case "RUNNING":
-		return "green"
-	case "PENDING":
-		return "yellow"
-	case "COMPLETED":
-		return "cyan"
-	case "FAILED":
-		return "red"
-	case "CANCELLED":
-		return "gray"
-	case "SUSPENDED":
-		return "orange"
-	case "COMPLETING":
-		return "blue"
-	case "CONFIGURING":
-		return "yellow"
-	case "PREEMPTED":
-		return "orange"
-	case "TIMEOUT":
-		return "red"
-	default:
-		return "white"
+	if color, exists := jobStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // GetNodeStateColor returns the color for a node state
 func GetNodeStateColor(state string) string {
-	switch state {
-	case "IDLE":
-		return "green"
-	case "ALLOCATED", "MIXED":
-		return "blue"
-	case "DOWN", "DRAIN", "DRAINING":
-		return "red"
-	case "RESERVED":
-		return "yellow"
-	case "MAINTENANCE":
-		return "orange"
-	default:
-		return "white"
+	if color, exists := nodeStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // GetPartitionStateColor returns the color for a partition state
 func GetPartitionStateColor(state string) string {
-	switch state {
-	case "UP":
-		return "green"
-	case "DOWN":
-		return "red"
-	case "DRAIN":
-		return "orange"
-	case "INACTIVE":
-		return "gray"
-	default:
-		return "white"
+	if color, exists := partitionStateColors[state]; exists {
+		return color
 	}
+	return "white"
 }
 
 // FormatDuration formats a duration into a human-readable string
