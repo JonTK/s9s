@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -42,11 +41,7 @@ func (s *S9s) setupKeyboardShortcuts() {
 		// Pass to current view if not handled and no modal is open
 		if !isModalOpen {
 			if currentView, err := s.viewMgr.GetCurrentView(); err == nil {
-				// DEBUG: Log which view is handling the key
-				fmt.Fprintf(os.Stderr, "DEBUG: Calling OnKey for view: %s with key: %d\n", currentView.Name(), event.Key())
-				result := currentView.OnKey(event)
-				fmt.Fprintf(os.Stderr, "DEBUG: OnKey returned: %v\n", result != nil)
-				return result
+				return currentView.OnKey(event)
 			}
 		}
 

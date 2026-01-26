@@ -295,7 +295,8 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	// Handle by special key first
-	if handler, ok := v.jobsKeyHandlers()[event.Key()]; ok {
+	handlers := v.jobsKeyHandlers()
+	if handler, ok := handlers[event.Key()]; ok {
 		return handler(v, event)
 	}
 
