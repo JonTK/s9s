@@ -50,3 +50,14 @@ coverage.txt
 coverage.out
 coverage.html
 *.coverage
+
+# Build artifacts & binaries
+build/
+dist/
+s9s
+gotty
+test-s9s
+*.exe
+*.dll
+*.so
+*.dylib
