@@ -148,9 +148,18 @@ func (w *JobSubmissionWizard) addJobFormFields(form *tview.Form, job *dao.JobSub
 		job.Script = text
 	})
 
-	form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
-		job.Partition = text
-	})
+	// Add Partition dropdown
+	partitions := w.getAvailablePartitions()
+	if len(partitions) > 0 {
+		form.AddDropDown("Partition", partitions, w.getPartitionIndex(partitions, job.Partition), func(option string, index int) {
+			job.Partition = option
+		})
+	} else {
+		// Fallback to input field if no partitions available
+		form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
+			job.Partition = text
+		})
+	}
 
 	form.AddInputField("Time Limit (HH:MM:SS)", job.TimeLimit, 30, nil, func(text string) {
 		job.TimeLimit = text
@@ -194,9 +203,18 @@ func (w *JobSubmissionWizard) addOptionalJobFields(form *tview.Form, job *dao.Jo
 		job.QoS = text
 	})
 
-	form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
-		job.Account = text
-	})
+	// Add Account dropdown
+	accounts := w.getAvailableAccounts()
+	if len(accounts) > 0 {
+		form.AddDropDown("Account (optional)", accounts, w.getAccountIndex(accounts, job.Account), func(option string, index int) {
+			job.Account = option
+		})
+	} else {
+		// Fallback to input field if no accounts available
+		form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
+			job.Account = text
+		})
+	}
 
 	form.AddInputField("Working Directory", job.WorkingDir, 50, nil, func(text string) {
 		job.WorkingDir = text
@@ -595,4 +613,62 @@ func createCenteredModal(content tview.Primitive, width, height int) tview.Primi
 			AddItem(content, height, 1, true).
 			AddItem(nil, 0, 1, false), width, 1, true).
 		AddItem(nil, 0, 1, false)
+}
+
+// getAvailablePartitions fetches the list of available partitions from the SLURM cluster
+func (w *JobSubmissionWizard) getAvailablePartitions() []string {
+	partitionList, _ := w.client.Partitions().List()
+	if partitionList == nil || len(partitionList.Partitions) == 0 {
+		return []string{}
+	}
+
+	var result []string
+	for _, p := range partitionList.Partitions {
+		if p != nil {
+			result = append(result, p.Name)
+		}
+	}
+	return result
+}
+
+// getPartitionIndex returns the index of the given partition in the list
+func (w *JobSubmissionWizard) getPartitionIndex(partitions []string, partition string) int {
+	if partition == "" {
+		return 0
+	}
+	for i, p := range partitions {
+		if p == partition {
+			return i
+		}
+	}
+	return 0
+}
+
+// getAvailableAccounts fetches the list of available accounts from the SLURM cluster
+func (w *JobSubmissionWizard) getAvailableAccounts() []string {
+	accountList, _ := w.client.Accounts().List()
+	if accountList == nil || len(accountList.Accounts) == 0 {
+		return []string{}
+	}
+
+	var result []string
+	for _, a := range accountList.Accounts {
+		if a != nil {
+			result = append(result, a.Name)
+		}
+	}
+	return result
+}
+
+// getAccountIndex returns the index of the given account in the list
+func (w *JobSubmissionWizard) getAccountIndex(accounts []string, account string) int {
+	if account == "" {
+		return 0
+	}
+	for i, a := range accounts {
+		if a == account {
+			return i
+		}
+	}
+	return 0
 }
