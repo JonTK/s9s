@@ -1305,12 +1305,8 @@ func (v *JobsView) toggleRowSelection() {
 	// Toggle the row in the multi-select table
 	v.table.ToggleRow(currentRow)
 
-	// Sync with selectedJobs map for compatibility
-	data := v.table.GetSelectedData()
-	if len(data) > 0 {
-		jobID := data[0]
-		v.selectedJobs[jobID] = !v.selectedJobs[jobID]
-	}
+	// Sync ALL selected rows with v.selectedJobs map
+	syncMultiSelectWithJobsMap(v)
 }
 
 // selectAllJobs selects all jobs in multi-select mode
@@ -1319,24 +1315,38 @@ func (v *JobsView) selectAllJobs() {
 		return
 	}
 
-	v.mu.RLock()
-	for _, job := range v.jobs {
-		v.selectedJobs[job.ID] = true
-	}
-	v.mu.RUnlock()
-
 	// Also select all in the multi-select table
 	v.table.SelectAll()
+
+	// Sync all selected rows with v.selectedJobs map
+	syncMultiSelectWithJobsMap(v)
+}
+
+// syncMultiSelectWithJobsMap syncs the multi-select table's selected rows with the v.selectedJobs map
+func syncMultiSelectWithJobsMap(v *JobsView) {
+	// Get all selected row indices from the multi-select table
+	selectedRows := v.table.GetSelectedRows()
+
+	// Clear the selectedJobs map and rebuild from selected rows
+	v.selectedJobs = make(map[string]bool)
+
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	// For each selected row, add the corresponding job to selectedJobs
+	for _, rowIdx := range selectedRows {
+		if rowIdx >= 0 && rowIdx < len(v.jobs) {
+			v.selectedJobs[v.jobs[rowIdx].ID] = true
+		}
+	}
 }
 
 // selectJobsByState selects all jobs in a given state
 func (v *JobsView) selectJobsByState(state string) {
 	v.mu.RLock()
-	count := 0
 	for _, job := range v.jobs {
 		if job.State == state {
 			v.selectedJobs[job.ID] = true
-			count++
 		}
 	}
 	v.mu.RUnlock()
