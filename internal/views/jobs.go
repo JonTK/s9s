@@ -100,7 +100,7 @@ func NewJobsView(client dao.SlurmClient) *JobsView {
 	v := &JobsView{
 		BaseView:     NewBaseView("jobs", "Jobs"),
 		client:       client,
-		refreshRate:  30 * time.Second,
+		refreshRate:  60 * time.Second,
 		jobs:         []*dao.Job{},
 		autoRefresh:  true,
 		selectedJobs: make(map[string]bool),
@@ -188,13 +188,20 @@ func (v *JobsView) Refresh() error {
 	v.SetRefreshing(true)
 	defer v.SetRefreshing(false)
 
-	// Show loading indicator for operations that might take time
+	// Show loading indicator for operations that might take time (manual refresh only)
 	if v.loadingWrapper != nil {
 		return v.loadingWrapper.WithLoading("Refreshing jobs...", func() error {
 			return v.refreshInternal()
 		})
 	}
 
+	return v.refreshInternal()
+}
+
+// RefreshQuiet performs refresh without showing loading modal (for automatic refresh)
+func (v *JobsView) RefreshQuiet() error {
+	v.SetRefreshing(true)
+	defer v.SetRefreshing(false)
 	return v.refreshInternal()
 }
 
@@ -541,7 +548,8 @@ func (v *JobsView) scheduleRefresh() {
 	}
 
 	v.refreshTimer = time.AfterFunc(v.refreshRate, func() {
-		go func() { _ = v.Refresh() }()
+		// Use RefreshQuiet to avoid covering modals with loading indicator
+		go func() { _ = v.RefreshQuiet() }()
 	})
 }
 
