@@ -45,6 +45,8 @@ func NewSlurmAdapter(ctx context.Context, cfg *config.ClusterConfig) (*SlurmAdap
 	// Create client options
 	opts := []slurm.ClientOption{
 		slurm.WithConfig(slurmCfg),
+		// Use adapter implementation for better job management
+		slurm.WithUseAdapters(true),
 	}
 
 	// Add authentication if token is provided
@@ -179,12 +181,24 @@ func (j *jobManager) List(opts *ListJobsOptions) (*JobList, error) {
 		// depending on the actual slurm-client API
 	}
 
-	// Call the client
+	// Call the client - this should call the adapter's Jobs.List() method
+	fmt.Printf("[TRACE] About to call j.client.List, type: %T\n", j.client)
 	result, err := j.client.List(j.ctx, clientOpts)
 	debug.Logger.Printf("Jobs List() returned at %s", time.Now().Format("15:04:05.000"))
 	if err != nil {
+		fmt.Printf("[TRACE] ERROR: %v\n", err)
+		debug.Logger.Printf("ERROR from adapter: %v", err)
 		return nil, errs.SlurmAPI("list jobs", err)
 	}
+
+	if result == nil {
+		fmt.Printf("[TRACE] result is nil!\n")
+		debug.Logger.Printf("Adapter returned nil result")
+		return &JobList{Jobs: []*Job{}, Total: 0}, nil
+	}
+
+	fmt.Printf("[TRACE] result.Jobs length: %d, Total: %d\n", len(result.Jobs), result.Total)
+	debug.Logger.Printf("Jobs List() returned %d jobs, total: %d", len(result.Jobs), result.Total)
 
 	// Convert to our types
 	jobs := make([]*Job, len(result.Jobs))
