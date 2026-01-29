@@ -149,9 +149,18 @@ func (w *JobSubmissionWizard) addJobFormFields(form *tview.Form, job *dao.JobSub
 		job.Script = text
 	})
 
-	form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
-		job.Partition = text
-	})
+	// Add Partition dropdown
+	partitions := w.getAvailablePartitions()
+	if len(partitions) > 0 {
+		form.AddDropDown("Partition", partitions, w.getPartitionIndex(partitions, job.Partition), func(option string, index int) {
+			job.Partition = option
+		})
+	} else {
+		// Fallback to input field if no partitions available
+		form.AddInputField("Partition", job.Partition, 30, nil, func(text string) {
+			job.Partition = text
+		})
+	}
 
 	form.AddInputField("Time Limit (HH:MM:SS)", job.TimeLimit, 30, nil, func(text string) {
 		job.TimeLimit = text
@@ -195,9 +204,18 @@ func (w *JobSubmissionWizard) addOptionalJobFields(form *tview.Form, job *dao.Jo
 		job.QoS = text
 	})
 
-	form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
-		job.Account = text
-	})
+	// Add Account dropdown
+	accounts := w.getAvailableAccounts()
+	if len(accounts) > 0 {
+		form.AddDropDown("Account (optional)", accounts, w.getAccountIndex(accounts, job.Account), func(option string, index int) {
+			job.Account = option
+		})
+	} else {
+		// Fallback to input field if no accounts available
+		form.AddInputField("Account (optional)", job.Account, 30, nil, func(text string) {
+			job.Account = text
+		})
+	}
 
 	form.AddInputField("Working Directory", job.WorkingDir, 50, nil, func(text string) {
 		job.WorkingDir = text
@@ -586,6 +604,58 @@ func generateJobScript(job *dao.JobSubmission) string {
 	script.WriteString(job.Script)
 
 	return script.String()
+}
+
+// getAvailablePartitions fetches the list of available partitions
+func (w *JobSubmissionWizard) getAvailablePartitions() []string {
+	partitionList, err := w.client.Partitions().List()
+	if err != nil {
+		return []string{}
+	}
+	if partitionList == nil || len(partitionList.Partitions) == 0 {
+		return []string{}
+	}
+	partitions := make([]string, 0, len(partitionList.Partitions))
+	for _, p := range partitionList.Partitions {
+		partitions = append(partitions, p.Name)
+	}
+	return partitions
+}
+
+// getPartitionIndex returns the index of a partition in the list
+func (w *JobSubmissionWizard) getPartitionIndex(partitions []string, current string) int {
+	for i, p := range partitions {
+		if p == current {
+			return i
+		}
+	}
+	return 0 // Return first partition as default
+}
+
+// getAvailableAccounts fetches the list of available accounts
+func (w *JobSubmissionWizard) getAvailableAccounts() []string {
+	accountList, err := w.client.Accounts().List()
+	if err != nil {
+		return []string{}
+	}
+	if accountList == nil || len(accountList.Accounts) == 0 {
+		return []string{}
+	}
+	accounts := make([]string, 0, len(accountList.Accounts))
+	for _, a := range accountList.Accounts {
+		accounts = append(accounts, a.Name)
+	}
+	return accounts
+}
+
+// getAccountIndex returns the index of an account in the list
+func (w *JobSubmissionWizard) getAccountIndex(accounts []string, current string) int {
+	for i, a := range accounts {
+		if a == current {
+			return i
+		}
+	}
+	return 0 // Return first account as default
 }
 
 func createCenteredModal(content tview.Primitive, width, height int) tview.Primitive {
