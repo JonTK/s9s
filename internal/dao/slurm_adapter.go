@@ -248,8 +248,20 @@ func convertJobSubmissionToSlurm(job *JobSubmission) *slurm.JobSubmission {
 	// Convert memory from string to int (MB)
 	memory := 0
 	if job.Memory != "" {
-		// Simple implementation: assume format is in MB
-		_, _ = fmt.Sscanf(job.Memory, "%d", &memory)
+		// Parse memory with suffix (M for MB, G for GB)
+		var val int
+		var suffix string
+		if _, err := fmt.Sscanf(job.Memory, "%d%s", &val, &suffix); err == nil {
+			switch suffix {
+			case "G":
+				memory = val * 1024 // Convert GB to MB
+			case "M":
+				memory = val
+			default:
+				// No suffix, assume MB
+				memory = val
+			}
+		}
 	}
 
 	return &slurm.JobSubmission{

@@ -110,10 +110,11 @@ func (w *JobSubmissionWizard) showJobForm(template *dao.JobTemplate) {
 
 	// Initialize job from template or defaults
 	job := &dao.JobSubmission{
-		TimeLimit: "01:00:00",
-		Memory:    "4G",
-		CPUs:      1,
-		Nodes:     1,
+		TimeLimit:  "01:00:00",
+		Memory:     "4G",
+		CPUs:       1,
+		Nodes:      1,
+		WorkingDir: "/tmp",
 	}
 
 	if template != nil {
