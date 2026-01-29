@@ -336,12 +336,14 @@ func (v *JobsView) jobsKeyHandlers() map[tcell.Key]func(*JobsView, *tcell.EventK
 		tcell.KeyF3:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
 		tcell.KeyCtrlF: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
 		tcell.KeyEnter: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobDetails(); return nil },
+		tcell.KeyCtrlA: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.selectAllJobs(); return nil },
 	}
 }
 
 // jobsRuneHandlers returns a map of rune keys to their handlers
 func (v *JobsView) jobsRuneHandlers() map[rune]func(*JobsView, *tcell.EventKey) *tcell.EventKey {
 	return map[rune]func(*JobsView, *tcell.EventKey) *tcell.EventKey{
+		' ': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.toggleRowSelection(); return nil },
 		'c': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.cancelSelectedJob(); return nil },
 		'C': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.cancelSelectedJob(); return nil },
 		'h': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.holdSelectedJob(); return nil },
@@ -1192,28 +1194,28 @@ func (v *JobsView) toggleAutoRefresh() {
 
 // showBatchOperations shows batch operations menu
 func (v *JobsView) showBatchOperations() {
-	debug.Logger.Printf("showBatchOperations() called, batchOpsView: %v", v.batchOpsView != nil)
-	// Get currently selected jobs or allow manual selection
 	var selectedJobs []string
 	var selectedJobsData []map[string]interface{}
 
-	// Check if any jobs are already selected
-	if len(v.selectedJobs) > 0 {
-		v.mu.RLock()
-		for _, job := range v.jobs {
-			if v.selectedJobs[job.ID] {
-				selectedJobs = append(selectedJobs, job.ID)
+	// If in multi-select mode, get all selected jobs from the table
+	if v.multiSelectMode {
+		allSelectedData := v.table.GetAllSelectedData()
+
+		for _, rowData := range allSelectedData {
+			if len(rowData) > 0 {
+				selectedJobs = append(selectedJobs, rowData[0])
 				jobData := map[string]interface{}{
-					"name":  job.Name,
-					"state": job.State,
-					"user":  job.User,
+					"name":  rowData[1],
+					"state": rowData[4],
+					"user":  rowData[2],
 				}
 				selectedJobsData = append(selectedJobsData, jobData)
 			}
 		}
-		v.mu.RUnlock()
-	} else {
-		// If no jobs selected, use currently highlighted job
+	}
+
+	// If no jobs selected from multi-select, use currently highlighted job
+	if len(selectedJobs) == 0 {
 		data := v.table.GetSelectedData()
 		if len(data) > 0 {
 			selectedJobs = append(selectedJobs, data[0])
@@ -1228,14 +1230,13 @@ func (v *JobsView) showBatchOperations() {
 
 	// Initialize batch operations view if not already done
 	if v.batchOpsView == nil && v.app != nil {
-		debug.Logger.Printf("Initializing batchOpsView in showBatchOperations")
 		v.batchOpsView = NewBatchOperationsView(v.client, v.app)
 		if v.pages != nil {
 			v.batchOpsView.SetPages(v.pages)
 		}
 	}
 
-	// Use the new batch operations view
+	// Use the batch operations view
 	if v.batchOpsView != nil && len(selectedJobs) > 0 {
 		v.batchOpsView.ShowBatchOperations(selectedJobs, selectedJobsData, func() {
 			// Refresh the jobs view after batch operations complete
@@ -1245,6 +1246,29 @@ func (v *JobsView) showBatchOperations() {
 		// Show job selection menu if no jobs selected
 		v.showJobSelectionMenu()
 	}
+}
+
+// toggleRowSelection toggles the selection state of the currently highlighted row
+func (v *JobsView) toggleRowSelection() {
+	if !v.multiSelectMode {
+		return
+	}
+
+	// Get the current row index from the table
+	currentRow, _ := v.table.Table.GetSelection()
+
+	// Toggle the row in the multi-select table
+	v.table.ToggleRow(currentRow)
+}
+
+// selectAllJobs selects all jobs in multi-select mode
+func (v *JobsView) selectAllJobs() {
+	if !v.multiSelectMode {
+		return
+	}
+
+	// Select all in the multi-select table
+	v.table.SelectAll()
 }
 
 // showJobSelectionMenu shows a menu to select jobs for batch operations
