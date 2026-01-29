@@ -80,6 +80,9 @@ func (v *JobsView) SetApp(app *tview.Application) {
 
 	// Create batch operations view
 	v.batchOpsView = NewBatchOperationsView(v.client, app)
+	if v.pages != nil {
+		v.batchOpsView.SetPages(v.pages)
+	}
 }
 
 // SetStatusBar sets the main status bar reference
@@ -1173,7 +1176,7 @@ func (v *JobsView) toggleAutoRefresh() {
 
 // showBatchOperations shows batch operations menu
 func (v *JobsView) showBatchOperations() {
-	debug.Logger.Printf("showBatchOperations() called, batchOpsView: %v", v.batchOpsView != nil)
+	debug.Logger.Printf("showBatchOperations() called: batchOpsView=%v, app=%v, pages=%v", v.batchOpsView != nil, v.app != nil, v.pages != nil)
 	// Get currently selected jobs or allow manual selection
 	var selectedJobs []string
 	var selectedJobsData []map[string]interface{}
@@ -1207,29 +1210,28 @@ func (v *JobsView) showBatchOperations() {
 		}
 	}
 
-	// Initialize batch operations view if not already done
-	if v.batchOpsView == nil && v.app != nil {
-		debug.Logger.Printf("Initializing batchOpsView in showBatchOperations")
-		v.batchOpsView = NewBatchOperationsView(v.client, v.app)
-		if v.pages != nil {
-			v.batchOpsView.SetPages(v.pages)
-		}
-	}
+	debug.Logger.Printf("Batch ops: selectedJobs=%d, batchOpsView=%v, pages=%v", len(selectedJobs), v.batchOpsView != nil, v.pages != nil)
 
-	// Use the new batch operations view
-	if v.batchOpsView != nil && len(selectedJobs) > 0 {
-		v.batchOpsView.ShowBatchOperations(selectedJobs, selectedJobsData, func() {
-			// Refresh the jobs view after batch operations complete
-			go func() { _ = v.Refresh() }()
-		})
+	// Show batch operations or job selection menu
+	if len(selectedJobs) > 0 {
+		debug.Logger.Printf("Showing batch operations with %d jobs", len(selectedJobs))
+		if v.batchOpsView != nil {
+			v.batchOpsView.ShowBatchOperations(selectedJobs, selectedJobsData, func() {
+				// Refresh the jobs view after batch operations complete
+				go func() { _ = v.Refresh() }()
+			})
+		} else {
+			debug.Logger.Printf("ERROR: batchOpsView is nil!")
+		}
 	} else {
-		// Show job selection menu if no jobs selected
+		debug.Logger.Printf("Showing job selection menu")
 		v.showJobSelectionMenu()
 	}
 }
 
 // showJobSelectionMenu shows a menu to select jobs for batch operations
 func (v *JobsView) showJobSelectionMenu() {
+	debug.Logger.Printf("showJobSelectionMenu() called, pages=%v", v.pages != nil)
 	list := tview.NewList()
 
 	list.AddItem("Select All Running Jobs", "Select all currently running jobs", 0, func() {
@@ -1280,7 +1282,10 @@ func (v *JobsView) showJobSelectionMenu() {
 	})
 
 	if v.pages != nil {
+		debug.Logger.Printf("Adding batch-operations page")
 		v.pages.AddPage("batch-operations", centeredModal, true, true)
+	} else {
+		debug.Logger.Printf("ERROR: pages is nil, cannot display batch selection menu!")
 	}
 }
 
