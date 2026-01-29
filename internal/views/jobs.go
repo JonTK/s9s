@@ -288,6 +288,17 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		return event // Let modal handle it
 	}
 
+	// If filter input has focus, only handle ESC to unfocus it
+	// All other keys should be handled by the filter input itself
+	if v.filterInput != nil && v.filterInput.HasFocus() {
+		if event.Key() == tcell.KeyEsc {
+			v.app.SetFocus(v.table.Table)
+			return nil
+		}
+		// Let filter input handle all other keys
+		return event
+	}
+
 	// Handle advanced filter mode
 	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
 		v.closeAdvancedFilter()
@@ -303,12 +314,6 @@ func (v *JobsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	// Handle by key type
 	if event.Key() == tcell.KeyRune {
 		return v.handleJobsViewRune(event)
-	}
-
-	// Handle filter input focus for ESC key only
-	if event.Key() == tcell.KeyEsc && v.filterInput != nil && v.filterInput.HasFocus() {
-		v.app.SetFocus(v.table.Table)
-		return nil
 	}
 
 	return event

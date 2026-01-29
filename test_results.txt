@@ -1,0 +1,155 @@
+# S9S COMPREHENSIVE TEST RESULTS
+# Generated: $(date)
+
+## Test 1: Version Information
+S9S - SLURM Terminal UI version dev
+
+## Test 2: Help Output
+s9s provides a terminal interface for managing SLURM clusters, inspired by k9s.
+
+It allows HPC administrators and users to monitor and manage jobs, nodes, 
+and cluster resources efficiently from the terminal.
+
+Features:
+• Real-time job and node monitoring
+• Interactive job management (submit, cancel, hold, release)
+• SSH integration for direct node access
+• Export capabilities (CSV, JSON, Markdown)
+• Plugin system for extensibility
+• Vim-like navigation
+
+Usage:
+  s9s [flags]
+  s9s [command]
+
+Examples:
+  s9s                         # Launch interactive TUI
+  S9S_ENABLE_MOCK=dev s9s --mock  # Use mock SLURM for testing
+  s9s setup                       # Run configuration wizard
+  s9s setup --auto-discover      # Auto-discover clusters
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  config      Configuration management commands
+  help        Help about any command
+  mock        Mock mode utilities and status
+  setup       Interactive setup wizard for s9s configuration
+  version     Show version information
+
+Flags:
+      --config string              config file (default is $HOME/.s9s/config.yaml)
+      --debug                      enable debug logging
+      --discovery-timeout string   timeout for auto-discovery (e.g., 10s, 30s)
+  -h, --help                       help for s9s
+      --mock                       use mock SLURM client (requires S9S_ENABLE_MOCK)
+      --no-discovery               disable auto-discovery of slurmrestd endpoint and token
+      --no-mock                    use real SLURM client (override config)
+  -v, --version                    show version information
+
+Use "s9s [command] --help" for more information about a command.
+
+## Test 3: Version Command
+s9s version dev
+Git commit: unknown
+Built: unknown
+Built by: unknown
+Go version: go1.24.5
+Platform: linux/amd64
+
+## Test 4: Setup Command Help
+Launch the interactive setup wizard to configure s9s for first-time use.
+
+The setup wizard will guide you through:
+• 🏢 Cluster connection settings  
+• 🔐 Authentication configuration
+• 🔒 Secure credential storage
+• ⚡ Performance optimization
+
+Run this command when you first install s9s or want to reconfigure your setup.
+
+Usage:
+  s9s setup [flags]
+
+Examples:
+  s9s setup                    # Run interactive setup
+  s9s setup --auto-discover     # Auto-discover clusters first
+  s9s setup --validate-only     # Just validate current config
+
+Flags:
+      --auto-discover   Auto-discover SLURM clusters before setup
+      --config string   Path to configuration file
+      --force           Force setup even if configuration exists
+  -h, --help            help for setup
+      --validate-only   Only validate existing configuration
+
+Global Flags:
+      --debug   enable debug logging
+
+## Test 5: Config Command Help
+Manage s9s configuration files and settings.
+
+Configuration files are searched in the following order:
+1. ~/.s9s/config.yaml
+2. ~/.config/s9s/config.yaml
+3. Environment variables
+4. Command-line flags
+
+Usage:
+  s9s config [command]
+
+Available Commands:
+  edit        Edit the configuration file
+  show        Display current configuration
+  validate    Validate the configuration file
+
+Flags:
+  -h, --help   help for config
+
+Global Flags:
+      --config string   config file (default is $HOME/.s9s/config.yaml)
+      --debug           enable debug logging
+
+Use "s9s config [command] --help" for more information about a command.
+
+## Test 6: Completion Command
+Generate the autocompletion script for s9s for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
+Usage:
+  s9s completion [command]
+
+Available Commands:
+  bash        Generate the autocompletion script for bash
+  fish        Generate the autocompletion script for fish
+  powershell  Generate the autocompletion script for powershell
+  zsh         Generate the autocompletion script for zsh
+
+Flags:
+  -h, --help   help for completion
+
+Global Flags:
+      --config string   config file (default is $HOME/.s9s/config.yaml)
+      --debug           enable debug logging
+
+Use "s9s completion [command] --help" for more information about a command.
+
+## Test 7: Mock Command
+Utilities for working with s9s mock mode.
+
+Mock mode provides simulated SLURM cluster data for development and testing.
+It requires S9S_ENABLE_MOCK environment variable to be set for security.
+
+Usage:
+  s9s mock [command]
+
+Available Commands:
+  status      Show mock mode status and configuration
+
+Flags:
+  -h, --help   help for mock
+
+Global Flags:
+      --config string   config file (default is $HOME/.s9s/config.yaml)
+      --debug           enable debug logging
+
+Use "s9s mock [command] --help" for more information about a command.

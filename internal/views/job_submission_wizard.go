@@ -255,6 +255,12 @@ func (w *JobSubmissionWizard) setupJobFormHandlers(form *tview.Form, job *dao.Jo
 				w.showError(err.Error())
 			}
 			return nil
+		case tcell.KeyTab:
+			// Consume Tab to prevent switching views - let form handle navigation
+			return nil
+		case tcell.KeyBacktab:
+			// Consume Shift+Tab to prevent switching views
+			return nil
 		}
 		return event
 	})
