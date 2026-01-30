@@ -145,7 +145,6 @@ func (h *Header) appendAlertsBadge(content *strings.Builder) {
 func (h *Header) appendNavigationAndMetricsLine(content *strings.Builder) {
 	h.appendViewsList(content)
 	h.appendMetrics(content)
-	h.appendLastUpdateTime(content)
 }
 
 // appendViewsList appends the views list
