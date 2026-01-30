@@ -34,8 +34,6 @@ type AccountsView struct {
 	advancedFilter *filters.Filter
 	isAdvancedMode bool
 	globalSearch   *GlobalSearch
-	loadingManager *components.LoadingManager
-	loadingWrapper *components.LoadingWrapper
 }
 
 // SetPages sets the pages reference for modal handling
@@ -50,12 +48,6 @@ func (v *AccountsView) SetPages(pages *tview.Pages) {
 // SetApp sets the application reference
 func (v *AccountsView) SetApp(app *tview.Application) {
 	v.app = app
-
-	// Initialize loading manager
-	if v.pages != nil {
-		v.loadingManager = components.NewLoadingManager(app, v.pages)
-		v.loadingWrapper = components.NewLoadingWrapper(v.loadingManager, "accounts")
-	}
 
 	// Create filter bar now that we have app reference
 	v.filterBar = components.NewFilterBar("accounts", app)
@@ -136,13 +128,6 @@ func (v *AccountsView) Render() tview.Primitive {
 func (v *AccountsView) Refresh() error {
 	v.SetRefreshing(true)
 	defer v.SetRefreshing(false)
-
-	// Show loading indicator for operations that might take time
-	if v.loadingWrapper != nil {
-		return v.loadingWrapper.WithLoading("Loading accounts...", func() error {
-			return v.refreshInternal()
-		})
-	}
 
 	return v.refreshInternal()
 }
