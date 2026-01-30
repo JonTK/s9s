@@ -705,43 +705,48 @@ func (v *NodesView) drainSelectedNode() {
 
 // performDrainNode performs the node drain operation
 func (v *NodesView) performDrainNode(nodeName, reason string) {
-	// Remove the drain input modal first
-	if v.pages != nil {
-		v.pages.RemovePage("drain-input")
+	// Remove the drain input modal via app queue to ensure thread safety
+	if v.pages != nil && v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			v.pages.RemovePage("drain-input")
+		})
 	}
 
 	// Perform the drain operation
 	err := v.client.Nodes().Drain(nodeName, reason)
-	if err != nil {
-		// Show error modal
-		if v.pages != nil {
-			errorModal := tview.NewModal().
-				SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
-				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(_ int, _ string) {
-					v.pages.RemovePage("error")
-					v.app.SetFocus(v.table.Table)
-				})
-			v.pages.AddPage("error", errorModal, true, true)
-		}
-		return
-	}
 
-	// Show success message
-	if v.pages != nil {
-		successModal := tview.NewModal().
-			SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
-			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(_ int, _ string) {
-				v.pages.RemovePage("success")
-				v.app.SetFocus(v.table.Table)
-				// Refresh the view after modal is closed
-				go v.Refresh()
-			})
-		v.pages.AddPage("success", successModal, true, true)
-	} else {
-		// If no pages manager, refresh directly
-		go v.Refresh()
+	// Handle result via app queue to ensure thread safety
+	if v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			if err != nil {
+				// Show error modal
+				if v.pages != nil {
+					errorModal := tview.NewModal().
+						SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
+						AddButtons([]string{"OK"}).
+						SetDoneFunc(func(_ int, _ string) {
+							v.pages.RemovePage("error")
+							v.app.SetFocus(v.table.Table)
+						})
+					v.pages.AddPage("error", errorModal, true, true)
+				}
+				return
+			}
+
+			// Show success message
+			if v.pages != nil {
+				successModal := tview.NewModal().
+					SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
+					AddButtons([]string{"OK"}).
+					SetDoneFunc(func(_ int, _ string) {
+						v.pages.RemovePage("success")
+						v.app.SetFocus(v.table.Table)
+						// Refresh the view after modal is closed
+						go v.Refresh()
+					})
+				v.pages.AddPage("success", successModal, true, true)
+			}
+		})
 	}
 }
 
