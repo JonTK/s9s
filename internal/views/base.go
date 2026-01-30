@@ -51,14 +51,15 @@ type View interface {
 
 // BaseView provides common functionality for all views
 type BaseView struct {
-	ctx        context.Context
-	name       string
-	title      string
-	app        *tview.Application
-	pages      *tview.Pages
-	viewMgr    *ViewManager
-	refreshing bool
-	lastError  error
+	ctx         context.Context
+	name        string
+	title       string
+	app         *tview.Application
+	pages       *tview.Pages
+	viewMgr     *ViewManager
+	switchViewFn func(string) // Callback to switch to a view
+	refreshing  bool
+	lastError   error
 }
 
 // NewBaseView creates a new base view instance
@@ -108,6 +109,18 @@ func (v *BaseView) SetViewManager(viewMgr *ViewManager) {
 // GetViewManager returns the view manager reference
 func (v *BaseView) GetViewManager() *ViewManager {
 	return v.viewMgr
+}
+
+// SetSwitchViewFn sets the callback function to switch views
+func (v *BaseView) SetSwitchViewFn(fn func(string)) {
+	v.switchViewFn = fn
+}
+
+// SwitchToView switches to another view using the registered callback
+func (v *BaseView) SwitchToView(viewName string) {
+	if v.switchViewFn != nil {
+		v.switchViewFn(viewName)
+	}
 }
 
 // IsRefreshing returns true if the view is currently refreshing
