@@ -126,8 +126,15 @@ func (s *S9s) addViewToApp(name string, view views.View) error {
 		return errs.ViewError(name, "add to manager", err)
 	}
 
-	// Set the switch view callback so views can switch to other views
+	// Set the switch view callback and view manager so views can switch to other views
 	view.SetSwitchViewFn(s.switchToView)
+	// Also set the ViewManager reference directly for views that need it
+	type hasViewMgr interface {
+		SetViewManager(*views.ViewManager)
+	}
+	if v, ok := view.(hasViewMgr); ok {
+		v.SetViewManager(s.viewMgr)
+	}
 
 	s.contentPages.AddPage(name, view.Render(), true, false)
 	return nil

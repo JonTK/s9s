@@ -57,6 +57,7 @@ func NewGlobalSearch(client dao.SlurmClient, app *tview.Application) *GlobalSear
 
 // Show displays the global search interface
 func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResult)) {
+	fmt.Fprintf(os.Stderr, "[DEBUG GLOBAL SEARCH] Show() called\n")
 	gs.pages = pages
 	gs.onSelect = onSelect
 

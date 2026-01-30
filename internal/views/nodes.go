@@ -268,7 +268,7 @@ func (v *NodesView) handleNodesViewRune(event *tcell.EventKey) *tcell.EventKey {
 func (v *NodesView) nodesKeyHandlers() map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey {
 	return map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey{
 		tcell.KeyF3:    func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
-		tcell.KeyCtrlF: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
+		tcell.KeyCtrlF: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { fmt.Fprintf(os.Stderr, "[NODES KEYBOARD] Ctrl+F pressed\n"); v.showGlobalSearch(); return nil },
 		tcell.KeyEnter: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showNodeDetails(); return nil },
 	}
 }
@@ -1578,12 +1578,16 @@ func (v *NodesView) nodeToMap(node *dao.Node) map[string]interface{} {
 
 // showGlobalSearch shows the global search interface
 func (v *NodesView) showGlobalSearch() {
+	fmt.Fprintf(os.Stderr, "[NODES SEARCH] showGlobalSearch() called\n")
 	if v.globalSearch == nil || v.pages == nil {
+		fmt.Fprintf(os.Stderr, "[NODES SEARCH] globalSearch or pages is nil: globalSearch=%v, pages=%v\n", v.globalSearch == nil, v.pages == nil)
 		return
 	}
 
+	fmt.Fprintf(os.Stderr, "[NODES SEARCH] Calling globalSearch.Show()\n")
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
 		// Handle search result selection
+		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
 		debug.Logger.Printf("[NodesView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "node":

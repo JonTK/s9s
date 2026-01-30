@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -323,7 +324,7 @@ func (v *JobsView) jobsKeyHandlers() map[tcell.Key]func(*JobsView, *tcell.EventK
 		tcell.KeyF1:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobActions(); return nil },
 		tcell.KeyF2:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobTemplateSelector(); return nil },
 		tcell.KeyF3:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
-		tcell.KeyCtrlF: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
+		tcell.KeyCtrlF: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { fmt.Fprintf(os.Stderr, "[JOBS KEYBOARD] Ctrl+F pressed\n"); v.showGlobalSearch(); return nil },
 		tcell.KeyEnter: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobDetails(); return nil },
 		tcell.KeyCtrlA: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.selectAllJobs(); return nil },
 	}
@@ -1626,23 +1627,31 @@ func (v *JobsView) jobToMap(job *dao.Job) map[string]interface{} {
 
 // showGlobalSearch shows the global search interface
 func (v *JobsView) showGlobalSearch() {
+	fmt.Fprintf(os.Stderr, "[JOBS SEARCH] showGlobalSearch() called\n")
 	if v.globalSearch == nil || v.pages == nil {
+		fmt.Fprintf(os.Stderr, "[JOBS SEARCH] globalSearch or pages is nil: globalSearch=%v, pages=%v\n", v.globalSearch == nil, v.pages == nil)
 		return
 	}
 
+	fmt.Fprintf(os.Stderr, "[JOBS SEARCH] Calling globalSearch.Show()\n")
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
 		// Handle search result selection
+		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
+		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] About to enter switch statement\n")
 		debug.Logger.Printf("[JobsView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "job":
+			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched job case\n")
 			// Focus on the selected job
 			if job, ok := result.Data.(*dao.Job); ok {
 				debug.Logger.Printf("[JobsView] Focusing on job: %s\n", job.ID)
 				v.focusOnJob(job.ID)
 			}
 		case "node":
+			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched node case\n")
 			// Switch to nodes view and focus on the selected node
 			if node, ok := result.Data.(*dao.Node); ok {
+				fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Type assertion to *dao.Node succeeded\n")
 				debug.Logger.Printf("[JobsView] Switching to nodes view for node: %s\n", node.Name)
 				// Queue the view switch and focus after the modal closes
 				if v.app != nil && v.viewMgr != nil {
@@ -1662,9 +1671,14 @@ func (v *JobsView) showGlobalSearch() {
 							}
 						})
 					})
+				} else {
+					fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] app or viewMgr is nil: app=%v, viewMgr=%v\n", v.app == nil, v.viewMgr == nil)
 				}
+			} else {
+				fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Type assertion to *dao.Node FAILED\n")
 			}
 		default:
+			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched default case\n")
 			// For other types, just close the search
 		}
 	})
