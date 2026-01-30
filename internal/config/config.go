@@ -315,21 +315,52 @@ func setDefaults(v *viper.Viper) {
 }
 
 // applyEnvironmentOverrides applies environment variable overrides
+// Environment variables always take precedence over config file settings
 func applyEnvironmentOverrides(cfg *Config) {
-	// Check for cluster endpoint override
-	if endpoint := os.Getenv("SLURM_REST_URL"); endpoint != "" {
-		if cfg.CurrentContext == "" || len(cfg.Contexts) == 0 {
-			// Create a default context if none exists
-			cfg.Contexts = append(cfg.Contexts, ContextConfig{
-				Name: "default",
-				Cluster: ClusterConfig{
-					Endpoint:   endpoint,
-					Token:      os.Getenv("SLURM_JWT"),
-					APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.43"),
-				},
-			})
-			cfg.CurrentContext = "default"
+	// Check for cluster endpoint override (support both S9S_ prefixed and unprefixed)
+	endpoint := os.Getenv("S9S_SLURM_REST_URL")
+	if endpoint == "" {
+		endpoint = os.Getenv("SLURM_REST_URL")
+	}
+
+	token := os.Getenv("S9S_SLURM_JWT")
+	if token == "" {
+		token = os.Getenv("SLURM_JWT")
+	}
+
+	apiVersion := os.Getenv("SLURM_API_VERSION")
+	if apiVersion == "" {
+		apiVersion = "v0.0.43"
+	}
+
+	// If endpoint is set in environment, it overrides everything
+	if endpoint != "" {
+		// Create or update default context with environment values
+		defaultCtx := ContextConfig{
+			Name: "default",
+			Cluster: ClusterConfig{
+				Endpoint:   endpoint,
+				Token:      token,
+				APIVersion: apiVersion,
+			},
 		}
+
+		// Check if default context already exists
+		found := false
+		for i, ctx := range cfg.Contexts {
+			if ctx.Name == "default" {
+				cfg.Contexts[i] = defaultCtx
+				found = true
+				break
+			}
+		}
+
+		// If not found, add it
+		if !found {
+			cfg.Contexts = append(cfg.Contexts, defaultCtx)
+		}
+
+		cfg.CurrentContext = "default"
 	}
 }
 
@@ -348,10 +379,21 @@ func (c *Config) setCurrentCluster() error {
 	}
 
 	// If no context found but we have environment variables, use them
-	if endpoint := os.Getenv("SLURM_REST_URL"); endpoint != "" {
+	// Support both S9S_ prefixed and unprefixed environment variables
+	endpoint := os.Getenv("S9S_SLURM_REST_URL")
+	if endpoint == "" {
+		endpoint = os.Getenv("SLURM_REST_URL")
+	}
+
+	token := os.Getenv("S9S_SLURM_JWT")
+	if token == "" {
+		token = os.Getenv("SLURM_JWT")
+	}
+
+	if endpoint != "" {
 		c.Cluster = ClusterConfig{
 			Endpoint:   endpoint,
-			Token:      os.Getenv("SLURM_JWT"),
+			Token:      token,
 			APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.43"),
 			Timeout:    getEnvOrDefault("SLURM_TIMEOUT", "30s"),
 		}

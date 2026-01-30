@@ -8,11 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Vim-style view navigation**: `h` and `l` keys for switching between views (left/right)
+- **Global search cross-view navigation**: Search results now navigate to the correct view and focus on the selected item
+- **Partition filter syntax**: Use `p:partition_name` in filter fields to filter by partition (Jobs and Nodes views)
+- **Users view admin filter**: Press `a` to toggle showing only administrators/operators
+- **Status bar feedback**: Users view shows status messages when toggling admin filter
+- **Job display improvements**: Global search shows jobs with username, state, and partition
+- **Username resolution**: Jobs display actual usernames instead of numeric UIDs (with system lookup fallback)
 - Centralized version management in `internal/version` package
 - GoReleaser configuration for automated releases
 - CHANGELOG.md following Keep a Changelog format
 - GitHub Actions release workflow
 - Version-aware build targets in Makefile
+
+### Changed
+- **Keyboard shortcuts changed to uppercase** to avoid vim navigation conflicts:
+  - `h` → `H` for Hold (Jobs), Show Hierarchy (Accounts), Health Details (Health)
+  - `j` → `J` for Jobs view (Dashboard, Partitions)
+  - `n` → `N` for Nodes view (Dashboard, Partitions)
+  - `p` → `P` for Partitions view (Dashboard)
+  - `a` → `A` for Analytics (Dashboard, Partitions)
+  - `w` → `W` for Wait Times (Partitions)
+- **Filter performance**: Added debouncing (300ms) and immediate client-side filtering for better UX
+- **Modal consistency**: All modals now use the `pages` API for proper lifecycle management
+
+### Fixed
+- **Modal focus issues**: Input fields in drain and partition filter modals now maintain focus properly
+- **Drain operation**: Fixed drain showing success but not actually draining nodes
+- **Resume operation**: Fixed modal double-removal causing operation to fail
+- **Node state display**: Fixed state truncation - now shows `IDLE+DRAIN` instead of just `IDLE`
+- **Filter input hijacking**: Global shortcuts no longer steal focus from filter input fields
+- **Search deadlocks**: Removed QueueUpdateDraw calls from event handlers that caused freezes
+- **Configuration**: Environment variables now properly override config file values
+- **Case sensitivity**: Admin level comparison in Users view is now case-insensitive
+
+### Removed
+- **Loading modals**: Removed intrusive "Loading..." modals from Accounts, QoS, Reservations, and Users views
+- **Header update time**: Removed misleading "Updated: X ago" display (was tracking app startup, not data refresh)
 
 ## [0.1.0] - 2026-01-21
 

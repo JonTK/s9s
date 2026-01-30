@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/jontk/s9s/internal/debug"
 	"github.com/rivo/tview"
 )
 
@@ -47,17 +48,25 @@ type View interface {
 
 	// Stop cleanly shuts down the view
 	Stop() error
+
+	// SetSwitchViewFn sets the callback function to switch to another view
+	SetSwitchViewFn(func(string))
+
+	// SwitchToView switches to another view
+	SwitchToView(string)
 }
 
 // BaseView provides common functionality for all views
 type BaseView struct {
-	ctx        context.Context
-	name       string
-	title      string
-	app        *tview.Application
-	pages      *tview.Pages
-	refreshing bool
-	lastError  error
+	ctx         context.Context
+	name        string
+	title       string
+	app         *tview.Application
+	pages       *tview.Pages
+	viewMgr     *ViewManager
+	switchViewFn func(string) // Callback to switch to a view
+	refreshing  bool
+	lastError   error
 }
 
 // NewBaseView creates a new base view instance
@@ -97,6 +106,33 @@ func (v *BaseView) SetApp(app *tview.Application) {
 // GetApp returns the tview application reference
 func (v *BaseView) GetApp() *tview.Application {
 	return v.app
+}
+
+// SetViewManager sets the view manager reference
+func (v *BaseView) SetViewManager(viewMgr *ViewManager) {
+	v.viewMgr = viewMgr
+}
+
+// GetViewManager returns the view manager reference
+func (v *BaseView) GetViewManager() *ViewManager {
+	return v.viewMgr
+}
+
+// SetSwitchViewFn sets the callback function to switch views
+func (v *BaseView) SetSwitchViewFn(fn func(string)) {
+	v.switchViewFn = fn
+}
+
+// SwitchToView switches to another view using the registered callback
+func (v *BaseView) SwitchToView(viewName string) {
+	debug.Logger.Printf("[BaseView] SwitchToView called: currentView=%s, targetView=%s, hasFn=%v\n", v.name, viewName, v.switchViewFn != nil)
+	if v.switchViewFn != nil {
+		debug.Logger.Printf("[BaseView] Calling switchViewFn\n")
+		v.switchViewFn(viewName)
+		debug.Logger.Printf("[BaseView] switchViewFn returned\n")
+	} else {
+		debug.Logger.Printf("[BaseView] ERROR: switchViewFn is nil!\n")
+	}
 }
 
 // IsRefreshing returns true if the view is currently refreshing
@@ -332,6 +368,11 @@ func (vm *ViewManager) setViewReferences(view View) {
 		if pagesField.IsNil() {
 			pagesField.Set(reflect.ValueOf(vm.pages))
 		}
+	}
+
+	// Set viewMgr field if view has it
+	if viewMgrField := rv.FieldByName("viewMgr"); viewMgrField.IsValid() && viewMgrField.CanSet() {
+		viewMgrField.Set(reflect.ValueOf(vm))
 	}
 }
 

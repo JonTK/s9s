@@ -145,7 +145,6 @@ func (h *Header) appendAlertsBadge(content *strings.Builder) {
 func (h *Header) appendNavigationAndMetricsLine(content *strings.Builder) {
 	h.appendViewsList(content)
 	h.appendMetrics(content)
-	h.appendLastUpdateTime(content)
 }
 
 // appendViewsList appends the views list
@@ -178,16 +177,6 @@ func (h *Header) appendMetrics(content *strings.Builder) {
 		content.WriteString(" | ")
 	}
 	content.WriteString(h.formatMetrics())
-}
-
-// appendLastUpdateTime appends the last update time
-func (h *Header) appendLastUpdateTime(content *strings.Builder) {
-	age := time.Since(h.lastUpdate)
-	if age > time.Minute {
-		fmt.Fprintf(content, " | [red]Last update: %s ago[white]", formatAge(age))
-	} else {
-		fmt.Fprintf(content, " | [green]Updated: %s ago[white]", formatAge(age))
-	}
 }
 
 // formatMetrics formats cluster metrics for display
@@ -239,18 +228,4 @@ func createMiniBar(percentage float64) string {
 
 	bar.WriteString("[white]")
 	return bar.String()
-}
-
-// formatAge formats a duration as a readable age string
-func formatAge(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
-	}
 }

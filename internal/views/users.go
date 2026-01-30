@@ -33,8 +33,8 @@ type UsersView struct {
 	advancedFilter *filters.Filter
 	isAdvancedMode bool
 	globalSearch   *GlobalSearch
-	loadingManager *components.LoadingManager
-	loadingWrapper *components.LoadingWrapper
+	showAdminsOnly bool
+	mainStatusBar  *components.StatusBar
 }
 
 // SetPages sets the pages reference for modal handling
@@ -46,15 +46,14 @@ func (v *UsersView) SetPages(pages *tview.Pages) {
 	}
 }
 
+// SetStatusBar sets the main status bar reference
+func (v *UsersView) SetStatusBar(statusBar *components.StatusBar) {
+	v.mainStatusBar = statusBar
+}
+
 // SetApp sets the application reference
 func (v *UsersView) SetApp(app *tview.Application) {
 	v.app = app
-
-	// Initialize loading manager
-	if v.pages != nil {
-		v.loadingManager = components.NewLoadingManager(app, v.pages)
-		v.loadingWrapper = components.NewLoadingWrapper(v.loadingManager, "users")
-	}
 
 	// Create filter bar now that we have app reference
 	v.filterBar = components.NewFilterBar("users", app)
@@ -136,13 +135,6 @@ func (v *UsersView) Refresh() error {
 	v.SetRefreshing(true)
 	defer v.SetRefreshing(false)
 
-	// Show loading indicator for operations that might take time
-	if v.loadingWrapper != nil {
-		return v.loadingWrapper.WithLoading("Loading users...", func() error {
-			return v.refreshInternal()
-		})
-	}
-
 	return v.refreshInternal()
 }
 
@@ -180,6 +172,11 @@ func (v *UsersView) Stop() error {
 
 // Hints returns keyboard hints
 func (v *UsersView) Hints() []string {
+	adminHint := "[yellow]a[white] Show Admins"
+	if v.showAdminsOnly {
+		adminHint = "[yellow]a[white] Show All"
+	}
+
 	hints := []string{
 		"[yellow]Enter[white] Details",
 		"[yellow]/[white] Filter",
@@ -187,7 +184,7 @@ func (v *UsersView) Hints() []string {
 		"[yellow]Ctrl+F[white] Search",
 		"[yellow]1-9[white] Sort",
 		"[yellow]R[white] Refresh",
-		"[yellow]a[white] Show Admins",
+		adminHint,
 	}
 
 	if v.isAdvancedMode {
@@ -283,6 +280,18 @@ func (v *UsersView) updateTable() {
 		filteredUsers = v.applyAdvancedFilter(v.users)
 	}
 
+	// Apply admin filter if active
+	if v.showAdminsOnly {
+		var admins []*dao.User
+		for _, user := range filteredUsers {
+			adminLevel := strings.ToLower(user.AdminLevel)
+			if adminLevel == "administrator" || adminLevel == "operator" {
+				admins = append(admins, user)
+			}
+		}
+		filteredUsers = admins
+	}
+
 	data := make([][]string, len(filteredUsers))
 	for i, user := range filteredUsers {
 		// Format limits
@@ -295,11 +304,11 @@ func (v *UsersView) updateTable() {
 
 		// Format admin level with color
 		adminLevel := user.AdminLevel
-		switch adminLevel {
-		case "Administrator":
-			adminLevel = fmt.Sprintf("[red]%s[white]", adminLevel)
-		case "Operator":
-			adminLevel = fmt.Sprintf("[yellow]%s[white]", adminLevel)
+		switch strings.ToLower(adminLevel) {
+		case "administrator":
+			adminLevel = fmt.Sprintf("[red]%s[white]", user.AdminLevel)
+		case "operator":
+			adminLevel = fmt.Sprintf("[yellow]%s[white]", user.AdminLevel)
 		}
 
 		// Format accounts list
@@ -407,8 +416,16 @@ func (v *UsersView) onFilterDone(_ tcell.Key) {
 
 // toggleAdminFilter toggles showing only admin users
 func (v *UsersView) toggleAdminFilter() {
-	// TODO: Implement admin filter
-	// Note: Filter status removed since individual view status bars are no longer used
+	v.showAdminsOnly = !v.showAdminsOnly
+	v.updateTable()
+
+	if v.mainStatusBar != nil {
+		if v.showAdminsOnly {
+			v.mainStatusBar.Info("Showing admins/operators only")
+		} else {
+			v.mainStatusBar.Info("Showing all users")
+		}
+	}
 }
 
 // showUserDetails shows detailed information for the selected user
@@ -488,10 +505,10 @@ func (v *UsersView) formatUserDetails(user *dao.User) string {
 
 	// Admin level with color
 	adminColor := "white"
-	switch user.AdminLevel {
-	case "Administrator":
+	switch strings.ToLower(user.AdminLevel) {
+	case "administrator":
 		adminColor = "red"
-	case "Operator":
+	case "operator":
 		adminColor = "yellow"
 	}
 	details.WriteString(fmt.Sprintf("[yellow]Admin Level:[white] [%s]%s[white]\n", adminColor, user.AdminLevel))
@@ -625,16 +642,67 @@ func (v *UsersView) showGlobalSearch() {
 	}
 
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
+		// This callback is called from an event handler, so direct primitive
+		// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
 		switch result.Type {
 		case "user":
-			// Focus on the selected user
 			if user, ok := result.Data.(*dao.User); ok {
 				v.focusOnUser(user.Name)
 			}
-		default:
-			// For other types, just close the search
-			// Note: Search result status removed since individual view status bars are no longer used
+		case "job":
+			if job, ok := result.Data.(*dao.Job); ok {
+				v.SwitchToView("jobs")
+				if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+					if jobsView, ok := jv.(*JobsView); ok {
+						jobsView.focusOnJob(job.ID)
+					}
+				}
+			}
+		case "node":
+			if node, ok := result.Data.(*dao.Node); ok {
+				v.SwitchToView("nodes")
+				if nv, err := v.viewMgr.GetView("nodes"); err == nil {
+					if nodesView, ok := nv.(*NodesView); ok {
+						nodesView.focusOnNode(node.Name)
+					}
+				}
+			}
+		case "partition":
+			if partition, ok := result.Data.(*dao.Partition); ok {
+				v.SwitchToView("partitions")
+				if pv, err := v.viewMgr.GetView("partitions"); err == nil {
+					if partitionsView, ok := pv.(*PartitionsView); ok {
+						partitionsView.focusOnPartition(partition.Name)
+					}
+				}
+			}
+		case "account":
+			if account, ok := result.Data.(*dao.Account); ok {
+				v.SwitchToView("accounts")
+				if av, err := v.viewMgr.GetView("accounts"); err == nil {
+					if accountsView, ok := av.(*AccountsView); ok {
+						accountsView.focusOnAccount(account.Name)
+					}
+				}
+			}
+		case "qos":
+			if qos, ok := result.Data.(*dao.QoS); ok {
+				v.SwitchToView("qos")
+				if qv, err := v.viewMgr.GetView("qos"); err == nil {
+					if qosView, ok := qv.(*QoSView); ok {
+						qosView.focusOnQoS(qos.Name)
+					}
+				}
+			}
+		case "reservation":
+			if reservation, ok := result.Data.(*dao.Reservation); ok {
+				v.SwitchToView("reservations")
+				if rv, err := v.viewMgr.GetView("reservations"); err == nil {
+					if reservationsView, ok := rv.(*ReservationsView); ok {
+						reservationsView.focusOnReservation(reservation.Name)
+					}
+				}
+			}
 		}
 	})
 }

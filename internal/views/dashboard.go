@@ -220,12 +220,12 @@ func (v *DashboardView) Stop() error {
 // Hints returns keyboard hints
 func (v *DashboardView) Hints() []string {
 	return []string{
-		"[yellow]j[white] Jobs View",
-		"[yellow]n[white] Nodes View",
-		"[yellow]p[white] Partitions View",
-		"[yellow]a[white] Analytics",
+		"[yellow]J[white] Jobs View",
+		"[yellow]N[white] Nodes View",
+		"[yellow]P[white] Partitions View",
+		"[yellow]A[white] Analytics",
 		"[yellow]R[white] Refresh",
-		"[yellow]h[white] Health Check",
+		"[yellow]H[white] Health Check",
 	}
 }
 
@@ -236,19 +236,19 @@ func (v *DashboardView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 		case 'R':
 			go func() { _ = v.Refresh() }()
 			return nil
-		case 'j', 'J':
-			// TODO: Switch to jobs view
+		case 'J':
+			v.SwitchToView("jobs")
 			return nil
-		case 'n', 'N':
-			// TODO: Switch to nodes view
+		case 'N':
+			v.SwitchToView("nodes")
 			return nil
-		case 'p', 'P':
-			// TODO: Switch to partitions view
+		case 'P':
+			v.SwitchToView("partitions")
 			return nil
-		case 'a', 'A':
+		case 'A':
 			v.showAdvancedAnalytics()
 			return nil
-		case 'h', 'H':
+		case 'H':
 			v.showHealthCheck()
 			return nil
 		}

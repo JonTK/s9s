@@ -110,10 +110,15 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 			if gs.resultsList.HasFocus() {
 				idx := gs.resultsList.GetCurrentItem()
 				if idx >= 0 && idx < len(gs.results) {
-					if gs.onSelect != nil {
-						gs.onSelect(gs.results[idx])
-					}
+					result := gs.results[idx]
+					// Remove the modal first, then call the callback
+					// This is safe because we're in an event handler - direct primitive
+					// manipulation is allowed, but QueueUpdateDraw would deadlock
 					pages.RemovePage("global-search")
+					if gs.onSelect != nil {
+						gs.onSelect(result)
+					}
+					return nil
 				}
 			}
 			return nil
@@ -126,8 +131,11 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 		if event.Key() == tcell.KeyEnter {
 			// Select first result if available
 			if len(gs.results) > 0 && gs.onSelect != nil {
-				gs.onSelect(gs.results[0])
+				result := gs.results[0]
+				// Remove the modal first, then call the callback
+				// Direct manipulation is safe in event handlers - no queueing needed
 				pages.RemovePage("global-search")
+				gs.onSelect(result)
 			}
 			return nil
 		}
@@ -186,6 +194,27 @@ func (gs *GlobalSearch) performSearch(query string, cancel chan struct{}) {
 		gs.searchUsers(query, results, cancel)
 	}()
 
+	// Search reservations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		gs.searchReservations(query, results, cancel)
+	}()
+
+	// Search accounts
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		gs.searchAccounts(query, results, cancel)
+	}()
+
+	// Search QoS
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		gs.searchQoS(query, results, cancel)
+	}()
+
 	// Collect results
 	go func() {
 		wg.Wait()
@@ -220,6 +249,7 @@ func (gs *GlobalSearch) searchJobs(query string, results chan<- SearchResult, ca
 	}
 
 	queryLower := strings.ToLower(query)
+	jobCount := 0
 	for _, job := range jobs.Jobs {
 		select {
 		case <-cancel:
@@ -227,10 +257,13 @@ func (gs *GlobalSearch) searchJobs(query string, results chan<- SearchResult, ca
 		default:
 			score := gs.calculateJobScore(job, queryLower)
 			if score > 0 {
+				jobCount++
+				// Format: Job ID as name, with user/state/partition in description
+				displayName := fmt.Sprintf("%s (%s)", job.ID, job.Name)
 				results <- SearchResult{
 					Type:        "job",
 					ID:          job.ID,
-					Name:        job.Name,
+					Name:        displayName,
 					Description: fmt.Sprintf("User: %s | State: %s | Partition: %s", job.User, job.State, job.Partition),
 					Score:       score,
 					Data:        job,
@@ -271,6 +304,7 @@ func (gs *GlobalSearch) searchNodes(query string, results chan<- SearchResult, c
 	}
 
 	queryLower := strings.ToLower(query)
+	nodeCount := 0
 	for _, node := range nodes.Nodes {
 		select {
 		case <-cancel:
@@ -278,6 +312,7 @@ func (gs *GlobalSearch) searchNodes(query string, results chan<- SearchResult, c
 		default:
 			score := gs.calculateNodeScore(node, queryLower)
 			if score > 0 {
+				nodeCount++
 				partitions := strings.Join(node.Partitions, ",")
 				results <- SearchResult{
 					Type:        "node",
@@ -405,6 +440,149 @@ func (gs *GlobalSearch) searchUsers(query string, results chan<- SearchResult, c
 					Description: fmt.Sprintf("Default Account: %s | Accounts: %s", user.DefaultAccount, accounts),
 					Score:       score,
 					Data:        user,
+				}
+			}
+		}
+	}
+}
+
+// searchReservations searches through reservations
+func (gs *GlobalSearch) searchReservations(query string, results chan<- SearchResult, cancel chan struct{}) {
+	reservations, err := gs.client.Reservations().List()
+	if err != nil {
+		return
+	}
+
+	queryLower := strings.ToLower(query)
+	for _, reservation := range reservations.Reservations {
+		select {
+		case <-cancel:
+			return
+		default:
+			score := 0
+
+			// Check reservation name
+			if strings.Contains(strings.ToLower(reservation.Name), queryLower) {
+				score += 10
+			}
+			// Check state
+			if strings.Contains(strings.ToLower(reservation.State), queryLower) {
+				score += 5
+			}
+			// Check users
+			for _, user := range reservation.Users {
+				if strings.Contains(strings.ToLower(user), queryLower) {
+					score += 3
+					break
+				}
+			}
+			// Check accounts
+			for _, account := range reservation.Accounts {
+				if strings.Contains(strings.ToLower(account), queryLower) {
+					score += 3
+					break
+				}
+			}
+
+			if score > 0 {
+				results <- SearchResult{
+					Type:        "reservation",
+					ID:          reservation.Name,
+					Name:        reservation.Name,
+					Description: fmt.Sprintf("State: %s | Nodes: %d | Users: %s", reservation.State, reservation.NodeCount, strings.Join(reservation.Users, ",")),
+					Score:       score,
+					Data:        reservation,
+				}
+			}
+		}
+	}
+}
+
+// searchAccounts searches through accounts
+func (gs *GlobalSearch) searchAccounts(query string, results chan<- SearchResult, cancel chan struct{}) {
+	accounts, err := gs.client.Accounts().List()
+	if err != nil {
+		return
+	}
+
+	queryLower := strings.ToLower(query)
+	for _, account := range accounts.Accounts {
+		select {
+		case <-cancel:
+			return
+		default:
+			score := 0
+
+			// Check account name
+			if strings.Contains(strings.ToLower(account.Name), queryLower) {
+				score += 10
+			}
+			// Check description
+			if strings.Contains(strings.ToLower(account.Description), queryLower) {
+				score += 5
+			}
+			// Check organization
+			if strings.Contains(strings.ToLower(account.Organization), queryLower) {
+				score += 3
+			}
+			// Check parent
+			if strings.Contains(strings.ToLower(account.Parent), queryLower) {
+				score += 3
+			}
+
+			if score > 0 {
+				results <- SearchResult{
+					Type:        "account",
+					ID:          account.Name,
+					Name:        account.Name,
+					Description: fmt.Sprintf("Org: %s | Parent: %s | Default QoS: %s", account.Organization, account.Parent, account.DefaultQoS),
+					Score:       score,
+					Data:        account,
+				}
+			}
+		}
+	}
+}
+
+// searchQoS searches through QoS entries
+func (gs *GlobalSearch) searchQoS(query string, results chan<- SearchResult, cancel chan struct{}) {
+	qosList, err := gs.client.QoS().List()
+	if err != nil {
+		return
+	}
+
+	queryLower := strings.ToLower(query)
+	for _, qos := range qosList.QoS {
+		select {
+		case <-cancel:
+			return
+		default:
+			score := 0
+
+			// Check QoS name
+			if strings.Contains(strings.ToLower(qos.Name), queryLower) {
+				score += 10
+			}
+			// Check preempt mode
+			if strings.Contains(strings.ToLower(qos.PreemptMode), queryLower) {
+				score += 5
+			}
+			// Check flags
+			for _, flag := range qos.Flags {
+				if strings.Contains(strings.ToLower(flag), queryLower) {
+					score += 3
+					break
+				}
+			}
+
+			if score > 0 {
+				results <- SearchResult{
+					Type:        "qos",
+					ID:          qos.Name,
+					Name:        qos.Name,
+					Description: fmt.Sprintf("Priority: %d | Preempt: %s | Max Jobs/User: %d", qos.Priority, qos.PreemptMode, qos.MaxJobsPerUser),
+					Score:       score,
+					Data:        qos,
 				}
 			}
 		}

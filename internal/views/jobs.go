@@ -27,6 +27,8 @@ type JobsView struct {
 	filter              string
 	stateFilter         []string
 	userFilter          string
+	partFilter          string
+	filterDebounce      *time.Timer
 	container           *tview.Flex
 	filterInput         *tview.InputField
 	statusBar           *tview.TextView
@@ -200,6 +202,10 @@ func (v *JobsView) refreshInternal() error {
 		opts.Users = []string{v.userFilter}
 	}
 
+	if v.partFilter != "" {
+		opts.Partitions = []string{v.partFilter}
+	}
+
 	jobList, err := v.client.Jobs().List(opts)
 	debug.Logger.Printf("Jobs client.List() finished at %s", time.Now().Format("15:04:05.000"))
 	if err != nil {
@@ -242,13 +248,13 @@ func (v *JobsView) Hints() []string {
 		"[yellow]s[white] Submit Job",
 		"[yellow]F2[white] Templates",
 		"[yellow]c[white] Cancel",
-		"[yellow]h[white] Hold",
+		"[yellow]H[white] Hold",
 		"[yellow]r[white] Release",
 		"[yellow]o[white] Output",
 		"[yellow]d[white] Dependencies",
 		"[yellow]q[white] Requeue",
 		"[yellow]b[white] Batch Ops",
-		"[yellow]m[white] Monitor",
+		"[yellow]m[white] Auto Refresh",
 		"[yellow]/[white] Filter",
 		"[yellow]F3[white] Adv Filter",
 		"[yellow]Ctrl+F[white] Search",
@@ -335,7 +341,6 @@ func (v *JobsView) jobsRuneHandlers() map[rune]func(*JobsView, *tcell.EventKey) 
 		' ': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.toggleRowSelection(); return nil },
 		'c': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.cancelSelectedJob(); return nil },
 		'C': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.cancelSelectedJob(); return nil },
-		'h': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.holdSelectedJob(); return nil },
 		'H': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.holdSelectedJob(); return nil },
 		'r': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.releaseSelectedJob(); return nil },
 		'R': func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { go func() { _ = v.Refresh() }(); return nil },
@@ -446,10 +451,21 @@ func (v *JobsView) updateTable() {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
-	// Apply advanced filter if active
+	// Apply partition filter client-side for immediate feedback
 	filteredJobs := v.jobs
+	if v.partFilter != "" {
+		var partFiltered []*dao.Job
+		for _, job := range filteredJobs {
+			if job.Partition == v.partFilter {
+				partFiltered = append(partFiltered, job)
+			}
+		}
+		filteredJobs = partFiltered
+	}
+
+	// Apply advanced filter if active
 	if v.advancedFilter != nil && len(v.advancedFilter.Expressions) > 0 {
-		filteredJobs = v.applyAdvancedFilter(v.jobs)
+		filteredJobs = v.applyAdvancedFilter(filteredJobs)
 	}
 
 	data := make([][]string, len(filteredJobs))
@@ -561,9 +577,86 @@ func (v *JobsView) onSort(_ int, _ bool) {
 
 // onFilterChange handles filter input changes
 func (v *JobsView) onFilterChange(text string) {
+	v.onFilterChangeDebounced(text, true)
+}
+
+// onFilterChangeDebounced handles filter changes with optional debouncing
+func (v *JobsView) onFilterChangeDebounced(text string, debounce bool) {
 	v.filter = text
+
+	// Check for partition filter syntax: "p:name" or "partition:name"
+	lowerText := strings.ToLower(text)
+	var newPartFilter string
+
+	if strings.HasPrefix(lowerText, "p:") {
+		newPartFilter = strings.TrimPrefix(text, text[:2]) // Keep original case
+	} else if strings.HasPrefix(lowerText, "partition:") {
+		newPartFilter = strings.TrimPrefix(text, text[:10]) // Keep original case
+	}
+
+	// If partition filter syntax detected
+	if newPartFilter != "" || strings.HasPrefix(lowerText, "p:") || strings.HasPrefix(lowerText, "partition:") {
+		v.table.SetFilter("") // Clear table filter, we filter at data level
+
+		// Only refresh if partition filter actually changed
+		if v.partFilter != newPartFilter {
+			v.partFilter = newPartFilter
+			v.scheduleFilterRefresh(debounce)
+		}
+		return
+	}
+
+	// Clear partition filter if no prefix
+	if v.partFilter != "" {
+		v.partFilter = ""
+		v.scheduleFilterRefresh(debounce)
+	}
+
 	v.table.SetFilter(text)
-	// Note: Status bar update removed since individual view status bars are no longer used
+}
+
+// scheduleFilterRefresh schedules a refresh with optional debouncing
+func (v *JobsView) scheduleFilterRefresh(debounce bool) {
+	// Cancel any pending debounced refresh
+	if v.filterDebounce != nil {
+		v.filterDebounce.Stop()
+		v.filterDebounce = nil
+	}
+
+	if debounce {
+		// Debounce: wait 300ms before refreshing
+		v.filterDebounce = time.AfterFunc(300*time.Millisecond, func() {
+			_ = v.Refresh()
+		})
+	} else {
+		// Immediate refresh
+		go func() { _ = v.Refresh() }()
+	}
+}
+
+// SetFilterText sets the filter input text programmatically
+func (v *JobsView) SetFilterText(text string) {
+	if v.filterInput != nil {
+		v.filterInput.SetText(text)
+	}
+	v.onFilterChange(text)
+}
+
+// SetPartitionFilter sets the partition filter using the filter input (no debounce)
+func (v *JobsView) SetPartitionFilter(partition string) {
+	// Set the filter input to "p:partition"
+	filterText := "p:" + partition
+	if v.filterInput != nil {
+		v.filterInput.SetText(filterText)
+	}
+
+	// Set partition filter and immediately update table with existing data
+	v.partFilter = partition
+	v.table.SetFilter("")
+	v.updateTable() // Immediate client-side filtering
+
+	// Also trigger API refresh for fresh data
+	go func() { _ = v.Refresh() }()
 }
 
 // onFilterDone handles filter input completion
@@ -1252,7 +1345,7 @@ func (v *JobsView) toggleRowSelection() {
 	}
 
 	// Get the current row index from the table
-	currentRow, _ := v.table.Table.GetSelection()
+	currentRow, _ := v.table.GetSelection()
 
 	// Toggle the row in the multi-select table
 	v.table.ToggleRow(currentRow)
@@ -1631,16 +1724,68 @@ func (v *JobsView) showGlobalSearch() {
 	}
 
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
+		// This callback is called from an event handler, so direct primitive
+		// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
+		debug.Logger.Printf("[JobsView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "job":
-			// Focus on the selected job
 			if job, ok := result.Data.(*dao.Job); ok {
 				v.focusOnJob(job.ID)
 			}
-		default:
-			// For other types, just close the search
-			// Note: Status bar update removed since individual view status bars are no longer used
+		case "node":
+			if node, ok := result.Data.(*dao.Node); ok {
+				v.SwitchToView("nodes")
+				if nv, err := v.viewMgr.GetView("nodes"); err == nil {
+					if nodesView, ok := nv.(*NodesView); ok {
+						nodesView.focusOnNode(node.Name)
+					}
+				}
+			}
+		case "partition":
+			if partition, ok := result.Data.(*dao.Partition); ok {
+				v.SwitchToView("partitions")
+				if pv, err := v.viewMgr.GetView("partitions"); err == nil {
+					if partitionsView, ok := pv.(*PartitionsView); ok {
+						partitionsView.focusOnPartition(partition.Name)
+					}
+				}
+			}
+		case "user":
+			if user, ok := result.Data.(*dao.User); ok {
+				v.SwitchToView("users")
+				if uv, err := v.viewMgr.GetView("users"); err == nil {
+					if usersView, ok := uv.(*UsersView); ok {
+						usersView.focusOnUser(user.Name)
+					}
+				}
+			}
+		case "account":
+			if account, ok := result.Data.(*dao.Account); ok {
+				v.SwitchToView("accounts")
+				if av, err := v.viewMgr.GetView("accounts"); err == nil {
+					if accountsView, ok := av.(*AccountsView); ok {
+						accountsView.focusOnAccount(account.Name)
+					}
+				}
+			}
+		case "qos":
+			if qos, ok := result.Data.(*dao.QoS); ok {
+				v.SwitchToView("qos")
+				if qv, err := v.viewMgr.GetView("qos"); err == nil {
+					if qosView, ok := qv.(*QoSView); ok {
+						qosView.focusOnQoS(qos.Name)
+					}
+				}
+			}
+		case "reservation":
+			if reservation, ok := result.Data.(*dao.Reservation); ok {
+				v.SwitchToView("reservations")
+				if rv, err := v.viewMgr.GetView("reservations"); err == nil {
+					if reservationsView, ok := rv.(*ReservationsView); ok {
+						reservationsView.focusOnReservation(reservation.Name)
+					}
+				}
+			}
 		}
 	})
 }

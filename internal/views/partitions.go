@@ -176,10 +176,10 @@ func (v *PartitionsView) Stop() error {
 func (v *PartitionsView) Hints() []string {
 	hints := []string{
 		"[yellow]Enter[white] Details",
-		"[yellow]j[white] Jobs",
-		"[yellow]n[white] Nodes",
-		"[yellow]a[white] Analytics",
-		"[yellow]w[white] Wait Times",
+		"[yellow]J[white] Jobs",
+		"[yellow]N[white] Nodes",
+		"[yellow]A[white] Analytics",
+		"[yellow]W[white] Wait Times",
 		"[yellow]/[white] Filter",
 		"[yellow]F3[white] Adv Filter",
 		"[yellow]Ctrl+F[white] Search",
@@ -213,11 +213,8 @@ func (v *PartitionsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	// Handle other keyboard events
-	if result := v.handlePartitionKey(event); result != nil {
-		return result
-	}
-
-	return event
+	// handlePartitionKey returns nil if handled, event if not handled
+	return v.handlePartitionKey(event)
 }
 
 // isModalOpen checks if a modal page is currently open
@@ -226,6 +223,7 @@ func (v *PartitionsView) isModalOpen() bool {
 }
 
 // handlePartitionKey handles non-filter keyboard events
+// Returns nil if the key was handled (consumed), or the event if not handled
 func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventKey {
 	// Handle advanced filter mode ESC
 	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
@@ -244,7 +242,8 @@ func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventK
 		return nil
 	}
 
-	return nil
+	// Key not handled - return event so it can be processed by the table
+	return event
 }
 
 // partitionsKeyHandlers returns a map of function key handlers
@@ -258,16 +257,16 @@ func (v *PartitionsView) partitionsKeyHandlers() map[tcell.Key]func() {
 
 func (v *PartitionsView) handleRuneCommand(r rune) bool {
 	switch r {
-	case 'j', 'J':
+	case 'J':
 		v.showPartitionJobs()
 		return true
-	case 'n', 'N':
+	case 'N':
 		v.showPartitionNodes()
 		return true
-	case 'a', 'A':
+	case 'A':
 		v.showPartitionAnalytics()
 		return true
-	case 'w', 'W':
+	case 'W':
 		v.showWaitTimeAnalytics()
 		return true
 	case 'R':
@@ -707,10 +706,15 @@ func (v *PartitionsView) showPartitionJobs() {
 		return
 	}
 
-	_ = data[0] // partitionName not used for TODO feature yet
+	partitionName := data[0]
+	v.SwitchToView("jobs")
 
-	// TODO: Switch to jobs view with partition filter
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Apply partition filter to Jobs view (filters at data fetch level)
+	if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+		if jobsView, ok := jv.(*JobsView); ok {
+			jobsView.SetPartitionFilter(partitionName)
+		}
+	}
 }
 
 // showPartitionNodes shows nodes for the selected partition
@@ -720,10 +724,15 @@ func (v *PartitionsView) showPartitionNodes() {
 		return
 	}
 
-	_ = data[0] // partitionName not used for TODO feature yet
+	partitionName := data[0]
+	v.SwitchToView("nodes")
 
-	// TODO: Switch to nodes view with partition filter
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Apply partition filter to Nodes view (filters at data fetch level)
+	if nv, err := v.viewMgr.GetView("nodes"); err == nil {
+		if nodesView, ok := nv.(*NodesView); ok {
+			nodesView.SetPartitionFilter(partitionName)
+		}
+	}
 }
 
 // showPartitionAnalytics shows comprehensive analytics for the selected partition
@@ -1218,16 +1227,67 @@ func (v *PartitionsView) showGlobalSearch() {
 	}
 
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
+		// This callback is called from an event handler, so direct primitive
+		// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
 		switch result.Type {
 		case "partition":
-			// Focus on the selected partition
 			if partition, ok := result.Data.(*dao.Partition); ok {
 				v.focusOnPartition(partition.Name)
 			}
-		default:
-			// For other types, just close the search
-			// Note: Status bar update removed since individual view status bars are no longer used
+		case "job":
+			if job, ok := result.Data.(*dao.Job); ok {
+				v.SwitchToView("jobs")
+				if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+					if jobsView, ok := jv.(*JobsView); ok {
+						jobsView.focusOnJob(job.ID)
+					}
+				}
+			}
+		case "node":
+			if node, ok := result.Data.(*dao.Node); ok {
+				v.SwitchToView("nodes")
+				if nv, err := v.viewMgr.GetView("nodes"); err == nil {
+					if nodesView, ok := nv.(*NodesView); ok {
+						nodesView.focusOnNode(node.Name)
+					}
+				}
+			}
+		case "user":
+			if user, ok := result.Data.(*dao.User); ok {
+				v.SwitchToView("users")
+				if uv, err := v.viewMgr.GetView("users"); err == nil {
+					if usersView, ok := uv.(*UsersView); ok {
+						usersView.focusOnUser(user.Name)
+					}
+				}
+			}
+		case "account":
+			if account, ok := result.Data.(*dao.Account); ok {
+				v.SwitchToView("accounts")
+				if av, err := v.viewMgr.GetView("accounts"); err == nil {
+					if accountsView, ok := av.(*AccountsView); ok {
+						accountsView.focusOnAccount(account.Name)
+					}
+				}
+			}
+		case "qos":
+			if qos, ok := result.Data.(*dao.QoS); ok {
+				v.SwitchToView("qos")
+				if qv, err := v.viewMgr.GetView("qos"); err == nil {
+					if qosView, ok := qv.(*QoSView); ok {
+						qosView.focusOnQoS(qos.Name)
+					}
+				}
+			}
+		case "reservation":
+			if reservation, ok := result.Data.(*dao.Reservation); ok {
+				v.SwitchToView("reservations")
+				if rv, err := v.viewMgr.GetView("reservations"); err == nil {
+					if reservationsView, ok := rv.(*ReservationsView); ok {
+						reservationsView.focusOnReservation(reservation.Name)
+					}
+				}
+			}
 		}
 	})
 }

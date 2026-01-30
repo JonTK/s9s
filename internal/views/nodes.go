@@ -3,6 +3,8 @@ package views
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +32,7 @@ type NodesView struct {
 	filter         string
 	stateFilter    []string
 	partFilter     string
+	filterDebounce *time.Timer
 	groupBy        string // "none", "partition", "state", "features"
 	groupExpanded  map[string]bool
 	container      *tview.Flex
@@ -334,10 +337,24 @@ func (v *NodesView) updateTable() {
 
 // updateTableFlat updates the table with flat node data
 func (v *NodesView) updateTableFlat() {
-	// Apply advanced filter if active
+	// Apply partition filter client-side for immediate feedback
 	filteredNodes := v.nodes
+	if v.partFilter != "" {
+		var partFiltered []*dao.Node
+		for _, node := range filteredNodes {
+			for _, part := range node.Partitions {
+				if part == v.partFilter {
+					partFiltered = append(partFiltered, node)
+					break
+				}
+			}
+		}
+		filteredNodes = partFiltered
+	}
+
+	// Apply advanced filter if active
 	if v.advancedFilter != nil && len(v.advancedFilter.Expressions) > 0 {
-		filteredNodes = v.applyAdvancedFilter(v.nodes)
+		filteredNodes = v.applyAdvancedFilter(filteredNodes)
 	}
 
 	data := make([][]string, len(filteredNodes))
@@ -636,9 +653,86 @@ func (v *NodesView) onSort(_ int, _ bool) {
 
 // onFilterChange handles filter input changes
 func (v *NodesView) onFilterChange(text string) {
+	v.onFilterChangeDebounced(text, true)
+}
+
+// onFilterChangeDebounced handles filter changes with optional debouncing
+func (v *NodesView) onFilterChangeDebounced(text string, debounce bool) {
 	v.filter = text
+
+	// Check for partition filter syntax: "p:name" or "partition:name"
+	lowerText := strings.ToLower(text)
+	var newPartFilter string
+
+	if strings.HasPrefix(lowerText, "p:") {
+		newPartFilter = strings.TrimPrefix(text, text[:2]) // Keep original case
+	} else if strings.HasPrefix(lowerText, "partition:") {
+		newPartFilter = strings.TrimPrefix(text, text[:10]) // Keep original case
+	}
+
+	// If partition filter syntax detected
+	if newPartFilter != "" || strings.HasPrefix(lowerText, "p:") || strings.HasPrefix(lowerText, "partition:") {
+		v.table.SetFilter("") // Clear table filter, we filter at data level
+
+		// Only refresh if partition filter actually changed
+		if v.partFilter != newPartFilter {
+			v.partFilter = newPartFilter
+			v.scheduleFilterRefresh(debounce)
+		}
+		return
+	}
+
+	// Clear partition filter if no prefix
+	if v.partFilter != "" {
+		v.partFilter = ""
+		v.scheduleFilterRefresh(debounce)
+	}
+
 	v.table.SetFilter(text)
-	// Note: Status bar update removed since individual view status bars are no longer used
+}
+
+// scheduleFilterRefresh schedules a refresh with optional debouncing
+func (v *NodesView) scheduleFilterRefresh(debounce bool) {
+	// Cancel any pending debounced refresh
+	if v.filterDebounce != nil {
+		v.filterDebounce.Stop()
+		v.filterDebounce = nil
+	}
+
+	if debounce {
+		// Debounce: wait 300ms before refreshing
+		v.filterDebounce = time.AfterFunc(300*time.Millisecond, func() {
+			_ = v.Refresh()
+		})
+	} else {
+		// Immediate refresh
+		go func() { _ = v.Refresh() }()
+	}
+}
+
+// SetFilterText sets the filter input text programmatically
+func (v *NodesView) SetFilterText(text string) {
+	if v.filterInput != nil {
+		v.filterInput.SetText(text)
+	}
+	v.onFilterChange(text)
+}
+
+// SetPartitionFilter sets the partition filter using the filter input (no debounce)
+func (v *NodesView) SetPartitionFilter(partition string) {
+	// Set the filter input to "p:partition"
+	filterText := "p:" + partition
+	if v.filterInput != nil {
+		v.filterInput.SetText(filterText)
+	}
+
+	// Set partition filter and immediately update table with existing data
+	v.partFilter = partition
+	v.table.SetFilter("")
+	v.updateTable() // Immediate client-side filtering
+
+	// Also trigger API refresh for fresh data
+	go func() { _ = v.Refresh() }()
 }
 
 // onFilterDone handles filter input completion
@@ -679,49 +773,75 @@ func (v *NodesView) drainSelectedNode() {
 			}
 			go v.performDrainNode(nodeName, reason)
 		}
-		v.app.SetRoot(v.container, true)
 	})
 
 	input.SetBorder(true).
 		SetTitle(" Drain Node ").
 		SetTitleAlign(tview.AlignCenter)
 
-	v.app.SetRoot(input, true)
+	// Handle ESC key to close modal
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			if v.pages != nil {
+				v.pages.RemovePage("drain-input")
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Use pages API instead of SetRoot for proper modal management
+	if v.pages != nil {
+		v.pages.AddPage("drain-input", input, true, true)
+		v.app.SetFocus(input)
+	}
 }
 
 // performDrainNode performs the node drain operation
 func (v *NodesView) performDrainNode(nodeName, reason string) {
+	// Remove the drain input modal via app queue to ensure thread safety
+	if v.pages != nil && v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			v.pages.RemovePage("drain-input")
+		})
+	}
+
+	// Perform the drain operation
 	err := v.client.Nodes().Drain(nodeName, reason)
-	if err != nil {
-		// Show error modal
-		if v.pages != nil {
-			errorModal := tview.NewModal().
-				SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
-				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(_ int, _ string) {
-					v.pages.RemovePage("error")
-					v.app.SetFocus(v.table.Table)
-				})
-			v.pages.AddPage("error", errorModal, true, true)
-		}
-		return
-	}
 
-	// Show success message
-	if v.pages != nil {
-		successModal := tview.NewModal().
-			SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
-			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(_ int, _ string) {
-				v.pages.RemovePage("success")
-				v.app.SetFocus(v.table.Table)
-			})
-		v.pages.AddPage("success", successModal, true, true)
-	}
+	// Handle result via app queue to ensure thread safety
+	if v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			if err != nil {
+				// Show error modal
+				if v.pages != nil {
+					errorModal := tview.NewModal().
+						SetText(fmt.Sprintf("Failed to drain node %s: %v", nodeName, err)).
+						AddButtons([]string{"OK"}).
+						SetDoneFunc(func(_ int, _ string) {
+							v.pages.RemovePage("error")
+							v.app.SetFocus(v.table.Table)
+						})
+					v.pages.AddPage("error", errorModal, true, true)
+				}
+				return
+			}
 
-	// Refresh the view
-	time.Sleep(500 * time.Millisecond)
-	_ = v.Refresh()
+			// Show success message
+			if v.pages != nil {
+				successModal := tview.NewModal().
+					SetText(fmt.Sprintf("Node %s drained successfully with reason: %s", nodeName, reason)).
+					AddButtons([]string{"OK"}).
+					SetDoneFunc(func(_ int, _ string) {
+						v.pages.RemovePage("success")
+						v.app.SetFocus(v.table.Table)
+						// Refresh the view after modal is closed
+						go func() { _ = v.Refresh() }()
+					})
+				v.pages.AddPage("success", successModal, true, true)
+			}
+		})
+	}
 }
 
 // resumeSelectedNode resumes the selected node
@@ -758,11 +878,15 @@ func (v *NodesView) resumeSelectedNode() {
 		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				go v.performResumeNode(nodeName)
+			} else if v.pages != nil {
+				// User clicked "No" - remove modal
+				v.pages.RemovePage("resume-confirm")
 			}
-			v.app.SetRoot(v.container, true)
 		})
 
-	v.app.SetRoot(modal, true)
+	if v.pages != nil {
+		v.pages.AddPage("resume-confirm", modal, true, true)
+	}
 }
 
 // findNode finds a node by name in the node list
@@ -815,38 +939,49 @@ func (v *NodesView) showResumeError(nodeName, state string) {
 
 // performResumeNode performs the node resume operation
 func (v *NodesView) performResumeNode(nodeName string) {
+	// Remove the resume confirmation modal via app queue to ensure thread safety
+	if v.pages != nil && v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			v.pages.RemovePage("resume-confirm")
+		})
+	}
+
+	// Perform the resume operation
 	err := v.client.Nodes().Resume(nodeName)
-	if err != nil {
-		// Log the error for debugging
-		if v.pages != nil {
-			// Show error modal
-			errorModal := tview.NewModal().
-				SetText(fmt.Sprintf("Failed to resume node %s: %v", nodeName, err)).
-				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(_ int, _ string) {
-					v.pages.RemovePage("error")
-					v.app.SetFocus(v.table.Table)
-				})
-			v.pages.AddPage("error", errorModal, true, true)
-		}
-		return
-	}
 
-	// Show success message
-	if v.pages != nil {
-		successModal := tview.NewModal().
-			SetText(fmt.Sprintf("Node %s resumed successfully", nodeName)).
-			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(_ int, _ string) {
-				v.pages.RemovePage("success")
-				v.app.SetFocus(v.table.Table)
-			})
-		v.pages.AddPage("success", successModal, true, true)
-	}
+	// Handle result via app queue to ensure thread safety
+	if v.app != nil {
+		v.app.QueueUpdateDraw(func() {
+			if err != nil {
+				// Show error modal
+				if v.pages != nil {
+					errorModal := tview.NewModal().
+						SetText(fmt.Sprintf("Failed to resume node %s: %v", nodeName, err)).
+						AddButtons([]string{"OK"}).
+						SetDoneFunc(func(_ int, _ string) {
+							v.pages.RemovePage("error")
+							v.app.SetFocus(v.table.Table)
+						})
+					v.pages.AddPage("error", errorModal, true, true)
+				}
+				return
+			}
 
-	// Refresh the view
-	time.Sleep(500 * time.Millisecond)
-	_ = v.Refresh()
+			// Show success message
+			if v.pages != nil {
+				successModal := tview.NewModal().
+					SetText(fmt.Sprintf("Node %s resumed successfully", nodeName)).
+					AddButtons([]string{"OK"}).
+					SetDoneFunc(func(_ int, _ string) {
+						v.pages.RemovePage("success")
+						v.app.SetFocus(v.table.Table)
+						// Refresh the view after modal is closed
+						go func() { _ = v.Refresh() }()
+					})
+				v.pages.AddPage("success", successModal, true, true)
+			}
+		})
+	}
 }
 
 // showNodeDetails shows detailed information for the selected node
@@ -1107,12 +1242,26 @@ func (v *NodesView) showSSHOptionsModal(nodeName string) {
 	}
 }
 
-// sshToTerminal opens SSH in a new terminal (placeholder implementation)
+// sshToTerminal opens SSH connection directly in the current terminal
+// This suspends s9s, runs SSH, and returns when the session ends
 func (v *NodesView) sshToTerminal(nodeName string) {
-	// This would actually open SSH in external terminal
-	// For now, show a notification about the SSH command
-	message := fmt.Sprintf("SSH command to run:\n\nssh %s\n\nNote: This would normally open in a new terminal window.", nodeName)
-	v.showNotification("SSH Terminal", message)
+	// Suspend s9s application to free the terminal
+	v.app.Suspend(func() {
+		// Create SSH command with background context (interactive terminal session)
+		cmd := exec.CommandContext(context.Background(), "ssh", nodeName)
+
+		// Give SSH direct control of stdin/stdout/stderr
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Run SSH (error ignored as terminal handles its own error display)
+		_ = cmd.Run()
+
+		// Show brief message before resuming
+		fmt.Println("\nReturning to s9s...")
+		time.Sleep(500 * time.Millisecond)
+	})
 }
 
 // testSSHConnection tests SSH connectivity to the node
@@ -1271,16 +1420,34 @@ func (v *NodesView) promptPartitionFilter() {
 	input.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
 			v.partFilter = input.GetText()
+			if v.pages != nil {
+				v.pages.RemovePage("partition-filter")
+			}
+			// Refresh the view after modal is closed
 			go func() { _ = v.Refresh() }()
 		}
-		v.app.SetRoot(v.container, true)
 	})
 
 	input.SetBorder(true).
 		SetTitle(" Partition Filter ").
 		SetTitleAlign(tview.AlignCenter)
 
-	v.app.SetRoot(input, true)
+	// Handle ESC key to close modal
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			if v.pages != nil {
+				v.pages.RemovePage("partition-filter")
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Use pages API instead of SetRoot for proper modal management
+	if v.pages != nil {
+		v.pages.AddPage("partition-filter", input, true, true)
+		v.app.SetFocus(input)
+	}
 }
 
 // groupNodes groups nodes based on the current groupBy setting
@@ -1504,16 +1671,68 @@ func (v *NodesView) showGlobalSearch() {
 	}
 
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
+		// This callback is called from an event handler, so direct primitive
+		// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
+		debug.Logger.Printf("[NodesView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "node":
-			// Focus on the selected node
 			if node, ok := result.Data.(*dao.Node); ok {
 				v.focusOnNode(node.Name)
 			}
-		default:
-			// For other types, just close the search
-			// Note: Status bar update removed since individual view status bars are no longer used
+		case "job":
+			if job, ok := result.Data.(*dao.Job); ok {
+				v.SwitchToView("jobs")
+				if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+					if jobsView, ok := jv.(*JobsView); ok {
+						jobsView.focusOnJob(job.ID)
+					}
+				}
+			}
+		case "partition":
+			if partition, ok := result.Data.(*dao.Partition); ok {
+				v.SwitchToView("partitions")
+				if pv, err := v.viewMgr.GetView("partitions"); err == nil {
+					if partitionsView, ok := pv.(*PartitionsView); ok {
+						partitionsView.focusOnPartition(partition.Name)
+					}
+				}
+			}
+		case "user":
+			if user, ok := result.Data.(*dao.User); ok {
+				v.SwitchToView("users")
+				if uv, err := v.viewMgr.GetView("users"); err == nil {
+					if usersView, ok := uv.(*UsersView); ok {
+						usersView.focusOnUser(user.Name)
+					}
+				}
+			}
+		case "account":
+			if account, ok := result.Data.(*dao.Account); ok {
+				v.SwitchToView("accounts")
+				if av, err := v.viewMgr.GetView("accounts"); err == nil {
+					if accountsView, ok := av.(*AccountsView); ok {
+						accountsView.focusOnAccount(account.Name)
+					}
+				}
+			}
+		case "qos":
+			if qos, ok := result.Data.(*dao.QoS); ok {
+				v.SwitchToView("qos")
+				if qv, err := v.viewMgr.GetView("qos"); err == nil {
+					if qosView, ok := qv.(*QoSView); ok {
+						qosView.focusOnQoS(qos.Name)
+					}
+				}
+			}
+		case "reservation":
+			if reservation, ok := result.Data.(*dao.Reservation); ok {
+				v.SwitchToView("reservations")
+				if rv, err := v.viewMgr.GetView("reservations"); err == nil {
+					if reservationsView, ok := rv.(*ReservationsView); ok {
+						reservationsView.focusOnReservation(reservation.Name)
+					}
+				}
+			}
 		}
 	})
 }
@@ -1543,17 +1762,39 @@ func (v *NodesView) showSSHTerminalManager(nodeName string) {
 // focusOnNode focuses the table on a specific node
 func (v *NodesView) focusOnNode(nodeName string) {
 	v.mu.RLock()
-	defer v.mu.RUnlock()
-
-	// Find the node in our node list
+	nodeIdx := -1
 	for i, node := range v.nodes {
 		if node.Name == nodeName {
-			// Select the row in the table
-			v.table.Select(i, 0)
-			// Note: Status bar update removed since individual view status bars are no longer used
-			return
+			nodeIdx = i
+			break
 		}
 	}
+	v.mu.RUnlock()
 
-	// Note: Status bar update removed since individual view status bars are no longer used
+	if nodeIdx == -1 {
+		return // Node not found
+	}
+
+	// Clear any active filters to ensure the node is visible in the table
+	if v.table != nil {
+		v.table.SetFilter("")
+	}
+
+	// Clear the filter input field
+	if v.filterInput != nil {
+		v.filterInput.SetText("")
+	}
+
+	// Clear advanced filters
+	v.advancedFilter = nil
+	v.isAdvancedMode = false
+
+	// Select the row in the table
+	v.table.Select(nodeIdx, 0)
+
+	// Set focus directly - this is safe whether called from event handler or elsewhere
+	// The main event loop will handle the redraw automatically
+	if v.app != nil && v.table != nil && v.table.Table != nil {
+		v.app.SetFocus(v.table.Table)
+	}
 }

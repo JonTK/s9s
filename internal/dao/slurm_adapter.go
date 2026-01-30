@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	osuser "os/user"
 	"strings"
 	"time"
 
@@ -210,14 +211,30 @@ func (j *jobManager) List(opts *ListJobsOptions) (*JobList, error) {
 	debug.Logger.Printf("Jobs List() returned %d jobs, total: %d", len(result.Jobs), result.Total)
 
 	// Convert to our types
-	jobs := make([]*Job, len(result.Jobs))
-	for i, job := range result.Jobs {
-		jobs[i] = convertJob(&job)
+	jobs := make([]*Job, 0, len(result.Jobs))
+	for _, job := range result.Jobs {
+		converted := convertJob(&job)
+
+		// Apply client-side partition filter if specified
+		if opts != nil && len(opts.Partitions) > 0 {
+			matched := false
+			for _, filterPart := range opts.Partitions {
+				if converted.Partition == filterPart {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		jobs = append(jobs, converted)
 	}
 
 	return &JobList{
 		Jobs:  jobs,
-		Total: result.Total,
+		Total: len(jobs),
 	}, nil
 }
 
@@ -454,7 +471,6 @@ func (n *nodeManager) List(opts *ListNodesOptions) (*NodeList, error) {
 	clientOpts := &slurm.ListNodesOptions{}
 	if opts != nil {
 		clientOpts.States = opts.States
-		// Note: Partitions may need to be handled differently
 	}
 
 	result, err := n.client.List(n.ctx, clientOpts)
@@ -462,15 +478,36 @@ func (n *nodeManager) List(opts *ListNodesOptions) (*NodeList, error) {
 		return nil, errs.SlurmAPI("list nodes", err)
 	}
 
-	// Convert to our types
-	nodes := make([]*Node, len(result.Nodes))
-	for i, node := range result.Nodes {
-		nodes[i] = convertNode(&node)
+	// Convert to our types with client-side partition filtering
+	nodes := make([]*Node, 0, len(result.Nodes))
+	for _, node := range result.Nodes {
+		converted := convertNode(&node)
+
+		// Apply client-side partition filter if specified
+		if opts != nil && len(opts.Partitions) > 0 {
+			matched := false
+			for _, filterPart := range opts.Partitions {
+				for _, nodePart := range converted.Partitions {
+					if nodePart == filterPart {
+						matched = true
+						break
+					}
+				}
+				if matched {
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		nodes = append(nodes, converted)
 	}
 
 	return &NodeList{
 		Nodes: nodes,
-		Total: result.Total,
+		Total: len(nodes),
 	}, nil
 }
 
@@ -668,10 +705,21 @@ func convertJob(job *slurm.Job) *Job {
 		exitCode = &job.ExitCode
 	}
 
+	// Prefer UserName if available, fall back to UserID with system lookup
+	username := job.UserName
+	if username == "" {
+		// Try to resolve numeric UID to username via system call
+		if u, err := osuser.LookupId(job.UserID); err == nil {
+			username = u.Username
+		} else {
+			username = job.UserID // Fall back to raw ID
+		}
+	}
+
 	return &Job{
 		ID:         job.ID,
 		Name:       job.Name,
-		User:       job.UserID,
+		User:       username,
 		Account:    "", // Not available in basic Job struct
 		Partition:  job.Partition,
 		State:      job.State,
