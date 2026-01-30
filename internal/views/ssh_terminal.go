@@ -1,7 +1,6 @@
 package views
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -258,29 +257,25 @@ func (v *SSHTerminalView) connectToSelectedNode() {
 		return
 	}
 
-	if v.sessionManager == nil {
-		v.fallbackSSHConnection(v.selectedNode)
-		return
-	}
+	// Suspend s9s and execute SSH directly
+	v.app.Suspend(func() {
+		// Create SSH command
+		cmd := exec.Command("ssh", v.selectedNode)
 
-	v.updateStatus(fmt.Sprintf("[yellow]Connecting to %s...[white]", v.selectedNode))
+		// Give SSH direct control of stdin/stdout/stderr
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	// Create or get existing session
-	session, err := v.sessionManager.CreateSession(v.selectedNode, "")
-	if err != nil {
-		v.updateStatus(fmt.Sprintf("[red]Failed to create session: %v[white]", err))
-		return
-	}
+		// Run SSH
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "\nSSH connection error: %v\n", err)
+		}
 
-	// Connect session
-	if err := v.sessionManager.ConnectSession(session.ID); err != nil {
-		v.updateStatus(fmt.Sprintf("[red]Connection failed: %v[white]", err))
-		return
-	}
-
-	v.activeSession = session
-	v.updateStatus(fmt.Sprintf("[green]Connected to %s[white]", v.selectedNode))
-	v.updateNodeList()
+		// Show brief message before resuming
+		fmt.Println("\nReturning to s9s...")
+		time.Sleep(500 * time.Millisecond)
+	})
 }
 
 // createNewConnection creates a new SSH connection
@@ -539,23 +534,25 @@ func (v *SSHTerminalView) connectToNode(hostname, username string) {
 
 // fallbackSSHConnection uses basic SSH when session manager is not available
 func (v *SSHTerminalView) fallbackSSHConnection(hostname string) {
-	v.updateStatus(fmt.Sprintf("[yellow]Connecting to %s (basic SSH)...[white]", hostname))
+	// Suspend s9s and execute SSH directly
+	v.app.Suspend(func() {
+		// Create SSH command
+		cmd := exec.Command("ssh", hostname)
 
-	v.close()
-
-	// Use basic SSH connection
-	go func() {
-		cmd := exec.CommandContext(context.Background(), "ssh", hostname)
+		// Give SSH direct control of stdin/stdout/stderr
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
+		// Run SSH
 		if err := cmd.Run(); err != nil {
-			v.app.QueueUpdateDraw(func() {
-				v.showErrorModal(fmt.Sprintf("SSH connection failed: %v", err))
-			})
+			fmt.Fprintf(os.Stderr, "\nSSH connection error: %v\n", err)
 		}
-	}()
+
+		// Show brief message before resuming
+		fmt.Println("\nReturning to s9s...")
+		time.Sleep(500 * time.Millisecond)
+	})
 }
 
 // updateStatus updates the status bar
