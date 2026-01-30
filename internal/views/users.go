@@ -278,7 +278,8 @@ func (v *UsersView) updateTable() {
 	if v.showAdminsOnly {
 		var admins []*dao.User
 		for _, user := range filteredUsers {
-			if user.AdminLevel == "Administrator" || user.AdminLevel == "Operator" {
+			adminLevel := strings.ToLower(user.AdminLevel)
+			if adminLevel == "administrator" || adminLevel == "operator" {
 				admins = append(admins, user)
 			}
 		}
@@ -297,11 +298,11 @@ func (v *UsersView) updateTable() {
 
 		// Format admin level with color
 		adminLevel := user.AdminLevel
-		switch adminLevel {
-		case "Administrator":
-			adminLevel = fmt.Sprintf("[red]%s[white]", adminLevel)
-		case "Operator":
-			adminLevel = fmt.Sprintf("[yellow]%s[white]", adminLevel)
+		switch strings.ToLower(adminLevel) {
+		case "administrator":
+			adminLevel = fmt.Sprintf("[red]%s[white]", user.AdminLevel)
+		case "operator":
+			adminLevel = fmt.Sprintf("[yellow]%s[white]", user.AdminLevel)
 		}
 
 		// Format accounts list
@@ -411,6 +412,9 @@ func (v *UsersView) onFilterDone(_ tcell.Key) {
 func (v *UsersView) toggleAdminFilter() {
 	v.showAdminsOnly = !v.showAdminsOnly
 	v.updateTable()
+	if v.app != nil {
+		v.app.QueueUpdateDraw(func() {})
+	}
 }
 
 // showUserDetails shows detailed information for the selected user
@@ -490,10 +494,10 @@ func (v *UsersView) formatUserDetails(user *dao.User) string {
 
 	// Admin level with color
 	adminColor := "white"
-	switch user.AdminLevel {
-	case "Administrator":
+	switch strings.ToLower(user.AdminLevel) {
+	case "administrator":
 		adminColor = "red"
-	case "Operator":
+	case "operator":
 		adminColor = "yellow"
 	}
 	details.WriteString(fmt.Sprintf("[yellow]Admin Level:[white] [%s]%s[white]\n", adminColor, user.AdminLevel))
