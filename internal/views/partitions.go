@@ -176,10 +176,10 @@ func (v *PartitionsView) Stop() error {
 func (v *PartitionsView) Hints() []string {
 	hints := []string{
 		"[yellow]Enter[white] Details",
-		"[yellow]j[white] Jobs",
-		"[yellow]n[white] Nodes",
-		"[yellow]a[white] Analytics",
-		"[yellow]w[white] Wait Times",
+		"[yellow]J[white] Jobs",
+		"[yellow]N[white] Nodes",
+		"[yellow]A[white] Analytics",
+		"[yellow]W[white] Wait Times",
 		"[yellow]/[white] Filter",
 		"[yellow]F3[white] Adv Filter",
 		"[yellow]Ctrl+F[white] Search",
@@ -257,16 +257,16 @@ func (v *PartitionsView) partitionsKeyHandlers() map[tcell.Key]func() {
 
 func (v *PartitionsView) handleRuneCommand(r rune) bool {
 	switch r {
-	case 'j', 'J':
+	case 'J':
 		v.showPartitionJobs()
 		return true
-	case 'n', 'N':
+	case 'N':
 		v.showPartitionNodes()
 		return true
-	case 'a', 'A':
+	case 'A':
 		v.showPartitionAnalytics()
 		return true
-	case 'w', 'W':
+	case 'W':
 		v.showWaitTimeAnalytics()
 		return true
 	case 'R':
