@@ -782,11 +782,13 @@ func (v *NodesView) resumeSelectedNode() {
 		SetText(fmt.Sprintf("Resume node %s?", nodeName)).
 		AddButtons([]string{"Yes", "No"}).
 		SetDoneFunc(func(buttonIndex int, _ string) {
-			if v.pages != nil {
-				v.pages.RemovePage("resume-confirm")
-			}
 			if buttonIndex == 0 {
 				go v.performResumeNode(nodeName)
+			} else {
+				// User clicked "No" - remove modal
+				if v.pages != nil {
+					v.pages.RemovePage("resume-confirm")
+				}
 			}
 		})
 
