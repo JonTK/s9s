@@ -213,11 +213,8 @@ func (v *PartitionsView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	// Handle other keyboard events
-	if result := v.handlePartitionKey(event); result != nil {
-		return result
-	}
-
-	return event
+	// handlePartitionKey returns nil if handled, event if not handled
+	return v.handlePartitionKey(event)
 }
 
 // isModalOpen checks if a modal page is currently open
@@ -226,6 +223,7 @@ func (v *PartitionsView) isModalOpen() bool {
 }
 
 // handlePartitionKey handles non-filter keyboard events
+// Returns nil if the key was handled (consumed), or the event if not handled
 func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventKey {
 	// Handle advanced filter mode ESC
 	if v.isAdvancedMode && event.Key() == tcell.KeyEsc {
@@ -244,7 +242,8 @@ func (v *PartitionsView) handlePartitionKey(event *tcell.EventKey) *tcell.EventK
 		return nil
 	}
 
-	return nil
+	// Key not handled - return event so it can be processed by the table
+	return event
 }
 
 // partitionsKeyHandlers returns a map of function key handlers
@@ -707,10 +706,15 @@ func (v *PartitionsView) showPartitionJobs() {
 		return
 	}
 
-	_ = data[0] // partitionName not used for TODO feature yet
+	partitionName := data[0]
+	v.SwitchToView("jobs")
 
-	// TODO: Switch to jobs view with partition filter
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Apply partition filter to Jobs view (filters at data fetch level)
+	if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+		if jobsView, ok := jv.(*JobsView); ok {
+			jobsView.SetPartitionFilter(partitionName)
+		}
+	}
 }
 
 // showPartitionNodes shows nodes for the selected partition
@@ -720,10 +724,15 @@ func (v *PartitionsView) showPartitionNodes() {
 		return
 	}
 
-	_ = data[0] // partitionName not used for TODO feature yet
+	partitionName := data[0]
+	v.SwitchToView("nodes")
 
-	// TODO: Switch to nodes view with partition filter
-	// Note: Status bar update removed since individual view status bars are no longer used
+	// Apply partition filter to Nodes view (filters at data fetch level)
+	if nv, err := v.viewMgr.GetView("nodes"); err == nil {
+		if nodesView, ok := nv.(*NodesView); ok {
+			nodesView.SetPartitionFilter(partitionName)
+		}
+	}
 }
 
 // showPartitionAnalytics shows comprehensive analytics for the selected partition

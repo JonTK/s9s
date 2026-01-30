@@ -643,6 +643,20 @@ func (v *NodesView) onFilterChange(text string) {
 	// Note: Status bar update removed since individual view status bars are no longer used
 }
 
+// SetFilterText sets the filter input text programmatically
+func (v *NodesView) SetFilterText(text string) {
+	if v.filterInput != nil {
+		v.filterInput.SetText(text)
+	}
+	v.onFilterChange(text)
+}
+
+// SetPartitionFilter sets the partition filter and refreshes the view
+func (v *NodesView) SetPartitionFilter(partition string) {
+	v.partFilter = partition
+	go func() { _ = v.Refresh() }()
+}
+
 // onFilterDone handles filter input completion
 func (v *NodesView) onFilterDone(_ tcell.Key) {
 	if v.app != nil {

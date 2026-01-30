@@ -27,6 +27,7 @@ type JobsView struct {
 	filter              string
 	stateFilter         []string
 	userFilter          string
+	partFilter          string
 	container           *tview.Flex
 	filterInput         *tview.InputField
 	statusBar           *tview.TextView
@@ -198,6 +199,10 @@ func (v *JobsView) refreshInternal() error {
 
 	if v.userFilter != "" {
 		opts.Users = []string{v.userFilter}
+	}
+
+	if v.partFilter != "" {
+		opts.Partitions = []string{v.partFilter}
 	}
 
 	jobList, err := v.client.Jobs().List(opts)
@@ -564,6 +569,20 @@ func (v *JobsView) onFilterChange(text string) {
 	v.filter = text
 	v.table.SetFilter(text)
 	// Note: Status bar update removed since individual view status bars are no longer used
+}
+
+// SetFilterText sets the filter input text programmatically
+func (v *JobsView) SetFilterText(text string) {
+	if v.filterInput != nil {
+		v.filterInput.SetText(text)
+	}
+	v.onFilterChange(text)
+}
+
+// SetPartitionFilter sets the partition filter and refreshes the view
+func (v *JobsView) SetPartitionFilter(partition string) {
+	v.partFilter = partition
+	go func() { _ = v.Refresh() }()
 }
 
 // onFilterDone handles filter input completion
