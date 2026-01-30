@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -259,8 +260,8 @@ func (v *SSHTerminalView) connectToSelectedNode() {
 
 	// Suspend s9s and execute SSH directly
 	v.app.Suspend(func() {
-		// Create SSH command
-		cmd := exec.Command("ssh", v.selectedNode)
+		// Create SSH command with background context (interactive terminal session)
+		cmd := exec.CommandContext(context.Background(), "ssh", v.selectedNode)
 
 		// Give SSH direct control of stdin/stdout/stderr
 		cmd.Stdin = os.Stdin
@@ -536,8 +537,8 @@ func (v *SSHTerminalView) connectToNode(hostname, username string) {
 func (v *SSHTerminalView) fallbackSSHConnection(hostname string) {
 	// Suspend s9s and execute SSH directly
 	v.app.Suspend(func() {
-		// Create SSH command
-		cmd := exec.Command("ssh", hostname)
+		// Create SSH command with background context (interactive terminal session)
+		cmd := exec.CommandContext(context.Background(), "ssh", hostname)
 
 		// Give SSH direct control of stdin/stdout/stderr
 		cmd.Stdin = os.Stdin

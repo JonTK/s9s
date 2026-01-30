@@ -836,7 +836,7 @@ func (v *NodesView) performDrainNode(nodeName, reason string) {
 						v.pages.RemovePage("success")
 						v.app.SetFocus(v.table.Table)
 						// Refresh the view after modal is closed
-						go v.Refresh()
+						go func() { _ = v.Refresh() }()
 					})
 				v.pages.AddPage("success", successModal, true, true)
 			}
@@ -878,11 +878,9 @@ func (v *NodesView) resumeSelectedNode() {
 		SetDoneFunc(func(buttonIndex int, _ string) {
 			if buttonIndex == 0 {
 				go v.performResumeNode(nodeName)
-			} else {
+			} else if v.pages != nil {
 				// User clicked "No" - remove modal
-				if v.pages != nil {
-					v.pages.RemovePage("resume-confirm")
-				}
+				v.pages.RemovePage("resume-confirm")
 			}
 		})
 
@@ -978,7 +976,7 @@ func (v *NodesView) performResumeNode(nodeName string) {
 						v.pages.RemovePage("success")
 						v.app.SetFocus(v.table.Table)
 						// Refresh the view after modal is closed
-						go v.Refresh()
+						go func() { _ = v.Refresh() }()
 					})
 				v.pages.AddPage("success", successModal, true, true)
 			}
@@ -1249,17 +1247,16 @@ func (v *NodesView) showSSHOptionsModal(nodeName string) {
 func (v *NodesView) sshToTerminal(nodeName string) {
 	// Suspend s9s application to free the terminal
 	v.app.Suspend(func() {
-		// Create SSH command
-		cmd := exec.Command("ssh", nodeName)
+		// Create SSH command with background context (interactive terminal session)
+		cmd := exec.CommandContext(context.Background(), "ssh", nodeName)
 
 		// Give SSH direct control of stdin/stdout/stderr
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		// Run SSH
-		if err := cmd.Run(); err != nil {
-		}
+		// Run SSH (error ignored as terminal handles its own error display)
+		_ = cmd.Run()
 
 		// Show brief message before resuming
 		fmt.Println("\nReturning to s9s...")

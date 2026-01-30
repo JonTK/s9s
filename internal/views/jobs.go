@@ -1345,7 +1345,7 @@ func (v *JobsView) toggleRowSelection() {
 	}
 
 	// Get the current row index from the table
-	currentRow, _ := v.table.Table.GetSelection()
+	currentRow, _ := v.table.GetSelection()
 
 	// Toggle the row in the multi-select table
 	v.table.ToggleRow(currentRow)
