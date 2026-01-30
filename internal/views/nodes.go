@@ -1582,22 +1582,65 @@ func (v *NodesView) showGlobalSearch() {
 	}
 
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
+		// This callback is called from an event handler, so direct primitive
+		// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
 		debug.Logger.Printf("[NodesView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "node":
 			if node, ok := result.Data.(*dao.Node); ok {
-				debug.Logger.Printf("[NodesView] Focusing on node: %s\n", node.Name)
 				v.focusOnNode(node.Name)
 			}
 		case "job":
 			if job, ok := result.Data.(*dao.Job); ok {
-				// This callback is called from an event handler, so direct primitive
-				// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
-				debug.Logger.Printf("[NodesView] Switching to jobs for: %s\n", job.ID)
 				v.SwitchToView("jobs")
-				if jobsView, err := v.viewMgr.GetView("jobs"); err == nil {
-					if jv, ok := jobsView.(*JobsView); ok {
-						jv.focusOnJob(job.ID)
+				if jv, err := v.viewMgr.GetView("jobs"); err == nil {
+					if jobsView, ok := jv.(*JobsView); ok {
+						jobsView.focusOnJob(job.ID)
+					}
+				}
+			}
+		case "partition":
+			if partition, ok := result.Data.(*dao.Partition); ok {
+				v.SwitchToView("partitions")
+				if pv, err := v.viewMgr.GetView("partitions"); err == nil {
+					if partitionsView, ok := pv.(*PartitionsView); ok {
+						partitionsView.focusOnPartition(partition.Name)
+					}
+				}
+			}
+		case "user":
+			if user, ok := result.Data.(*dao.User); ok {
+				v.SwitchToView("users")
+				if uv, err := v.viewMgr.GetView("users"); err == nil {
+					if usersView, ok := uv.(*UsersView); ok {
+						usersView.focusOnUser(user.Name)
+					}
+				}
+			}
+		case "account":
+			if account, ok := result.Data.(*dao.Account); ok {
+				v.SwitchToView("accounts")
+				if av, err := v.viewMgr.GetView("accounts"); err == nil {
+					if accountsView, ok := av.(*AccountsView); ok {
+						accountsView.focusOnAccount(account.Name)
+					}
+				}
+			}
+		case "qos":
+			if qos, ok := result.Data.(*dao.QoS); ok {
+				v.SwitchToView("qos")
+				if qv, err := v.viewMgr.GetView("qos"); err == nil {
+					if qosView, ok := qv.(*QoSView); ok {
+						qosView.focusOnQoS(qos.Name)
+					}
+				}
+			}
+		case "reservation":
+			if reservation, ok := result.Data.(*dao.Reservation); ok {
+				v.SwitchToView("reservations")
+				if rv, err := v.viewMgr.GetView("reservations"); err == nil {
+					if reservationsView, ok := rv.(*ReservationsView); ok {
+						reservationsView.focusOnReservation(reservation.Name)
 					}
 				}
 			}
