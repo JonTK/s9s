@@ -33,6 +33,7 @@ type UsersView struct {
 	advancedFilter *filters.Filter
 	isAdvancedMode bool
 	globalSearch   *GlobalSearch
+	showAdminsOnly bool
 }
 
 // SetPages sets the pages reference for modal handling
@@ -165,6 +166,11 @@ func (v *UsersView) Stop() error {
 
 // Hints returns keyboard hints
 func (v *UsersView) Hints() []string {
+	adminHint := "[yellow]a[white] Show Admins"
+	if v.showAdminsOnly {
+		adminHint = "[yellow]a[white] Show All"
+	}
+
 	hints := []string{
 		"[yellow]Enter[white] Details",
 		"[yellow]/[white] Filter",
@@ -172,7 +178,7 @@ func (v *UsersView) Hints() []string {
 		"[yellow]Ctrl+F[white] Search",
 		"[yellow]1-9[white] Sort",
 		"[yellow]R[white] Refresh",
-		"[yellow]a[white] Show Admins",
+		adminHint,
 	}
 
 	if v.isAdvancedMode {
@@ -266,6 +272,17 @@ func (v *UsersView) updateTable() {
 	filteredUsers := v.users
 	if v.advancedFilter != nil && len(v.advancedFilter.Expressions) > 0 {
 		filteredUsers = v.applyAdvancedFilter(v.users)
+	}
+
+	// Apply admin filter if active
+	if v.showAdminsOnly {
+		var admins []*dao.User
+		for _, user := range filteredUsers {
+			if user.AdminLevel == "Administrator" || user.AdminLevel == "Operator" {
+				admins = append(admins, user)
+			}
+		}
+		filteredUsers = admins
 	}
 
 	data := make([][]string, len(filteredUsers))
@@ -392,8 +409,8 @@ func (v *UsersView) onFilterDone(_ tcell.Key) {
 
 // toggleAdminFilter toggles showing only admin users
 func (v *UsersView) toggleAdminFilter() {
-	// TODO: Implement admin filter
-	// Note: Filter status removed since individual view status bars are no longer used
+	v.showAdminsOnly = !v.showAdminsOnly
+	v.updateTable()
 }
 
 // showUserDetails shows detailed information for the selected user

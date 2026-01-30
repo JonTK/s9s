@@ -254,7 +254,7 @@ func (v *JobsView) Hints() []string {
 		"[yellow]d[white] Dependencies",
 		"[yellow]q[white] Requeue",
 		"[yellow]b[white] Batch Ops",
-		"[yellow]m[white] Monitor",
+		"[yellow]m[white] Auto Refresh",
 		"[yellow]/[white] Filter",
 		"[yellow]F3[white] Adv Filter",
 		"[yellow]Ctrl+F[white] Search",
