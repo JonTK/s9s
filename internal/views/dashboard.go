@@ -237,13 +237,13 @@ func (v *DashboardView) OnKey(event *tcell.EventKey) *tcell.EventKey {
 			go func() { _ = v.Refresh() }()
 			return nil
 		case 'j', 'J':
-			// TODO: Switch to jobs view
+			v.SwitchToView("jobs")
 			return nil
 		case 'n', 'N':
-			// TODO: Switch to nodes view
+			v.SwitchToView("nodes")
 			return nil
 		case 'p', 'P':
-			// TODO: Switch to partitions view
+			v.SwitchToView("partitions")
 			return nil
 		case 'a', 'A':
 			v.showAdvancedAnalytics()
