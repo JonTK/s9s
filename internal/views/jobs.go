@@ -1638,9 +1638,12 @@ func (v *JobsView) showGlobalSearch() {
 		// Handle search result selection
 		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
 
-		// Close the search modal first
-		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Removing search modal\n")
-		v.pages.RemovePage("global-search")
+		// Close the search modal first - queue it to happen after input handlers finish
+		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queueing search modal removal\n")
+		v.app.QueueUpdateDraw(func() {
+			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Actually removing search modal now\n")
+			v.pages.RemovePage("global-search")
+		})
 
 		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] About to enter switch statement\n")
 		debug.Logger.Printf("[JobsView] Search result selected: type=%s\n", result.Type)
@@ -1663,19 +1666,21 @@ func (v *JobsView) showGlobalSearch() {
 				if v.app != nil && v.viewMgr != nil {
 					nodeName := node.Name
 					debug.Logger.Printf("[JobsView] SwitchViewFn is set: %v\n", v.switchViewFn != nil)
+					// Queue the view switch to happen after current operations
 					v.app.QueueUpdateDraw(func() {
+						fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queued: switching view to nodes\n")
 						debug.Logger.Printf("[JobsView] Executing queued view switch\n")
-						// Switch view
 						v.SwitchToView("nodes")
-						// Focus the node after the view is ready
-						v.app.QueueUpdateDraw(func() {
-							debug.Logger.Printf("[JobsView] Executing queued node focus\n")
-							if nodesView, err := v.viewMgr.GetView("nodes"); err == nil {
-								if nv, ok := nodesView.(*NodesView); ok {
-									nv.focusOnNode(nodeName)
-								}
+					})
+					// Queue focus operation to happen after view switch
+					v.app.QueueUpdateDraw(func() {
+						fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queued: focusing on node\n")
+						debug.Logger.Printf("[JobsView] Executing queued node focus\n")
+						if nodesView, err := v.viewMgr.GetView("nodes"); err == nil {
+							if nv, ok := nodesView.(*NodesView); ok {
+								nv.focusOnNode(nodeName)
 							}
-						})
+						}
 					})
 				} else {
 					fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] app or viewMgr is nil: app=%v, viewMgr=%v\n", v.app == nil, v.viewMgr == nil)

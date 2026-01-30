@@ -1589,9 +1589,12 @@ func (v *NodesView) showGlobalSearch() {
 		// Handle search result selection
 		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
 
-		// Close the search modal first
-		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Removing search modal\n")
-		v.pages.RemovePage("global-search")
+		// Close the search modal first - queue it to happen after input handlers finish
+		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queueing search modal removal\n")
+		v.app.QueueUpdateDraw(func() {
+			fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Actually removing search modal now\n")
+			v.pages.RemovePage("global-search")
+		})
 
 		debug.Logger.Printf("[NodesView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
@@ -1605,26 +1608,33 @@ func (v *NodesView) showGlobalSearch() {
 		case "job":
 			// Switch to jobs view and focus on the selected job
 			if job, ok := result.Data.(*dao.Job); ok {
+				fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Type assertion to *dao.Job succeeded\n")
 				debug.Logger.Printf("[NodesView] Switching to jobs view for job: %s\n", job.ID)
 				// Queue the view switch and focus after the modal closes
 				if v.app != nil && v.viewMgr != nil {
 					jobID := job.ID
 					debug.Logger.Printf("[NodesView] SwitchViewFn is set: %v\n", v.switchViewFn != nil)
+					// Queue the view switch to happen after current operations
 					v.app.QueueUpdateDraw(func() {
+						fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queued: switching view to jobs\n")
 						debug.Logger.Printf("[NodesView] Executing queued view switch\n")
-						// Switch view
 						v.SwitchToView("jobs")
-						// Focus the job after the view is ready
-						v.app.QueueUpdateDraw(func() {
-							debug.Logger.Printf("[NodesView] Executing queued job focus\n")
-							if jobsView, err := v.viewMgr.GetView("jobs"); err == nil {
-								if jv, ok := jobsView.(*JobsView); ok {
-									jv.focusOnJob(jobID)
-								}
-							}
-						})
 					})
+					// Queue focus operation to happen after view switch
+					v.app.QueueUpdateDraw(func() {
+						fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queued: focusing on job\n")
+						debug.Logger.Printf("[NodesView] Executing queued job focus\n")
+						if jobsView, err := v.viewMgr.GetView("jobs"); err == nil {
+							if jv, ok := jobsView.(*JobsView); ok {
+								jv.focusOnJob(jobID)
+							}
+						}
+					})
+				} else {
+					fmt.Fprintf(os.Stderr, "[NODES CALLBACK] app or viewMgr is nil\n")
 				}
+			} else {
+				fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Type assertion to *dao.Job FAILED\n")
 			}
 		default:
 			// For other types, just close the search
