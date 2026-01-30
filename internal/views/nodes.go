@@ -268,7 +268,7 @@ func (v *NodesView) handleNodesViewRune(event *tcell.EventKey) *tcell.EventKey {
 func (v *NodesView) nodesKeyHandlers() map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey {
 	return map[tcell.Key]func(*NodesView, *tcell.EventKey) *tcell.EventKey{
 		tcell.KeyF3:    func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
-		tcell.KeyCtrlF: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { fmt.Fprintf(os.Stderr, "[NODES KEYBOARD] Ctrl+F pressed\n"); v.showGlobalSearch(); return nil },
+		tcell.KeyCtrlF: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
 		tcell.KeyEnter: func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.showNodeDetails(); return nil },
 	}
 }
@@ -1167,7 +1167,6 @@ func (v *NodesView) sshToTerminal(nodeName string) {
 
 		// Run SSH
 		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "\nSSH connection error: %v\n", err)
 		}
 
 		// Show brief message before resuming
@@ -1578,66 +1577,30 @@ func (v *NodesView) nodeToMap(node *dao.Node) map[string]interface{} {
 
 // showGlobalSearch shows the global search interface
 func (v *NodesView) showGlobalSearch() {
-	fmt.Fprintf(os.Stderr, "[NODES SEARCH] showGlobalSearch() called\n")
 	if v.globalSearch == nil || v.pages == nil {
-		fmt.Fprintf(os.Stderr, "[NODES SEARCH] globalSearch or pages is nil: globalSearch=%v, pages=%v\n", v.globalSearch == nil, v.pages == nil)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "[NODES SEARCH] Calling globalSearch.Show()\n")
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
-		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
-
-		// Close the search modal first - queue it to happen after input handlers finish
-		fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queueing search modal removal\n")
-		v.app.QueueUpdateDraw(func() {
-			fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Actually removing search modal now\n")
-			v.pages.RemovePage("global-search")
-		})
-
 		debug.Logger.Printf("[NodesView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "node":
-			// Focus on the selected node
 			if node, ok := result.Data.(*dao.Node); ok {
-				fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Focusing on node: %s\n", node.Name)
 				debug.Logger.Printf("[NodesView] Focusing on node: %s\n", node.Name)
 				v.focusOnNode(node.Name)
 			}
 		case "job":
-			// Switch to jobs view and focus on the selected job
 			if job, ok := result.Data.(*dao.Job); ok {
-				fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Type assertion to *dao.Job succeeded\n")
-				debug.Logger.Printf("[NodesView] Switching to jobs view for job: %s\n", job.ID)
-				// Queue the view switch and focus after the modal closes
-				if v.app != nil && v.viewMgr != nil {
-					jobID := job.ID
-					debug.Logger.Printf("[NodesView] SwitchViewFn is set: %v\n", v.switchViewFn != nil)
-					// Queue the view switch to happen after current operations
-					v.app.QueueUpdateDraw(func() {
-						fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queued: switching view to jobs\n")
-						debug.Logger.Printf("[NodesView] Executing queued view switch\n")
-						v.SwitchToView("jobs")
-					})
-					// Queue focus operation to happen after view switch
-					v.app.QueueUpdateDraw(func() {
-						fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Queued: focusing on job\n")
-						debug.Logger.Printf("[NodesView] Executing queued job focus\n")
-						if jobsView, err := v.viewMgr.GetView("jobs"); err == nil {
-							if jv, ok := jobsView.(*JobsView); ok {
-								jv.focusOnJob(jobID)
-							}
-						}
-					})
-				} else {
-					fmt.Fprintf(os.Stderr, "[NODES CALLBACK] app or viewMgr is nil\n")
+				// This callback is called from an event handler, so direct primitive
+				// manipulation is safe. Do NOT use QueueUpdateDraw here - it will deadlock!
+				debug.Logger.Printf("[NodesView] Switching to jobs for: %s\n", job.ID)
+				v.SwitchToView("jobs")
+				if jobsView, err := v.viewMgr.GetView("jobs"); err == nil {
+					if jv, ok := jobsView.(*JobsView); ok {
+						jv.focusOnJob(job.ID)
+					}
 				}
-			} else {
-				fmt.Fprintf(os.Stderr, "[NODES CALLBACK] Type assertion to *dao.Job FAILED\n")
 			}
-		default:
-			// For other types, just close the search
 		}
 	})
 }
@@ -1697,13 +1660,9 @@ func (v *NodesView) focusOnNode(nodeName string) {
 	// Select the row in the table
 	v.table.Select(nodeIdx, 0)
 
-	// Queue a redraw to ensure the selection is visible after search modal is removed
-	if v.app != nil {
-		v.app.QueueUpdateDraw(func() {
-			// Ensure focus is on the table and selection is visible
-			if v.table != nil && v.table.Table != nil {
-				v.app.SetFocus(v.table.Table)
-			}
-		})
+	// Set focus directly - this is safe whether called from event handler or elsewhere
+	// The main event loop will handle the redraw automatically
+	if v.app != nil && v.table != nil && v.table.Table != nil {
+		v.app.SetFocus(v.table.Table)
 	}
 }

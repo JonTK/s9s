@@ -3,7 +3,6 @@ package views
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -324,7 +323,7 @@ func (v *JobsView) jobsKeyHandlers() map[tcell.Key]func(*JobsView, *tcell.EventK
 		tcell.KeyF1:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobActions(); return nil },
 		tcell.KeyF2:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobTemplateSelector(); return nil },
 		tcell.KeyF3:    func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showAdvancedFilter(); return nil },
-		tcell.KeyCtrlF: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { fmt.Fprintf(os.Stderr, "[JOBS KEYBOARD] Ctrl+F pressed\n"); v.showGlobalSearch(); return nil },
+		tcell.KeyCtrlF: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showGlobalSearch(); return nil },
 		tcell.KeyEnter: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.showJobDetails(); return nil },
 		tcell.KeyCtrlA: func(v *JobsView, _ *tcell.EventKey) *tcell.EventKey { v.selectAllJobs(); return nil },
 	}
@@ -1627,70 +1626,29 @@ func (v *JobsView) jobToMap(job *dao.Job) map[string]interface{} {
 
 // showGlobalSearch shows the global search interface
 func (v *JobsView) showGlobalSearch() {
-	fmt.Fprintf(os.Stderr, "[JOBS SEARCH] showGlobalSearch() called\n")
 	if v.globalSearch == nil || v.pages == nil {
-		fmt.Fprintf(os.Stderr, "[JOBS SEARCH] globalSearch or pages is nil: globalSearch=%v, pages=%v\n", v.globalSearch == nil, v.pages == nil)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "[JOBS SEARCH] Calling globalSearch.Show()\n")
 	v.globalSearch.Show(v.pages, func(result SearchResult) {
-		// Handle search result selection
-		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Callback executing! Result type=%s, name=%s\n", result.Type, result.Name)
-
-		// Close the search modal first - queue it to happen after input handlers finish
-		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queueing search modal removal\n")
-		v.app.QueueUpdateDraw(func() {
-			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Actually removing search modal now\n")
-			v.pages.RemovePage("global-search")
-		})
-
-		fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] About to enter switch statement\n")
 		debug.Logger.Printf("[JobsView] Search result selected: type=%s\n", result.Type)
 		switch result.Type {
 		case "job":
-			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched job case\n")
-			// Focus on the selected job
 			if job, ok := result.Data.(*dao.Job); ok {
-				fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Focusing on job: %s\n", job.ID)
 				debug.Logger.Printf("[JobsView] Focusing on job: %s\n", job.ID)
 				v.focusOnJob(job.ID)
 			}
 		case "node":
-			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched node case\n")
-			// Switch to nodes view and focus on the selected node
 			if node, ok := result.Data.(*dao.Node); ok {
-				fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Type assertion to *dao.Node succeeded\n")
-				debug.Logger.Printf("[JobsView] Switching to nodes view for node: %s\n", node.Name)
-				// Queue the view switch and focus after the modal closes
-				if v.app != nil && v.viewMgr != nil {
-					nodeName := node.Name
-					debug.Logger.Printf("[JobsView] SwitchViewFn is set: %v\n", v.switchViewFn != nil)
-					// Queue the view switch to happen after current operations
-					v.app.QueueUpdateDraw(func() {
-						fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queued: switching view to nodes\n")
-						debug.Logger.Printf("[JobsView] Executing queued view switch\n")
-						v.SwitchToView("nodes")
-					})
-					// Queue focus operation to happen after view switch
-					v.app.QueueUpdateDraw(func() {
-						fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Queued: focusing on node\n")
-						debug.Logger.Printf("[JobsView] Executing queued node focus\n")
-						if nodesView, err := v.viewMgr.GetView("nodes"); err == nil {
-							if nv, ok := nodesView.(*NodesView); ok {
-								nv.focusOnNode(nodeName)
-							}
-						}
-					})
-				} else {
-					fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] app or viewMgr is nil: app=%v, viewMgr=%v\n", v.app == nil, v.viewMgr == nil)
+				nodeName := node.Name
+				debug.Logger.Printf("[JobsView] Switching to nodes for: %s\n", nodeName)
+				v.SwitchToView("nodes")
+				if nodesView, err := v.viewMgr.GetView("nodes"); err == nil {
+					if nv, ok := nodesView.(*NodesView); ok {
+						nv.focusOnNode(nodeName)
+					}
 				}
-			} else {
-				fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Type assertion to *dao.Node FAILED\n")
 			}
-		default:
-			fmt.Fprintf(os.Stderr, "[JOBS CALLBACK] Matched default case\n")
-			// For other types, just close the search
 		}
 	})
 }
