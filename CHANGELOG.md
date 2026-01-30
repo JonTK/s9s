@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.3.0] - 2026-01-30
+
+### Added
+- **Job submission working directory default**: Working directory now defaults to the current directory where s9s is started
 - **Vim-style view navigation**: `h` and `l` keys for switching between views (left/right)
 - **Global search cross-view navigation**: Search results now navigate to the correct view and focus on the selected item
 - **Partition filter syntax**: Use `p:partition_name` in filter fields to filter by partition (Jobs and Nodes views)
@@ -29,10 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `p` → `P` for Partitions view (Dashboard)
   - `a` → `A` for Analytics (Dashboard, Partitions)
   - `w` → `W` for Wait Times (Partitions)
+- **Dependency upgrade**: Updated slurm-client to upstream v0.2.4 (from v0.2.3)
 - **Filter performance**: Added debouncing (300ms) and immediate client-side filtering for better UX
 - **Modal consistency**: All modals now use the `pages` API for proper lifecycle management
+- **Linting configuration**: Use file-specific cyclop exclusions (max-complexity: 10) instead of global threshold increase
 
 ### Fixed
+- **Linting issues**: Resolved all errcheck, noctx, staticcheck, and unused linter violations
 - **Modal focus issues**: Input fields in drain and partition filter modals now maintain focus properly
 - **Drain operation**: Fixed drain showing success but not actually draining nodes
 - **Resume operation**: Fixed modal double-removal causing operation to fail
@@ -45,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - **Loading modals**: Removed intrusive "Loading..." modals from Accounts, QoS, Reservations, and Users views
 - **Header update time**: Removed misleading "Updated: X ago" display (was tracking app startup, not data refresh)
+- **Local slurm-client replace directive**: Now using published upstream version
 
 ## [0.1.0] - 2026-01-21
 
@@ -121,5 +136,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Note**: Versions prior to 0.1.0 were in active development and did not follow semantic versioning.
 
-[Unreleased]: https://github.com/jontk/s9s/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jontk/s9s/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jontk/s9s/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/jontk/s9s/releases/tag/v0.1.0
