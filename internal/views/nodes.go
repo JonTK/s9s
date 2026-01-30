@@ -211,11 +211,6 @@ func (v *NodesView) Hints() []string {
 		"Bar: █=Used ▒=Alloc ▱=Free",
 	}
 
-	// Show partition filter status and clear option
-	if v.partFilter != "" {
-		hints = append([]string{fmt.Sprintf("[cyan]Partition: %s[white]", v.partFilter), "[yellow]x[white] Clear Filter"}, hints...)
-	}
-
 	if v.isAdvancedMode {
 		hints = append([]string{"[yellow]ESC[white] Exit Adv Filter"}, hints...)
 	}
@@ -311,8 +306,6 @@ func (v *NodesView) nodesRuneHandlers() map[rune]func(*NodesView, *tcell.EventKe
 		'g': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptGroupBy(); return nil },
 		'G': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.promptGroupBy(); return nil },
 		' ': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.toggleGroupExpansion(); return nil },
-		'x': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.ClearPartitionFilter(); return nil },
-		'X': func(v *NodesView, _ *tcell.EventKey) *tcell.EventKey { v.ClearPartitionFilter(); return nil },
 	}
 }
 
@@ -646,8 +639,29 @@ func (v *NodesView) onSort(_ int, _ bool) {
 // onFilterChange handles filter input changes
 func (v *NodesView) onFilterChange(text string) {
 	v.filter = text
+
+	// Check for partition filter syntax: "p:name" or "partition:name"
+	lowerText := strings.ToLower(text)
+	if strings.HasPrefix(lowerText, "p:") {
+		v.partFilter = strings.TrimPrefix(text, text[:2]) // Keep original case
+		v.table.SetFilter("")                              // Clear table filter, we filter at data level
+		go func() { _ = v.Refresh() }()
+		return
+	}
+	if strings.HasPrefix(lowerText, "partition:") {
+		v.partFilter = strings.TrimPrefix(text, text[:10]) // Keep original case
+		v.table.SetFilter("")
+		go func() { _ = v.Refresh() }()
+		return
+	}
+
+	// Clear partition filter if no prefix
+	if v.partFilter != "" {
+		v.partFilter = ""
+		go func() { _ = v.Refresh() }()
+	}
+
 	v.table.SetFilter(text)
-	// Note: Status bar update removed since individual view status bars are no longer used
 }
 
 // SetFilterText sets the filter input text programmatically
@@ -658,18 +672,14 @@ func (v *NodesView) SetFilterText(text string) {
 	v.onFilterChange(text)
 }
 
-// SetPartitionFilter sets the partition filter and refreshes the view
+// SetPartitionFilter sets the partition filter using the filter input
 func (v *NodesView) SetPartitionFilter(partition string) {
-	v.partFilter = partition
-	go func() { _ = v.Refresh() }()
-}
-
-// ClearPartitionFilter clears the partition filter and refreshes the view
-func (v *NodesView) ClearPartitionFilter() {
-	if v.partFilter != "" {
-		v.partFilter = ""
-		go func() { _ = v.Refresh() }()
+	// Set the filter input to "p:partition" which triggers onFilterChange
+	filterText := "p:" + partition
+	if v.filterInput != nil {
+		v.filterInput.SetText(filterText)
 	}
+	v.onFilterChange(filterText)
 }
 
 // onFilterDone handles filter input completion
