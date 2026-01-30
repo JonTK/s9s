@@ -315,6 +315,7 @@ func setDefaults(v *viper.Viper) {
 }
 
 // applyEnvironmentOverrides applies environment variable overrides
+// Environment variables always take precedence over config file settings
 func applyEnvironmentOverrides(cfg *Config) {
 	// Check for cluster endpoint override (support both S9S_ prefixed and unprefixed)
 	endpoint := os.Getenv("S9S_SLURM_REST_URL")
@@ -327,19 +328,39 @@ func applyEnvironmentOverrides(cfg *Config) {
 		token = os.Getenv("SLURM_JWT")
 	}
 
+	apiVersion := os.Getenv("SLURM_API_VERSION")
+	if apiVersion == "" {
+		apiVersion = "v0.0.43"
+	}
+
+	// If endpoint is set in environment, it overrides everything
 	if endpoint != "" {
-		if cfg.CurrentContext == "" || len(cfg.Contexts) == 0 {
-			// Create a default context if none exists
-			cfg.Contexts = append(cfg.Contexts, ContextConfig{
-				Name: "default",
-				Cluster: ClusterConfig{
-					Endpoint:   endpoint,
-					Token:      token,
-					APIVersion: getEnvOrDefault("SLURM_API_VERSION", "v0.0.43"),
-				},
-			})
-			cfg.CurrentContext = "default"
+		// Create or update default context with environment values
+		defaultCtx := ContextConfig{
+			Name: "default",
+			Cluster: ClusterConfig{
+				Endpoint:   endpoint,
+				Token:      token,
+				APIVersion: apiVersion,
+			},
 		}
+
+		// Check if default context already exists
+		found := false
+		for i, ctx := range cfg.Contexts {
+			if ctx.Name == "default" {
+				cfg.Contexts[i] = defaultCtx
+				found = true
+				break
+			}
+		}
+
+		// If not found, add it
+		if !found {
+			cfg.Contexts = append(cfg.Contexts, defaultCtx)
+		}
+
+		cfg.CurrentContext = "default"
 	}
 }
 
