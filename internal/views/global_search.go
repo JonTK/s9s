@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -94,10 +95,12 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEsc:
+			fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: ESC pressed\n")
 			gs.cancelSearch()
 			pages.RemovePage("global-search")
 			return nil
 		case tcell.KeyTab:
+			fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: TAB pressed\n")
 			// Toggle focus between input and results
 			if gs.searchInput.HasFocus() {
 				gs.app.SetFocus(gs.resultsList)
@@ -106,12 +109,16 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 			}
 			return nil
 		case tcell.KeyEnter:
+			fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: ENTER pressed, resultsList focused: %v, num results: %d\n", gs.resultsList.HasFocus(), len(gs.results))
 			// Handle Enter from results list
 			if gs.resultsList.HasFocus() {
 				idx := gs.resultsList.GetCurrentItem()
+				fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Selected index %d\n", idx)
 				if idx >= 0 && idx < len(gs.results) {
+					result := gs.results[idx]
+					fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Calling onSelect with result type=%s, name=%s\n", result.Type, result.Name)
 					if gs.onSelect != nil {
-						gs.onSelect(gs.results[idx])
+						gs.onSelect(result)
 					}
 					pages.RemovePage("global-search")
 				}
@@ -124,9 +131,12 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 	// Handle Enter key in search input
 	gs.searchInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
+			fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: ENTER in search input, num results: %d\n", len(gs.results))
 			// Select first result if available
 			if len(gs.results) > 0 && gs.onSelect != nil {
-				gs.onSelect(gs.results[0])
+				result := gs.results[0]
+				fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Calling onSelect with first result type=%s, name=%s\n", result.Type, result.Name)
+				gs.onSelect(result)
 				pages.RemovePage("global-search")
 			}
 			return nil
@@ -140,16 +150,19 @@ func (gs *GlobalSearch) Show(pages *tview.Pages, onSelect func(result SearchResu
 
 // onSearchChange handles search input changes
 func (gs *GlobalSearch) onSearchChange(text string) {
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: onSearchChange called with text='%s'\n", text)
 	// Cancel previous search
 	gs.cancelSearch()
 
 	if len(text) < 2 {
+		fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Text too short, clearing results\n")
 		gs.clearResults()
 		return
 	}
 
 	// Start new search
 	gs.searchCancel = make(chan struct{})
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Starting search for '%s'\n", text)
 	go gs.performSearch(text, gs.searchCancel)
 }
 
@@ -214,12 +227,16 @@ func (gs *GlobalSearch) performSearch(query string, cancel chan struct{}) {
 
 // searchJobs searches through jobs
 func (gs *GlobalSearch) searchJobs(query string, results chan<- SearchResult, cancel chan struct{}) {
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchJobs called for query='%s'\n", query)
 	jobs, err := gs.client.Jobs().List(&dao.ListJobsOptions{Limit: 100})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchJobs error: %v\n", err)
 		return
 	}
 
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Found %d jobs\n", len(jobs.Jobs))
 	queryLower := strings.ToLower(query)
+	jobCount := 0
 	for _, job := range jobs.Jobs {
 		select {
 		case <-cancel:
@@ -227,6 +244,8 @@ func (gs *GlobalSearch) searchJobs(query string, results chan<- SearchResult, ca
 		default:
 			score := gs.calculateJobScore(job, queryLower)
 			if score > 0 {
+				jobCount++
+				fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Adding job result: id=%s, name=%s, score=%d\n", job.ID, job.Name, score)
 				results <- SearchResult{
 					Type:        "job",
 					ID:          job.ID,
@@ -238,6 +257,7 @@ func (gs *GlobalSearch) searchJobs(query string, results chan<- SearchResult, ca
 			}
 		}
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchJobs found %d matching jobs\n", jobCount)
 }
 
 // calculateJobScore calculates search relevance score for a job
@@ -265,12 +285,16 @@ func (gs *GlobalSearch) calculateJobScore(job *dao.Job, queryLower string) int {
 
 // searchNodes searches through nodes
 func (gs *GlobalSearch) searchNodes(query string, results chan<- SearchResult, cancel chan struct{}) {
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchNodes called for query='%s'\n", query)
 	nodes, err := gs.client.Nodes().List(&dao.ListNodesOptions{})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchNodes error: %v\n", err)
 		return
 	}
 
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Found %d nodes\n", len(nodes.Nodes))
 	queryLower := strings.ToLower(query)
+	nodeCount := 0
 	for _, node := range nodes.Nodes {
 		select {
 		case <-cancel:
@@ -278,7 +302,9 @@ func (gs *GlobalSearch) searchNodes(query string, results chan<- SearchResult, c
 		default:
 			score := gs.calculateNodeScore(node, queryLower)
 			if score > 0 {
+				nodeCount++
 				partitions := strings.Join(node.Partitions, ",")
+				fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Adding node result: name=%s, score=%d\n", node.Name, score)
 				results <- SearchResult{
 					Type:        "node",
 					ID:          node.Name,
@@ -290,6 +316,7 @@ func (gs *GlobalSearch) searchNodes(query string, results chan<- SearchResult, c
 			}
 		}
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: searchNodes found %d matching nodes\n", nodeCount)
 }
 
 // calculateNodeScore calculates search relevance score for a node
@@ -425,6 +452,7 @@ func (gs *GlobalSearch) sortResultsByScore(results []SearchResult) {
 
 // updateResultsList updates the results list UI
 func (gs *GlobalSearch) updateResultsList(results []SearchResult) {
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: updateResultsList called with %d results\n", len(results))
 	gs.mu.Lock()
 	gs.results = results
 	gs.mu.Unlock()
@@ -432,8 +460,14 @@ func (gs *GlobalSearch) updateResultsList(results []SearchResult) {
 	gs.resultsList.Clear()
 
 	if len(results) == 0 {
+		fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: No results found\n")
 		gs.resultsList.AddItem("No results found", "", 0, nil)
 		return
+	}
+
+	fmt.Fprintf(os.Stderr, "[DEBUG] GlobalSearch: Adding %d results to list:\n", len(results))
+	for i, r := range results {
+		fmt.Fprintf(os.Stderr, "[DEBUG]   [%d] type=%s, name=%s\n", i, r.Type, r.Name)
 	}
 
 	// Add results to list (limit to top 20)
