@@ -5,6 +5,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jontk/s9s/internal/ui/filters"
+	"github.com/jontk/s9s/internal/ui/styles"
 	"github.com/rivo/tview"
 )
 
@@ -37,8 +38,8 @@ func NewFilterBar(viewType string, app *tview.Application) *FilterBar {
 		app:           app,
 	}
 
-	// Create input field
-	fb.input = tview.NewInputField().
+	// Create input field with styled colors for visibility across themes
+	fb.input = styles.NewStyledInputField().
 		SetLabel("Filter: ").
 		SetFieldWidth(50).
 		SetPlaceholder("e.g., state=running user=john memory>4G").

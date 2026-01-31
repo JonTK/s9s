@@ -6,6 +6,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jontk/s9s/internal/streaming"
+	"github.com/jontk/s9s/internal/ui/styles"
 	"github.com/rivo/tview"
 )
 
@@ -59,10 +60,9 @@ func (sb *SearchBar) buildUI() {
 	// Search input row
 	searchRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 
-	// Search input
-	sb.searchInput = tview.NewInputField()
+	// Search input with styled colors for visibility across themes
+	sb.searchInput = styles.NewStyledInputField()
 	sb.searchInput.SetLabel("Search: ")
-	sb.searchInput.SetFieldBackgroundColor(tcell.ColorBlack)
 	sb.searchInput.SetPlaceholder("Enter search pattern...")
 	sb.searchInput.SetDoneFunc(func(key tcell.Key) {
 		switch key {
