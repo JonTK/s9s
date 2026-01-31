@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to Accounts view
-Type "5"
+# Switch to Accounts view (key 6)
+Type "6"
 Sleep 2s
 
 # Navigate through accounts

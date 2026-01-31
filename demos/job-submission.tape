@@ -5,6 +5,9 @@ Output demos/output/job-submission.mp4
 
 Source demos/common.tape
 
+# Override height for job submission wizard (needs more space)
+Set Height 900
+
 Hide
 Type "export S9S_ENABLE_MOCK=dev && clear"
 Enter

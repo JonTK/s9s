@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to Reservations view
-Type "7"
+# Switch to Reservations view (key 4)
+Type "4"
 Sleep 2s
 
 # Navigate through reservations

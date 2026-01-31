@@ -31,8 +31,10 @@ Sleep 2s
 Escape
 Sleep 1s
 
-# Show grouping options
+# Show grouping options and select "partition"
 Type "g"
+Sleep 1s
+Type "2"
 Sleep 2s
 
 # Filter by partition

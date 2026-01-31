@@ -21,43 +21,63 @@ Sleep 500ms
 Enter
 Sleep 2s
 
-# Show Jobs view (default)
+# Show Jobs view (default - key 1)
 Sleep 2s
 
-# Navigate to Nodes (press 2)
+# Navigate to Nodes (key 2)
 Type "2"
-Sleep 2s
+Sleep 1500ms
 
-# Navigate to Partitions (press 3)
+# Navigate to Partitions (key 3)
 Type "3"
+Sleep 1500ms
+
+# Navigate to Reservations (key 4)
+Type "4"
+Sleep 1500ms
+
+# Navigate to QoS (key 5)
+Type "5"
+Sleep 1500ms
+
+# Navigate to Accounts (key 6)
+Type "6"
+Sleep 1500ms
+
+# Navigate to Users (key 7)
+Type "7"
+Sleep 1500ms
+
+# Navigate to Dashboard (key 8)
+Type "8"
 Sleep 2s
 
-# Navigate to Dashboard (press 9)
+# Navigate to Health (key 9)
 Type "9"
 Sleep 2s
 
-# Show Global Search
+# Show Global Search (Ctrl+F)
 Ctrl+F
 Sleep 1s
 Type "compute"
-Sleep 2s
+Sleep 1500ms
 Escape
+Sleep 500ms
+
+# Back to Jobs (key 1)
+Type "1"
 Sleep 1s
 
-# Back to Jobs
-Type "1"
-Sleep 2s
-
-# Show filtering
+# Show filtering (simple text filter)
 Type "/"
 Sleep 500ms
-Type "state:RUNNING"
+Type "RUNNING"
 Sleep 1s
 Enter
-Sleep 2s
+Sleep 1500ms
 
 # Clear filter and exit
 Escape
-Sleep 1s
+Sleep 500ms
 Type "q"
-Sleep 1s
+Sleep 500ms

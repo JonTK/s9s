@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to Dashboard
-Type "9"
+# Switch to Dashboard (key 8)
+Type "8"
 Sleep 3s
 
 # Show analytics (A key)

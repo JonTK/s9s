@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to Users view
-Type "4"
+# Switch to Users view (key 7)
+Type "7"
 Sleep 2s
 
 # Navigate through users

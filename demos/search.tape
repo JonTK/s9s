@@ -33,11 +33,16 @@ Ctrl+U
 Type "admin"
 Sleep 2s
 
-# Select a result
+# Select a result - Enter navigates to the selected item
+Down
+Sleep 500ms
 Down
 Sleep 500ms
 Enter
 Sleep 2s
+
+# The selected item is now shown in its view
+Sleep 1s
 
 # Exit
 Type "q"

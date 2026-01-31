@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to Health view
-Type "8"
+# Switch to Health view (key 9)
+Type "9"
 Sleep 2s
 
 # Navigate through alerts

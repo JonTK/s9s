@@ -30,10 +30,10 @@ Sleep 2s
 Escape
 Sleep 1s
 
-# Filter by state
+# Filter by state (simple text filter)
 Type "/"
 Sleep 500ms
-Type "state:PENDING"
+Type "PENDING"
 Enter
 Sleep 2s
 

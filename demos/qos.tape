@@ -15,8 +15,8 @@ Type "./build/s9s"
 Enter
 Sleep 2s
 
-# Switch to QoS view
-Type "6"
+# Switch to QoS view (key 5)
+Type "5"
 Sleep 2s
 
 # Navigate through QoS entries
