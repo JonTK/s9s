@@ -11,7 +11,7 @@ Enter
 Sleep 500ms
 Show
 
-Type "./build/s9s"
+Type "./s9s"
 Enter
 Sleep 2s
 

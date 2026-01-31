@@ -16,7 +16,7 @@ Sleep 500ms
 Show
 
 # Launch s9s
-Type "./build/s9s"
+Type "./s9s"
 Sleep 500ms
 Enter
 Sleep 2s
