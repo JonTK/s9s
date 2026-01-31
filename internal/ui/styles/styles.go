@@ -7,15 +7,15 @@
 //
 // ANSI Color Palette (indices 0-15):
 //
-//	0: Black      (in themes like Catppuccin: Surface0)
+//	0: Black        (in Catppuccin: Surface0 #45475a)
 //	1: Red
 //	2: Green
 //	3: Yellow
 //	4: Blue
 //	5: Magenta
 //	6: Cyan
-//	7: White      (in themes: Subtext/light gray)
-//	8: Bright Black (in themes: Surface2/dark gray)
+//	7: White        (in Catppuccin: Subtext1 #bac2de)
+//	8: Bright Black (in Catppuccin: Surface2 #585b70) ← used for input backgrounds
 //	9-15: Bright variants of 1-7
 //
 // Using tcell.ColorDefault inherits the terminal's default fg/bg colors.
@@ -29,8 +29,11 @@ import (
 // ANSI color indices as tcell colors - these adapt to terminal themes
 var (
 	// Surface colors (background variants)
-	ColorSurface = tcell.ColorBlack // ANSI 0: theme's surface/dark bg variant
-	ColorOverlay = tcell.ColorGray  // ANSI 8: theme's overlay/lighter surface
+	// ANSI 8 (Bright Black/Gray) is typically a "surface" color in themes
+	// that's slightly lighter than the base background, providing subtle contrast.
+	// In Catppuccin Mocha: ANSI 8 = Surface2 (#585b70)
+	ColorSurface = tcell.ColorGray  // ANSI 8: theme's surface/overlay color
+	ColorOverlay = tcell.ColorBlack // ANSI 0: theme's darker surface
 
 	// Text colors
 	ColorText    = tcell.ColorDefault // Terminal's default text color
@@ -60,7 +63,7 @@ func DefaultInputColors() InputFieldColors {
 	return InputFieldColors{
 		Label:           ColorAccent,    // Yellow - stands out for labels
 		Field:           ColorText,      // Default text color from theme
-		FieldBackground: ColorSurface,   // Theme's surface color (ANSI black)
+		FieldBackground: ColorSurface,   // Theme's surface color (ANSI 8) - slightly lighter than bg
 		Placeholder:     ColorDim,       // Dimmed text for placeholders
 		Autocomplete:    ColorHighlight, // Green for autocomplete selection
 	}
