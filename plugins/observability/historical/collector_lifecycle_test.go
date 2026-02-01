@@ -324,7 +324,11 @@ func TestHistoricalDataCollector_GetStatsWhileRunning(t *testing.T) {
 	if err := collector.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer collector.Stop()
+	defer func() {
+		if err := collector.Stop(); err != nil {
+			t.Errorf("Stop failed: %v", err)
+		}
+	}()
 
 	// Get stats multiple times concurrently
 	done := make(chan bool)

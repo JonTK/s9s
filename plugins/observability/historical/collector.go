@@ -49,6 +49,7 @@ type DataCollector struct {
 	mu       sync.RWMutex
 	running  atomic.Bool   // Use atomic for thread-safe access
 	stopChan chan struct{}
+	wg       sync.WaitGroup // Track goroutines for clean shutdown
 }
 
 type HistoricalDataCollector = DataCollector
@@ -134,6 +135,9 @@ func (hdc *HistoricalDataCollector) Start(ctx context.Context) error {
 	hdc.stopChan = make(chan struct{})
 	hdc.mu.Unlock()
 
+	// Start both goroutines and track them
+	hdc.wg.Add(2)
+
 	// Start collection loop
 	go hdc.collectionLoop(ctx)
 
@@ -156,7 +160,13 @@ func (hdc *HistoricalDataCollector) Stop() error {
 
 	hdc.mu.Lock()
 	close(hdc.stopChan)
-	// Save current data (already holding lock)
+	hdc.mu.Unlock()
+
+	// Wait for both goroutines to exit
+	hdc.wg.Wait()
+
+	// Save current data after goroutines have stopped
+	hdc.mu.Lock()
 	hdc.saveHistoricalDataLocked()
 	hdc.mu.Unlock()
 
@@ -324,6 +334,7 @@ func (hdc *HistoricalDataCollector) GetCollectorStats() map[string]interface{} {
 
 // collectionLoop runs the data collection process
 func (hdc *HistoricalDataCollector) collectionLoop(ctx context.Context) {
+	defer hdc.wg.Done()
 	ticker := time.NewTicker(hdc.collectInterval)
 	defer ticker.Stop()
 
@@ -406,6 +417,7 @@ func (hdc *HistoricalDataCollector) collectData(ctx context.Context) {
 
 // cleanupLoop runs periodic cleanup of old data
 func (hdc *HistoricalDataCollector) cleanupLoop() {
+	defer hdc.wg.Done()
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
