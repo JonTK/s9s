@@ -182,18 +182,6 @@ accounts:ml-team
 - `start` - Start time (supports comparison)
 - `end` - End time (supports comparison)
 
-### State-Based Filters (Planned)
-
-**Active Only Filter**
-**Shortcut**: `a/A` (TODO: not yet implemented)
-
-Show only currently active reservations.
-
-**Future Only Filter**
-**Shortcut**: `f/F` (TODO: not yet implemented)
-
-Show only upcoming reservations.
-
 ### Global Search
 **Shortcut**: `Ctrl+F`
 
@@ -224,8 +212,6 @@ Press `1-9` to sort by column number.
 | `/` | Simple filter |
 | `F3` | Advanced filter |
 | `Ctrl+F` | Global search |
-| `a/A` | Toggle active-only (TODO) |
-| `f/F` | Toggle future-only (TODO) |
 | `ESC` | Exit filter mode |
 
 ### Data Management

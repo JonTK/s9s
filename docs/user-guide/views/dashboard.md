@@ -80,10 +80,12 @@ Shows "No issues detected" with green checkmark when system is healthy.
 
 ### Performance Trends (Bottom)
 
-24-hour performance overview:
-- Job throughput trends
-- Resource efficiency percentage
+Displays demo visualizations:
+- Job throughput sparklines
+- Resource efficiency percentages
 - System health score with visual bar
+
+> **Note:** This panel shows demo data only, not actual cluster metrics.
 
 ## Actions & Shortcuts
 

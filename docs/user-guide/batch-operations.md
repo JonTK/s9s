@@ -1,15 +1,14 @@
 # Batch Operations Guide
 
-Efficiently manage multiple jobs, nodes, and resources simultaneously with S9S's powerful batch operation capabilities.
+Efficiently manage multiple jobs simultaneously with S9S's batch operation capabilities.
 
 ## Overview
 
 Batch operations allow you to:
 - Manage multiple jobs with a single command
-- Apply operations to filtered resources
-- Perform bulk maintenance tasks
-- Execute commands across node ranges
-- Automate repetitive workflows
+- Apply operations to filtered jobs
+- Perform bulk job maintenance tasks
+- Export output from multiple jobs
 
 ## Selection Methods
 
@@ -34,424 +33,227 @@ Select items using filters:
 # Select all failed jobs
 /state:FAILED
 
-# Select all idle GPU nodes
-/state:idle features:gpu
-
 # Select jobs by user
 /user:alice
 
-# Select nodes in specific rack
-/node:rack[01-04]*
+# Combine multiple filters
+/state:PENDING user:bob
 ```
 
-### Range Selection
+## Available Batch Operations
 
-Select ranges of items:
+S9S supports the following batch operations on selected jobs:
+
+### Cancel Jobs
+
+Cancel all selected jobs:
 
 ```bash
-# Job ID ranges
-:select jobs 1000-2000
-
-# Node ranges
-:select nodes node[001-100]
-
-# Time-based ranges
-:select jobs --submitted=today
-
-# Priority ranges
-:select jobs --priority=1000-9999
+# Select jobs and press 'c' or choose "Cancel Jobs" from the menu
+# Confirmation dialog will appear before execution
 ```
 
-## Job Batch Operations
+**Operation**: Calls `scancel` for each selected job
+**Use Case**: Stop running or pending jobs that are no longer needed
 
-### Job Management
+### Hold Jobs
 
-Operate on multiple jobs simultaneously:
+Put selected jobs on hold:
 
 ```bash
-# Cancel multiple jobs
-:cancel job[1000-1010]
-
-# Hold all user's jobs
-/user:alice
-:hold --selected --reason="Maintenance window"
-
-# Release held jobs
-/state:HELD user:alice
-:release --selected
-
-# Change priority of job range
-:priority job[2000-2100] --priority=500
-
-# Requeue failed jobs
-/state:FAILED user:bob
-:requeue --selected
+# Select jobs and press 'H' or choose "Hold Jobs" from the menu
+# Jobs will be prevented from starting
 ```
 
-### Advanced Job Operations
+**Operation**: Calls `scontrol hold` for each selected job
+**Use Case**: Temporarily prevent pending jobs from starting without canceling them
+**Note**: Only works on pending jobs; cannot hold running jobs
+
+### Release Jobs
+
+Release held jobs:
 
 ```bash
-# Modify job arrays
-:modify job_array_123 --array=1-100:2  # Every other task
-
-# Update time limits for running jobs
-/state:RUNNING partition:gpu
-:time --selected --time=+2:00:00  # Add 2 hours
-
-# Change partition for pending jobs
-/state:PENDING user:alice
-:partition --selected --partition=highmem
-
-# Notify on job completion
-/user:alice state:RUNNING
-:notify --selected --email --webhook
+# Select held jobs and press 'r' or choose "Release Jobs" from the menu
+# Jobs will be eligible to run again
 ```
 
-### Conditional Operations
+**Operation**: Calls `scontrol release` for each selected job
+**Use Case**: Allow previously held jobs to start
 
-Apply operations based on conditions:
+### Requeue Jobs
+
+Requeue selected jobs:
 
 ```bash
-# Cancel long-running jobs over 48 hours
-/state:RUNNING time:>48h
-:cancel --selected --reason="Runtime limit exceeded"
-
-# Hold jobs exceeding memory limits
-/state:RUNNING memory:>90%
-:hold --selected --reason="High memory usage"
-
-# Lower priority of idle jobs
-/state:PENDING time:>24h
-:priority --selected --priority=100
+# Select jobs and press 'q' or choose "Requeue Jobs" from the menu
+# Jobs will be requeued for execution
 ```
 
-## Node Batch Operations
+**Operation**: Calls `scontrol requeue` for each selected job
+**Use Case**: Restart failed jobs or re-run completed jobs
 
-### Node Maintenance
+### Export Job Output
 
-Manage multiple nodes efficiently:
+Export job output for all selected jobs:
 
 ```bash
-# Drain node range for maintenance
-:drain node[001-020] --reason="OS update" --timeout=2h
-
-# Resume multiple nodes after maintenance
-:resume node[001-020]
-
-# Put nodes in maintenance mode
-/features:gpu state:idle
-:maintenance --selected --reason="GPU firmware update"
-
-# Update node features
-:features node[100-200] --features=+nvme,-infiniband
+# Select jobs and press 'e' or choose "Export Output" from the menu
+# Choose output format: Text, JSON, CSV, or Markdown
+# Files saved to ~/slurm_exports/ by default
 ```
 
-### Bulk Node Configuration
+**Formats Available**:
+- **Text**: Plain text with header information
+- **JSON**: Structured JSON with metadata
+- **CSV**: CSV format (line-by-line for analysis)
+- **Markdown**: Markdown format with code blocks
+
+**Operation**: Retrieves job output and saves to local files
+**Use Case**: Archive job results, analyze output across multiple jobs
+
+## Interactive Batch Operations
+
+### Using the Batch Operations Menu
+
+1. **Select Jobs**: Use visual selection (`Space` key) or filters to select multiple jobs
+2. **Open Batch Menu**: Press `b` (or configured batch key) to open the batch operations menu
+3. **Choose Operation**: Navigate the menu or use keyboard shortcuts:
+   - `c` - Cancel Jobs
+   - `H` - Hold Jobs
+   - `r` - Release Jobs
+   - `q` - Requeue Jobs
+   - `e` - Export Output
+4. **Confirm**: Review the confirmation dialog showing affected jobs
+5. **Execute**: Confirm to execute the batch operation
+6. **Monitor Progress**: Watch the progress bar as operations are applied to each job
+
+### Progress Tracking
+
+The batch operations interface shows:
+- Number of jobs being processed
+- Current job being processed
+- Success/failure count
+- Overall completion status
+
+## Common Workflows
+
+### Cleanup Failed Jobs
 
 ```bash
-# Set node weights for load balancing
-:weight node[001-050] --weight=100
-:weight node[051-100] --weight=200
+# Step 1: Filter failed jobs
+/state:FAILED
 
-# Configure power management
-/features:power_save
-:power --selected --policy=ondemand
-
-# Update node availability
-:available node[200-250] --available=no --reason="Hardware upgrade"
+# Step 2: Review the filtered list
+# Step 3: Press 'c' to cancel all failed jobs
+# Step 4: Confirm the operation
 ```
 
-## Resource Monitoring
-
-### Batch Status Checks
-
-Monitor multiple resources:
+### Hold User Jobs for Maintenance
 
 ```bash
-# Check job status for user
-:status --user alice --format table
+# Step 1: Filter user's pending jobs
+/user:alice state:PENDING
 
-# Node health summary
-:health --nodes node[001-100] --summary
-
-# Resource utilization report
-:utilization --partition gpu --time-range 24h
-
-# Queue analysis
-:queue-analysis --all-partitions --export csv
+# Step 2: Press 'H' to hold all jobs
+# Step 3: Perform maintenance
+# Step 4: Filter held jobs and press 'r' to release them
 ```
 
-### Performance Analytics
+### Requeue Failed Jobs
 
 ```bash
-# Job efficiency analysis
+# Step 1: Filter failed jobs
+/state:FAILED
+
+# Step 2: Press 'q' to requeue
+# Step 3: Jobs will be requeued and eligible to run again
+```
+
+### Export Results from Completed Jobs
+
+```bash
+# Step 1: Filter completed jobs
 /state:COMPLETED user:alice
-:efficiency --selected --threshold 0.8
 
-# Resource usage trends
-:usage-trend --nodes node[001-050] --period week
-
-# Utilization heatmap
-:heatmap --partition gpu --time-range month
-```
-
-## Workflow Automation
-
-### Scheduled Operations
-
-Create recurring batch operations:
-
-```bash
-# Daily cleanup of old failed jobs
-:schedule daily "cleanup-failed-jobs" \
-  "/state:FAILED time:>7d" \
-  ":cancel --selected --purge"
-
-# Weekly maintenance check
-:schedule weekly "maintenance-check" \
-  "/load:>16 jobs:0" \
-  ":maintenance --selected --auto-resume 4h"
-
-# Hourly priority adjustment
-:schedule hourly "priority-boost" \
-  "/state:PENDING time:>6h priority:<500" \
-  ":priority --selected --priority=+100"
-```
-
-### Template Operations
-
-Save and reuse batch operation templates:
-
-```yaml
-# ~/.s9s/templates/maintenance.yaml
-name: "Weekly Maintenance"
-description: "Standard weekly maintenance workflow"
-steps:
-  - filter: "/features:gpu state:idle jobs:0"
-  - operation: "drain"
-    options:
-      reason: "Weekly maintenance"
-      timeout: "2h"
-  - wait: "jobs-complete"
-  - operation: "maintenance"
-    options:
-      script: "/opt/maintenance/gpu-check.sh"
-  - operation: "resume"
-```
-
-Execute templates:
-
-```bash
-# Run saved template
-:template run maintenance
-
-# Run with overrides
-:template run maintenance --timeout=4h --nodes=node[100-200]
-```
-
-## Batch Reporting
-
-### Generate Reports
-
-Create comprehensive reports across resources:
-
-```bash
-# User activity report
-:report user-activity --users alice,bob,charlie \
-  --period month --format pdf --output ~/reports/
-
-# Cluster utilization report
-:report utilization --all-partitions \
-  --time-range "2023-12-01..2023-12-31" \
-  --format excel
-
-# Job efficiency report
-:report efficiency --min-runtime 1h \
-  --threshold 0.7 --format json
-```
-
-### Export Batch Data
-
-```bash
-# Export job history for analysis
-/user:alice state:COMPLETED
-:export --selected --format csv --fields=all \
-  --output ~/data/alice_jobs.csv
-
-# Export node configuration
-:export nodes --format yaml --config-only \
-  --output cluster-config.yaml
-
-# Export performance metrics
-/partition:gpu
-:export --selected --metrics --time-range week \
-  --format parquet --output gpu-metrics/
+# Step 2: Press 'e' to export
+# Step 3: Choose export format (Text, JSON, CSV, or Markdown)
+# Step 4: Files saved to ~/slurm_exports/
 ```
 
 ## Safety and Validation
 
-### Dry Run Mode
+### Confirmation Dialogs
 
-Test batch operations safely:
+All destructive batch operations (cancel, hold, requeue) require confirmation:
+- Shows the number of jobs affected
+- Lists job IDs that will be modified
+- Requires explicit "Yes" to proceed
+- Can be canceled with "No" or `Esc`
 
-```bash
-# Preview operation without executing
-:cancel job[1000-2000] --dry-run
+### Progress Feedback
 
-# Validate template
-:template validate maintenance --dry-run
+Batch operations provide real-time feedback:
+- Progress bar showing completion percentage
+- Current job being processed
+- Success and failure counts
+- Final summary of results
 
-# Check impact of drain operation
-:drain node[001-020] --dry-run --report-impact
-```
+### Error Handling
 
-### Confirmation and Safeguards
-
-```bash
-# Require explicit confirmation for destructive operations
-:cancel /state:RUNNING --confirm-each
-
-# Set maximum operation limits
-:config set batch.max_operations 100
-:config set batch.require_confirmation true
-
-# Enable operation logging
-:config set logging.batch_operations true
-```
-
-### Rollback Capabilities
-
-```bash
-# Undo last batch operation
-:undo
-
-# Rollback specific operation
-:rollback operation_id_12345
-
-# View operation history
-:history --operations --limit 10
-```
-
-## Interactive Batch Mode
-
-### Batch Command Interface
-
-Enter interactive batch mode:
-
-```bash
-# Start batch mode
-:batch
-
-# In batch mode
-batch> select /user:alice state:PENDING
-batch> priority --selected 1000
-batch> notify --selected --email
-batch> execute
-```
-
-### Batch Scripting
-
-Create reusable batch scripts:
-
-```bash
-#!/usr/bin/env s9s-batch
-
-# Batch script: daily-cleanup.s9s
-select /state:FAILED time:>7d
-cancel --selected --purge
-
-select /state:COMPLETED time:>30d
-archive --selected --location s3://archive-bucket/
-
-select /partition:debug state:PENDING time:>1h
-cancel --selected --reason="Debug queue timeout"
-
-notify --summary --slack
-```
-
-Execute batch scripts:
-
-```bash
-s9s batch-run daily-cleanup.s9s
-```
-
-## Batch Operation Examples
-
-### Common Workflows
-
-**1. Weekly Maintenance**:
-```bash
-# Identify maintenance candidates
-/state:idle jobs:0 features:gpu
-
-# Drain selected nodes
-:drain --selected --reason="Weekly maintenance" --timeout=2h
-
-# Wait and perform maintenance
-:wait jobs-complete
-:ssh --selected "sudo /opt/maintenance/weekly-check.sh"
-
-# Resume nodes
-:resume --selected
-```
-
-**2. Job Cleanup**:
-```bash
-# Old completed jobs
-/state:COMPLETED time:>30d
-:archive --selected --location /archive/jobs/
-
-# Failed jobs with low priority
-/state:FAILED priority:<100 time:>7d
-:cancel --selected --purge
-
-# Stuck pending jobs
-/state:PENDING time:>72h
-:cancel --selected --reason="Timeout in queue"
-```
-
-**3. Resource Rebalancing**:
-```bash
-# High-priority jobs stuck in queue
-/state:PENDING priority:>5000 time:>6h
-:partition --selected --partition=express
-
-# Long-running jobs hogging resources
-/state:RUNNING time:>48h nodes:>8
-:time --selected --time=+4h --notify
-```
+If a batch operation fails on individual jobs:
+- Operation continues with remaining jobs
+- Errors are counted and reported
+- Final summary shows successful vs. failed operations
 
 ## Configuration
 
-### Batch Operation Settings
+### Export Settings
+
+Configure default export behavior:
 
 ```yaml
-# ~/.s9s/config.yaml
-batch:
-  # Maximum operations per batch
-  maxOperations: 1000
+# Default export path (defaults to ~/slurm_exports)
+export:
+  defaultPath: ~/my_job_exports
 
-  # Require confirmation for destructive operations
-  requireConfirmation: true
-
-  # Enable dry-run mode by default
-  defaultDryRun: false
-
-  # Parallel execution settings
-  maxConcurrent: 10
-  timeout: 300s
-
-  # Safety limits
-  maxNodesPerOperation: 100
-  maxJobsPerOperation: 1000
-
-  # Logging
-  logOperations: true
-  logFile: ~/.s9s/batch.log
+# Default export format
+  defaultFormat: json
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+**"No jobs selected for batch operations"**
+- Solution: Select at least one job using `Space` or visual selection mode
+
+**"Permission denied" errors during batch operations**
+- Solution: You can only perform operations on your own jobs (unless admin)
+
+**"Operation failed" for some jobs**
+- Cause: Job state may have changed, or job may not support the operation
+- Solution: Review the final summary to identify which jobs failed
+
+**Export files not found**
+- Solution: Check `~/slurm_exports/` directory or configured export path
+- Note: Directory is created automatically on first export
+
+## Keyboard Reference
+
+| Key | Operation | Description |
+|-----|-----------|-------------|
+| `b` | Open batch menu | Open batch operations on selected jobs |
+| `Space` | Toggle selection | Select/deselect individual jobs |
+| `c` | Cancel jobs | Cancel all selected jobs |
+| `H` | Hold jobs | Put selected jobs on hold |
+| `r` | Release jobs | Release held jobs |
+| `q` | Requeue jobs | Requeue selected jobs |
+| `e` | Export output | Export job output |
+| `Esc` | Close menu | Close batch operations menu |
 
 ## Next Steps
 
-- Master [Advanced Filtering](../filtering.md) for precise resource selection
-- Learn [Node Operations](./node-operations.md) for single-node management
-- Explore [Export](./export.md) capabilities for data analysis
+- Learn more about [Advanced Filtering](../filtering.md) for precise job selection
+- Explore [Export](./export.md) capabilities for detailed output analysis
+- Review [Job Management](./job-management.md) for single-job operations

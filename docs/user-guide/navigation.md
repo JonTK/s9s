@@ -1,31 +1,25 @@
 # Navigation & Keyboard Shortcuts
 
-S9S follows vim-style navigation patterns, making it intuitive for terminal power users. This guide covers all keyboard shortcuts and navigation methods.
+S9S follows vim-style navigation patterns, making it intuitive for terminal power users. This guide covers all keyboard shortcuts and navigation methods currently implemented.
 
 ## Navigation Philosophy
 
-S9S uses a modal interface inspired by vim:
-- **Normal mode** - Navigate and execute commands
-- **Search mode** - Filter and find items
-- **Command mode** - Enter advanced commands
-- **Selection mode** - Select multiple items
+S9S uses a simple interface inspired by vim with basic navigation and view switching capabilities.
 
 ## Global Shortcuts
 
-These shortcuts work in all views:
+These shortcuts work across all views:
 
 ### Essential Keys
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| `?` | Help | Show context-sensitive help |
-| `q` | Quit | Exit S9S |
-| `Q` | Force Quit | Exit immediately without confirmation |
-| `:` | Command Mode | Enter command mode |
-| `/` | Search | Enter search/filter mode |
+| `Ctrl+C` | Quit | Exit S9S |
 | `Esc` | Cancel | Exit current mode/dialog |
 | `Tab` | Next View | Cycle to next view |
-| `Shift+Tab` | Previous View | Cycle to previous view |
+| `F1` | Help | Show context-sensitive help |
+| `F2` | Alerts | Show system alerts |
+| `F5` | Refresh | Refresh current view |
 
 ### View Navigation
 
@@ -47,24 +41,8 @@ These shortcuts work in all views:
 |-----|--------|-------------|
 | `j` or `↓` | Down | Move cursor down |
 | `k` or `↑` | Up | Move cursor up |
-| `h` or `←` | Left | Move left/collapse |
-| `l` or `→` | Right | Move right/expand |
 | `g` | Top | Go to first item |
 | `G` | Bottom | Go to last item |
-| `Ctrl+f` | Page Down | Scroll down one page |
-| `Ctrl+b` | Page Up | Scroll up one page |
-| `Ctrl+d` | Half Page Down | Scroll down half page |
-| `Ctrl+u` | Half Page Up | Scroll up half page |
-
-### Selection
-
-| Key | Action | Description |
-|-----|--------|-------------|
-| `Space` | Toggle Selection | Select/deselect current item |
-| `v` | Visual Mode | Enter visual selection mode |
-| `V` | Select All | Select all visible items |
-| `Ctrl+a` | Select All | Alternative select all |
-| `Ctrl+Space` | Clear Selection | Deselect all items |
 
 ## View-Specific Shortcuts
 
@@ -72,28 +50,24 @@ These shortcuts work in all views:
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| `Enter` | Expand/Details | Show job details |
-| `c` | Cancel | Cancel selected job(s) |
-| `h` | Hold | Hold selected job(s) |
-| `r` | Release | Release held job(s) |
-| `d` | Delete | Delete job record |
-| `o` | Output | View job output/logs |
-| `O` | Full Output | View complete output in pager |
-| `e` | Edit | Modify job parameters |
+| `Enter` | Details | Show job details |
 | `s` | Submit | Submit new job |
-| `S` | Submit Template | Submit from template |
-| `t` | Tail | Tail job output |
-| `i` | Info | Detailed job information |
-| `p` | Priority | Change job priority |
-| `m` | Move | Move to different partition |
-| `n` | Notify | Set up job notifications |
-| `b` | Batch | Enter batch operations mode |
-| `f` | Filter Preset | Apply saved filter |
-| `F` | Save Filter | Save current filter |
-| `x` | Export | Export job data |
-| `R` | Requeue | Requeue failed job |
-| `D` | Dependencies | View job dependencies |
-| `T` | Timeline | View job timeline |
+| `c` | Cancel | Cancel selected job |
+| `H` | Hold/Release | Hold or release job |
+| `r` | Release | Release held job |
+| `o` | Output | View job output |
+| `d` | Dependencies | Show job dependencies |
+| `q` | Requeue | Requeue failed job |
+| `b` | Batch Ops | Enter batch operations mode |
+| `v` | Multi-Select | Toggle multi-select mode |
+| `m` | Auto Refresh | Toggle auto-refresh |
+| `/` | Filter | Filter jobs |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `F1` | Actions Menu | Show actions menu |
+| `F2` | Templates | Show job templates |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
 
 ### Nodes View
 
@@ -101,223 +75,196 @@ These shortcuts work in all views:
 |-----|--------|-------------|
 | `Enter` | Details | Show node details |
 | `s` | SSH | SSH to selected node |
-| `S` | SSH (new window) | SSH in new terminal |
 | `d` | Drain | Drain node |
-| `D` | Drain (reason) | Drain with reason |
-| `r` | Resume | Resume/undrain node |
-| `R` | Reboot | Reboot node |
-| `p` | Power | Power management |
-| `i` | Info | Detailed node info |
-| `m` | Maintenance | Set maintenance mode |
-| `h` | History | Node history |
-| `g` | GPU Info | Show GPU details |
-| `l` | Load | Show node load |
-| `t` | Temperature | Show temperatures |
-| `x` | Export | Export node data |
+| `r` | Resume | Resume drained node |
+| `/` | Filter | Filter nodes |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
+| `p` | Partition | Filter by partition |
+| `a` | All States | Show all node states |
+| `g` | Group By | Group nodes by attribute |
+| `Space` | Toggle Group | Toggle group expansion |
 
 ### Partitions View
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| `Enter` | Details | Show partition info |
-| `j` | Jobs | Show jobs in partition |
-| `n` | Nodes | Show nodes in partition |
-| `e` | Edit | Edit partition config |
-| `s` | State | Change partition state |
-| `l` | Limits | View/edit limits |
-| `q` | QoS | Associated QoS |
-| `a` | Accounts | Allowed accounts |
+| `Enter` | Details | Show partition details |
+| `J` | Jobs | Show jobs in partition |
+| `N` | Nodes | Show nodes in partition |
+| `A` | Analytics | Show partition analytics |
+| `W` | Wait Times | Show wait time analytics |
+| `/` | Filter | Filter partitions |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
+
+### QoS View
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `Enter` | Details | Show QoS details |
+| `/` | Filter | Filter QoS policies |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
+
+### Accounts View
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `Enter` | Details | Show account details |
+| `H` | Hierarchy | Show account hierarchy |
+| `/` | Filter | Filter accounts |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
+
+### Users View
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `Enter` | Details | Show user details |
+| `a` | Toggle Filter | Show admin users / all users |
+| `/` | Filter | Filter users |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
+
+### Reservations View
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `Enter` | Details | Show reservation details |
+| `a` | Active Only | Filter active reservations |
+| `f` | Future Only | Filter future reservations |
+| `/` | Filter | Filter reservations |
+| `F3` | Adv Filter | Advanced filter mode |
+| `Ctrl+F` | Search | Global search |
+| `1-9` | Sort | Sort by column |
+| `R` | Refresh | Force refresh view |
 
 ### Dashboard View
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| `r` | Refresh | Force refresh |
-| `a` | Auto-refresh | Toggle auto-refresh |
-| `+` | Increase Rate | Faster refresh |
-| `-` | Decrease Rate | Slower refresh |
-| `c` | Customize | Customize dashboard |
-| `w` | Add Widget | Add new widget |
-| `x` | Remove Widget | Remove widget |
-| `m` | Move Widget | Rearrange widgets |
+| `J` | Jobs View | Jump to jobs view |
+| `N` | Nodes View | Jump to nodes view |
+| `P` | Partitions View | Jump to partitions view |
+| `A` | Analytics | Show advanced analytics |
+| `H` | Health Check | Show health check |
+| `R` | Refresh | Refresh all panels |
 
-## Search Mode
+### Health View
 
-Enter search mode with `/`:
+| Key | Action | Description |
+|-----|--------|-------------|
+| `Enter` | Alert Details | Show alert details |
+| `a` | Acknowledge | Acknowledge alert |
+| `r` | Resolve | Resolve alert |
+| `c` | Clear Resolved | Clear resolved alerts |
+| `R` | Refresh | Refresh view |
+| `H` | Health Details | Show health details |
+| `s` | Health Stats | Show health statistics |
 
-### Basic Search
+## Search and Filter Mode
+
+Enter filter mode with `/` or advanced filter with `F3`:
+
+### Basic Filter
 
 ```
-/keyword           # Simple text search
+/keyword           # Simple text search in current view
 /RUNNING          # Find all running items
 /gpu              # Find GPU-related items
 ```
 
-### Advanced Search Syntax
+### Advanced Filter
 
-```
-# Field-specific search
-/user:alice       # Items by user alice
-/state:PENDING    # Pending items
-/name:analysis    # Items with 'analysis' in name
+Press `F3` to access the advanced filter builder with:
+- Field-specific filtering
+- Operator support (equals, contains, greater than, less than)
+- Multiple filter conditions
+- Save and load filter presets
 
-# Operators
-/time:>1h         # Running time > 1 hour
-/nodes:<=4        # Using <= 4 nodes
-/priority:>=1000  # Priority >= 1000
+### Global Search
 
-# Compound searches
-/user:bob state:RUNNING    # Bob's running items
-/partition:gpu nodes:>2    # GPU partition, >2 nodes
-
-# Regex search
-/name:~"test.*2023"        # Regex pattern
-/output:~"error|fail"      # Find errors
-
-# Time ranges
-/time:1h-2h               # Between 1-2 hours
-/submit:<1d               # Submitted < 1 day ago
-```
-
-### Search Navigation
-
-| Key | Action | Description |
-|-----|--------|-------------|
-| `Enter` | Apply | Apply search filter |
-| `Esc` | Cancel | Cancel search |
-| `Ctrl+c` | Clear | Clear search box |
-| `Tab` | Autocomplete | Complete search term |
-| `↑/↓` | History | Browse search history |
-| `Ctrl+r` | Regex Mode | Toggle regex mode |
-| `Ctrl+i` | Case Mode | Toggle case sensitivity |
-
-## Command Mode
-
-Enter command mode with `:`:
-
-### Common Commands
-
-```
-:help [topic]          # Show help
-:quit or :q           # Quit S9S
-:write or :w          # Save current state
-:view <name>          # Switch to view
-:refresh or :r        # Force refresh
-:clear                # Clear filters
-:export <format>      # Export data
-:set <option> <value> # Set option
-:source <file>        # Load commands from file
-:!<shell-command>     # Execute shell command
-```
-
-### View Management
-
-```
-:split                # Split view horizontally
-:vsplit               # Split view vertically
-:close                # Close current pane
-:only                 # Close all other panes
-:resize +10           # Increase pane size
-:resize -10           # Decrease pane size
-```
-
-### Settings Commands
-
-```
-:set refresh 5s       # Set refresh interval
-:set theme dark       # Change theme
-:set confirm off      # Disable confirmations
-:set columns <list>   # Set visible columns
-:show settings        # Display all settings
-```
-
-## Advanced Navigation
-
-### Multi-Pane Navigation
-
-| Key | Action | Description |
-|-----|--------|-------------|
-| `Ctrl+w h` | Left Pane | Move to left pane |
-| `Ctrl+w j` | Down Pane | Move to pane below |
-| `Ctrl+w k` | Up Pane | Move to pane above |
-| `Ctrl+w l` | Right Pane | Move to right pane |
-| `Ctrl+w w` | Next Pane | Cycle through panes |
-| `Ctrl+w s` | Split Horizontal | Create horizontal split |
-| `Ctrl+w v` | Split Vertical | Create vertical split |
-| `Ctrl+w c` | Close Pane | Close current pane |
-| `Ctrl+w o` | Only Pane | Close other panes |
-
-### Bookmarks
-
-| Key | Action | Description |
-|-----|--------|-------------|
-| `m<letter>` | Set Mark | Set bookmark |
-| `'<letter>` | Go to Mark | Jump to bookmark |
-| `:marks` | List Marks | Show all bookmarks |
-| `:delmarks <letter>` | Delete Mark | Remove bookmark |
-
-### Macros
-
-| Key | Action | Description |
-|-----|--------|-------------|
-| `q<letter>` | Record Macro | Start recording |
-| `q` | Stop Recording | End recording |
-| `@<letter>` | Play Macro | Execute macro |
-| `@@` | Repeat Macro | Repeat last macro |
-| `:reg` | List Macros | Show all macros |
+Press `Ctrl+F` to search across all views simultaneously and jump to results.
 
 ## Tips & Tricks
 
 ### Efficiency Tips
 
-1. **Use number prefixes**: `5j` moves down 5 lines
-2. **Combine movements**: `gg` → top, `G` → bottom
-3. **Quick filters**: `/` + partial text + `Tab` for autocomplete
-4. **Repeat commands**: `.` repeats last action
-5. **Quick escape**: `Ctrl+[` works like `Esc`
+1. **Use vim keys**: `j`/`k` for up/down, `g`/`G` for top/bottom
+2. **Quick view switching**: Number keys `1-9` switch directly to views
+3. **Quick filters**: `/` for instant filtering in any view
+4. **Multi-select**: Use `v` in jobs view for batch operations
+5. **Sort quickly**: Use `1-9` to sort by different columns
 
 ### Power User Workflows
 
 ```bash
 # Cancel all failed jobs
-/state:FAILED    # Filter failed jobs
-V                # Select all visible
-c                # Cancel selected
-y                # Confirm
+1                # Switch to jobs view
+/FAILED         # Filter failed jobs
+v                # Enter multi-select mode
+c                # Cancel selected jobs
 
 # SSH to GPU node
 2                # Switch to nodes view
 /gpu             # Filter GPU nodes
-s                # SSH to selected
+s                # SSH to selected node
 
-# Export running jobs
-/state:RUNNING   # Filter running
-:export csv      # Export to CSV
+# Check partition health
+3                # Switch to partitions view
+W                # View wait time analytics
 ```
 
-### Custom Key Bindings
+## Features
 
-Create custom bindings in `~/.s9s/keybindings.yaml`:
+- **Real-time updates** - Data refreshes automatically
+- **ASCII visualizations** - Resource usage shown with colored progress bars
+- **Advanced filtering** - Use `/` to filter data in any view or `F3` for advanced filters
+- **Sortable columns** - Use number keys `1-9` to sort
+- **Detailed analytics** - Press `A` or `W` in partitions for insights
+- **Node grouping** - Group nodes by partition, state, or features
+- **Wait time analysis** - Predictive queue analytics in partitions
+- **Health monitoring** - Cluster health scoring and alerts in health view
+- **Hierarchical views** - Account hierarchy and dependency trees
+- **Global search** - Cross-view search with `Ctrl+F`
 
-```yaml
-keybindings:
-  global:
-    "ctrl+j": "view jobs"
-    "ctrl+n": "view nodes"
-    "ctrl+/": "search"
+## Color Coding
 
-  jobs:
-    "K": "cancel --force"
-    "H": "hold --reason='Manual hold'"
-    "X": "export csv --file=jobs.csv"
-```
+- **Green** - Running, Available, Healthy states
+- **Yellow** - Pending, Mixed, Warning states
+- **Red** - Failed, Down, Error states
+- **Blue** - Allocated, Active states
+- **Cyan** - Information, Special states
+- **Orange** - Drain, Maintenance states
+- **Gray** - Unknown, Inactive states
+
+## Resource Usage Bars
+
+Visual representation of resource utilization:
+- `█` - Used/Actual usage
+- `▒` - Allocated by SLURM
+- `▱` - Free/Available
+
+Bar colors:
+- **Green bars** - Low usage (< 50%)
+- **Yellow bars** - Medium usage (50-80%)
+- **Red bars** - High usage (> 80%)
 
 ## Next Steps
 
 - Practice navigation in mock mode: `s9s --mock`
-- Create your own keybindings
-- Learn advanced filtering in our [Filtering Guide](filtering.md)
-- Master batch operations in our [Batch Operations Guide](batch-operations.md)
+- Learn advanced filtering techniques
 - Explore individual view guides:
   - [Jobs View](views/jobs.md)
   - [Nodes View](views/nodes.md)
