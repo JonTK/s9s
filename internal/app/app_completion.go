@@ -73,7 +73,7 @@ func (s *S9s) getArgumentCompletions(text string) []string {
 	argType := getArgType(cmdName)
 
 	// Get the partial argument being typed (if any)
-	argPrefix := ""
+	var argPrefix string
 	if len(parts) > 1 {
 		argPrefix = parts[len(parts)-1]
 	} else if strings.HasSuffix(text, " ") {

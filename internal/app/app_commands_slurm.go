@@ -19,7 +19,7 @@ func (s *S9s) cmdCancelJob(args []string) CommandResult {
 	s.refreshCurrentViewAsync()
 	return CommandResult{
 		Success: true,
-		Message: fmt.Sprintf("Job %s cancelled", jobID),
+		Message: fmt.Sprintf("Job %s canceled", jobID),
 	}
 }
 
