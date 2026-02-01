@@ -182,17 +182,17 @@ accounts:ml-team
 - `start` - Start time (supports comparison)
 - `end` - End time (supports comparison)
 
-### State-Based Filters (Planned)
+### State-Based Filters
 
-**Active Only Filter**
-**Shortcut**: `a/A` (TODO: not yet implemented)
+**[COMING SOON] Active Only Filter**
+**Shortcut**: `a/A` (planned)
 
-Show only currently active reservations.
+Show only currently active reservations. This feature is planned for a future release. Currently, use the advanced filter with `state:ACTIVE` instead.
 
-**Future Only Filter**
-**Shortcut**: `f/F` (TODO: not yet implemented)
+**[COMING SOON] Future Only Filter**
+**Shortcut**: `f/F` (planned)
 
-Show only upcoming reservations.
+Show only upcoming reservations. This feature is planned for a future release. Currently, use the advanced filter to exclude `state:ACTIVE` and `state:INACTIVE` instead.
 
 ### Global Search
 **Shortcut**: `Ctrl+F`
@@ -224,8 +224,8 @@ Press `1-9` to sort by column number.
 | `/` | Simple filter |
 | `F3` | Advanced filter |
 | `Ctrl+F` | Global search |
-| `a/A` | Toggle active-only (TODO) |
-| `f/F` | Toggle future-only (TODO) |
+| `a/A` | Toggle active-only [COMING SOON] |
+| `f/F` | Toggle future-only [COMING SOON] |
 | `ESC` | Exit filter mode |
 
 ### Data Management

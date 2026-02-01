@@ -2,6 +2,7 @@
 # Planning & Temporary Files
 plan/
 AGENTS.md
+specs/
 
 # Claude Flow generated files
 .claude/settings.local.json
