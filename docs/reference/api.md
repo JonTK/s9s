@@ -1,10 +1,33 @@
 # API Documentation
 
-Complete REST API reference for S9S, enabling programmatic access to cluster management, job operations, and system information.
+> **⚠️ IMPORTANT NOTICE: THIS API IS NOT CURRENTLY IMPLEMENTED**
+>
+> **s9s is a Terminal User Interface (TUI) client application, NOT a server application.**
+>
+> The API described in this document represents planned/future functionality and does **NOT** currently exist in s9s. This document serves as a design reference for potential future development.
+>
+> ### Current Reality
+> - s9s is a **TUI client** that runs in your terminal
+> - s9s connects directly to SLURM clusters using SLURM's native tools (squeue, scontrol, sacct, etc.)
+> - s9s does **NOT** run as a server or daemon
+> - s9s does **NOT** provide any REST API endpoints
+>
+> ### For Programmatic Access to SLURM
+> If you need a REST API to interact with SLURM clusters, consider using:
+> - **[Slurmrestd](https://slurm.schedmd.com/rest_api.html)** - SLURM's official REST API daemon
+> - **SLURM command-line tools** with scripting (squeue, scontrol, sacct, sbatch, etc.)
+> - **PySlurm** - Python bindings for SLURM
+>
+> ### Status of This Document
+> This document is retained as a **design specification** for potential future features. If s9s were to implement a REST API layer in the future, this document would serve as the reference design.
 
-## API Overview
+---
 
-The S9S REST API provides:
+## PLANNED/FUTURE API Overview
+
+The following describes a **hypothetical** REST API that s9s could provide in the future:
+
+### Planned Features
 - RESTful endpoints for all S9S functionality
 - JSON request/response format
 - Authentication via tokens, OAuth2, or certificates
@@ -12,18 +35,20 @@ The S9S REST API provides:
 - WebSocket support for real-time updates
 - OpenAPI 3.0 specification
 
-### Base URL
+### Hypothetical Base URL
 ```
 https://your-s9s-instance.com/api/v1
 ```
 
-### API Versions
-- **v1**: Current stable version
-- **v2**: Beta version (if available)
+### Proposed API Versions
+- **v1**: Planned stable version
+- **v2**: Future consideration
 
-## Authentication
+## PLANNED: Authentication
 
-### Token Authentication
+> **Note**: All authentication methods described below are planned features only.
+
+### Token Authentication (Planned)
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
      https://api.example.com/v1/jobs
@@ -51,9 +76,11 @@ curl -H "Authorization: Bearer ACCESS_TOKEN" \
      https://api.example.com/v1/jobs
 ```
 
-## Jobs API
+## PLANNED: Jobs API
 
-### List Jobs
+> **Note**: These endpoints do not currently exist. s9s currently displays job information by querying SLURM directly.
+
+### List Jobs (Planned)
 ```http
 GET /v1/jobs
 ```
@@ -280,9 +307,11 @@ GET /v1/jobs/{job_id}/error
 - `lines` (integer): Number of lines to retrieve
 - `follow` (boolean): Follow output (WebSocket)
 
-## Nodes API
+## PLANNED: Nodes API
 
-### List Nodes
+> **Note**: These endpoints do not currently exist.
+
+### List Nodes (Planned)
 ```http
 GET /v1/nodes
 ```
@@ -354,9 +383,11 @@ PUT /v1/nodes/{node_name}/state
 }
 ```
 
-## Users API
+## PLANNED: Users API
 
-### List Users
+> **Note**: These endpoints do not currently exist.
+
+### List Users (Planned)
 ```http
 GET /v1/users
 ```
@@ -389,9 +420,11 @@ GET /v1/users
 GET /v1/users/{username}
 ```
 
-## Partitions API
+## PLANNED: Partitions API
 
-### List Partitions
+> **Note**: These endpoints do not currently exist.
+
+### List Partitions (Planned)
 ```http
 GET /v1/partitions
 ```
@@ -420,9 +453,11 @@ GET /v1/partitions
 }
 ```
 
-## Metrics API
+## PLANNED: Metrics API
 
-### Cluster Statistics
+> **Note**: These endpoints do not currently exist.
+
+### Cluster Statistics (Planned)
 ```http
 GET /v1/metrics/cluster
 ```
@@ -497,9 +532,11 @@ GET /v1/metrics/efficiency
 - `partition` (string): Filter by partition
 - `min_runtime` (string): Minimum runtime threshold
 
-## Search API
+## PLANNED: Search API
 
-### Global Search
+> **Note**: These endpoints do not currently exist.
+
+### Global Search (Planned)
 ```http
 GET /v1/search
 ```
@@ -540,9 +577,11 @@ curl "https://api.example.com/v1/search?q=alice%20gpu&limit=20"
 }
 ```
 
-## Export API
+## PLANNED: Export API
 
-### Export Data
+> **Note**: These endpoints do not currently exist.
+
+### Export Data (Planned)
 ```http
 POST /v1/export
 ```
@@ -602,9 +641,11 @@ GET /v1/exports/{export_id}
 GET /v1/exports/{export_id}/download
 ```
 
-## Reports API
+## PLANNED: Reports API
 
-### Generate Report
+> **Note**: These endpoints do not currently exist.
+
+### Generate Report (Planned)
 ```http
 POST /v1/reports
 ```
@@ -633,9 +674,11 @@ POST /v1/reports
 GET /v1/reports
 ```
 
-## WebSocket API
+## PLANNED: WebSocket API
 
-### Real-time Updates
+> **Note**: WebSocket functionality does not currently exist.
+
+### Real-time Updates (Planned)
 ```javascript
 const ws = new WebSocket('wss://api.example.com/v1/ws');
 
@@ -679,9 +722,11 @@ ws.onmessage = function(event) {
 - `alerts` - System alerts
 - `queue` - Queue statistics
 
-## Batch Operations API
+## PLANNED: Batch Operations API
 
-### Bulk Job Operations
+> **Note**: These endpoints do not currently exist.
+
+### Bulk Job Operations (Planned)
 ```http
 POST /v1/jobs/bulk
 ```
@@ -722,9 +767,11 @@ POST /v1/jobs/bulk
 }
 ```
 
-## Error Handling
+## PLANNED: Error Handling
 
-### Error Response Format
+> **Note**: This describes planned error handling for the future API.
+
+### Error Response Format (Planned)
 ```json
 {
   "error": {
@@ -762,9 +809,11 @@ POST /v1/jobs/bulk
 - `VALIDATION_ERROR` - Request validation failed
 - `SLURM_ERROR` - SLURM backend error
 
-## Rate Limiting
+## PLANNED: Rate Limiting
 
-### Rate Limit Headers
+> **Note**: Rate limiting is a planned feature only.
+
+### Rate Limit Headers (Planned)
 ```http
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 897
@@ -777,9 +826,11 @@ X-RateLimit-Window: 3600
 - **Pro Tier**: 10,000 requests/hour
 - **Enterprise**: Custom limits
 
-## OpenAPI Specification
+## PLANNED: OpenAPI Specification
 
-### Download Specification
+> **Note**: No OpenAPI specification currently exists for s9s.
+
+### Download Specification (Planned)
 ```http
 GET /v1/openapi.json
 GET /v1/openapi.yaml
@@ -789,9 +840,11 @@ GET /v1/openapi.yaml
 - Swagger UI: `https://api.example.com/docs`
 - ReDoc: `https://api.example.com/redoc`
 
-## SDK Examples
+## PLANNED: SDK Examples
 
-### Python SDK
+> **Note**: No SDKs currently exist for s9s. These are examples of what future SDKs might look like.
+
+### Python SDK (Planned)
 ```python
 from s9s_client import S9SClient
 
@@ -873,9 +926,11 @@ func main() {
 }
 ```
 
-## Testing
+## PLANNED: Testing
 
-### Test Environment
+> **Note**: These testing endpoints do not currently exist.
+
+### Test Environment (Planned)
 ```bash
 # Base URL for testing
 export S9S_API_URL="https://api-test.example.com"
@@ -900,10 +955,24 @@ curl -X POST \
      "$S9S_API_URL/v1/jobs"
 ```
 
-## Next Steps
+## Actual Next Steps (Current s9s Usage)
 
-- Download SDKs from [GitHub](https://github.com/jontk/s9s-clients)
-- Try the interactive API explorer
-- Read integration guides for popular tools
-- Review [command reference](./commands.md)
+Since the REST API described above does not exist, here are the actual ways to use s9s:
+
+### Using s9s TUI
+- Launch s9s in your terminal: `s9s`
+- Navigate through different views (Jobs, Nodes, Users, etc.)
+- Review the [TUI views guide](../guides/views.md)
 - Check [configuration options](./configuration.md)
+
+### For Programmatic SLURM Access
+If you need REST API access to SLURM, consider:
+- **Slurmrestd**: SLURM's official REST API daemon - [Documentation](https://slurm.schedmd.com/rest_api.html)
+- **SLURM CLI tools**: squeue, scontrol, sacct, sbatch, scancel
+- **PySlurm**: Python bindings for SLURM - [GitHub](https://github.com/PySlurm/pyslurm)
+
+### Future Development
+If you're interested in contributing to a REST API implementation for s9s:
+- This document can serve as a design specification
+- Review the [s9s source code](https://github.com/jontk/s9s)
+- Open an issue to discuss API requirements and design

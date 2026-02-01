@@ -85,6 +85,10 @@ Shows "No issues detected" with green checkmark when system is healthy.
 - Resource efficiency percentage
 - System health score with visual bar
 
+> **Note:** The Performance Trends panel currently displays **placeholder data** for demonstration purposes. The sparkline charts and trend indicators (↗→↘) shown are mock data, not actual cluster metrics from SLURM accounting.
+>
+> Real-time trend metrics based on historical job throughput are planned for a future release. See [dashboard-trends.md](/specs/partial-features/dashboard-trends.md) for the full specification of this upcoming feature.
+
 ## Actions & Shortcuts
 
 ### Navigation
