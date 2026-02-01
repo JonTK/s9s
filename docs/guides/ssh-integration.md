@@ -1,27 +1,28 @@
 # SSH Integration Guide
 
-Seamlessly access cluster nodes directly from S9S with powerful SSH integration features for debugging, monitoring, and interactive work.
+Interactive SSH access to cluster nodes directly from S9S for debugging, monitoring, and troubleshooting.
 
 ## Overview
 
-S9S SSH integration provides:
-- One-click SSH access to any cluster node
-- Automatic SSH key management and authentication
-- Multi-node SSH sessions and command execution
+S9S provides direct SSH access to cluster nodes, allowing you to quickly open interactive terminal sessions for debugging jobs, inspecting node status, and performing administrative tasks.
+
+**Features:**
+- One-click interactive SSH to cluster nodes
+- SSH connection testing and validation
+- Node information retrieval via SSH
 - Integration with job debugging workflows
-- SSH tunneling for secure connections
-- Custom SSH configurations per cluster
+- SSH terminal session management
 
 ## Quick SSH Access
 
 ### Basic SSH Operations
 
+From the Nodes View, press `s` on a selected node to open an interactive SSH session.
+
 | Key | Action | Description |
 |-----|--------|--------------|
-| `s` | SSH to selected node | Direct SSH connection |
-| `Shift+S` | SSH with options | Choose user, key, options |
-| `Ctrl+S` | SSH in background | Open SSH in new terminal |
-| `Alt+S` | SSH command mode | Execute single command via SSH |
+| `s` | SSH to selected node | Direct interactive SSH connection |
+| `S` | SSH to selected node | Same as lowercase `s` |
 
 ### SSH from Different Views
 
@@ -30,7 +31,7 @@ S9S SSH integration provides:
 # Navigate to nodes view
 :view nodes
 
-# Select a node and press 's'
+# Select a node and press 's' to open SSH session
 node001  IDLE    16/32 cores  64GB/128GB  ← [s] SSH here
 ```
 
@@ -43,23 +44,11 @@ node001  IDLE    16/32 cores  64GB/128GB  ← [s] SSH here
 12345  alice  RUNNING  node[001-004]  ← [s] SSH to job nodes
 ```
 
-**Direct SSH Command**:
-```bash
-# SSH to specific node
-:ssh node001
-
-# SSH with specific user
-:ssh alice@node002
-
-# SSH with custom command
-:ssh node003 "htop"
-```
-
 ## SSH Configuration
 
 ### Basic Configuration
 
-Configure SSH settings in `~/.s9s/config.yaml`:
+S9S uses your system's SSH configuration by default. Configure SSH settings in `~/.s9s/config.yaml`:
 
 ```yaml
 ssh:
@@ -68,9 +57,6 @@ ssh:
 
   # SSH key file
   keyFile: ~/.ssh/id_rsa
-
-  # Known hosts file
-  knownHostsFile: ~/.ssh/known_hosts
 
   # Connection options
   compression: true
@@ -81,38 +67,9 @@ ssh:
   extraArgs: "-o StrictHostKeyChecking=ask -o ServerAliveInterval=60"
 ```
 
-### Advanced SSH Configuration
-
-```yaml
-ssh:
-  # Per-cluster SSH settings
-  clusters:
-    production:
-      defaultUser: prod-user
-      keyFile: ~/.ssh/prod_rsa
-      proxyJump: gateway.prod.example.com
-
-    development:
-      defaultUser: dev-user
-      keyFile: ~/.ssh/dev_rsa
-      port: 2222
-
-  # SSH client preferences
-  client:
-    terminal: "xterm-256color"
-    shell: "/bin/bash"
-    enableX11: true
-    compression: true
-    keepAlive: 60
-
-  # Security settings
-  security:
-    strictHostKeyChecking: "ask"
-    hostKeyAlgorithms: "ssh-ed25519,rsa-sha2-256"
-    kexAlgorithms: "curve25519-sha256,diffie-hellman-group16-sha512"
-```
-
 ### SSH Key Management
+
+S9S leverages your existing SSH infrastructure:
 
 ```yaml
 ssh:
@@ -120,49 +77,41 @@ ssh:
     # Default key
     default: ~/.ssh/id_rsa
 
-    # Per-user keys
-    users:
-      alice: ~/.ssh/alice_rsa
-      bob: ~/.ssh/bob_ed25519
-
-    # Per-partition keys
-    partitions:
-      gpu: ~/.ssh/gpu_access_rsa
-      secure: ~/.ssh/secure_partition_ed25519
-
   # Key agent settings
   agent:
     useAgent: true
     addKeysOnConnect: true
-    keyLifetime: 8h
 ```
 
 ## Interactive SSH Sessions
 
 ### Single Node SSH
 
-Connect to individual nodes:
+Connect to individual nodes for interactive work:
 
 ```bash
 # Basic SSH connection
-s  # Press 's' on selected node
+s  # Press 's' on selected node in Nodes View
 
-# SSH session opens in new terminal:
+# SSH session opens in your terminal, suspending s9s temporarily
 user@node001:~$
 ```
 
-### Multi-Node SSH
+When you exit the SSH session, S9S resumes automatically.
 
-Connect to multiple nodes simultaneously:
+### SSH Terminal Manager
+
+S9S provides an advanced SSH terminal manager for managing multiple SSH sessions:
 
 ```bash
-# Select multiple nodes (Space to select)
-node001  ✓ IDLE
-node002  ✓ MIXED
-node003  ✓ ALLOCATED
+# From nodes view, select a node
+# Choose "SSH Terminal Manager" option
 
-# Press 's' to open SSH to all selected nodes
-# Opens multiple terminal windows/tabs
+# Features:
+# - View active SSH sessions
+# - Switch between multiple node connections
+# - Monitor session status
+# - Quick access to node information
 ```
 
 ### SSH with Job Context
@@ -171,211 +120,60 @@ SSH directly to nodes running specific jobs:
 
 ```bash
 # From jobs view, select a running job
-12345  alice  RUNNING  node[001-004]  4h  ← Select this
+12345  alice  RUNNING  node[001-004]  ← Select this
 
-# Press 's' to SSH to all nodes running this job
-# Opens 4 SSH sessions (one per node)
-
-# SSH with job environment loaded
-:ssh --job 12345 --load-env
+# Press 's' to SSH to the first node running this job
+# Useful for debugging running jobs interactively
 ```
 
-## SSH Command Execution
+## SSH Features
 
-### Single Command Execution
+### Connection Testing
 
-Execute commands without interactive session:
+Test SSH connectivity to a node before opening a session:
 
 ```bash
-# Execute command on selected node
-:ssh node001 "uptime"
-
-# Output displayed in S9S:
-node001: 14:23:45 up 5 days, 3:21, 12 users, load average: 2.1, 1.8, 1.9
-
-# Execute on multiple nodes
-:ssh node[001-004] "df -h /scratch"
-
-node001: /dev/sdb1  2.0T  1.8T  200G  90% /scratch
-node002: /dev/sdb1  2.0T  1.2T  800G  60% /scratch
-node003: /dev/sdb1  2.0T  1.9T  100G  95% /scratch
-node004: /dev/sdb1  2.0T  0.5T  1.5T  25% /scratch
+# From the SSH options menu, select "Test Connection"
+# S9S will verify:
+# - SSH connectivity
+# - Authentication
+# - Basic command execution
 ```
 
-### Batch SSH Operations
+### Node Information Retrieval
 
-Execute commands across filtered nodes:
+Gather basic node information via SSH:
 
 ```bash
-# Run command on all idle GPU nodes
-/state:idle features:gpu
-:ssh --selected "nvidia-smi"
-
-# Update all nodes in maintenance
-/state:maint
-:ssh --selected "sudo apt update && sudo apt upgrade -y"
-
-# Check disk space on all nodes
-:ssh --all-nodes "df -h" --output disk-usage.txt
+# From the SSH options menu, select "Get Node Info"
+# Retrieves:
+# - Hostname
+# - Uptime
+# - Memory usage
+# - CPU count
+# - Disk usage
 ```
 
-### Parallel SSH Execution
+### SSH Options Menu
 
-```bash
-# Execute commands in parallel (default)
-:ssh node[001-100] "hostname" --parallel --max-concurrent 20
+When initiating SSH from the Nodes View, S9S presents options:
 
-# Execute sequentially
-:ssh node[001-010] "reboot" --sequential --wait-between 30s
-
-# Execute with timeout
-:ssh node[001-050] "long-running-task.sh" --timeout 300s
-```
-
-## SSH for Debugging
-
-### Job Debugging Workflow
-
-Debug running and failed jobs:
-
-```bash
-# Debug a running job
-:job 12345
-:ssh --debug  # SSH with debugging context
-
-# On the node:
-user@node001:~$ ps aux | grep job_12345
-user@node001:~$ gdb -p <pid>  # Attach debugger
-user@node001:~$ strace -p <pid>  # Trace system calls
-```
-
-### Failed Job Analysis
-
-```bash
-# SSH to nodes where job failed
-:job 12345  # Failed job
-:ssh --post-mortem
-
-# Automatically navigates to job directory and shows:
-# - Job output files
-# - Core dumps
-# - System logs at time of failure
-# - Resource usage at failure time
-```
-
-### Interactive Job Monitoring
-
-```bash
-# SSH and monitor running job
-:ssh node001 --monitor-job 12345
-
-# Opens SSH session with real-time monitoring:
-user@node001:~$ # Job monitoring active
-CPU: 95.2%  Memory: 18.5GB/32GB  GPU: 87%
-
-# Press Ctrl+M to toggle monitoring display
-# Press Ctrl+K to kill the job
-# Press Ctrl+S to suspend the job
-```
-
-## SSH Tunneling
-
-### Port Forwarding
-
-Set up SSH tunnels for secure access:
-
-```bash
-# Forward local port to node service
-:ssh node001 --tunnel 8080:localhost:8080
-# Access http://localhost:8080 to reach node001:8080
-
-# Forward multiple ports
-:ssh node001 --tunnel 8080:localhost:80,9000:localhost:9000
-
-# Dynamic SOCKS proxy
-:ssh node001 --socks 1080
-# Configure browser to use localhost:1080 as SOCKS proxy
-```
-
-### Jupyter/Web Interface Access
-
-```bash
-# SSH tunnel for Jupyter notebook
-:ssh gpu-node --tunnel 8888:localhost:8888
-# Job running Jupyter can be accessed at http://localhost:8888
-
-# SSH tunnel for TensorBoard
-:ssh ml-node --tunnel 6006:localhost:6006
-# TensorBoard accessible at http://localhost:6006
-
-# SSH tunnel for web-based monitoring
-:ssh node001 --tunnel 3000:localhost:3000
-```
-
-## File Transfer Integration
-
-### SCP Integration
-
-Transfer files to/from nodes:
-
-```bash
-# Copy file to node
-:scp local-file.txt node001:/tmp/
-
-# Copy file from node
-:scp node001:/scratch/results.dat ~/Downloads/
-
-# Copy between nodes
-:scp node001:/data/input.txt node002:/scratch/
-
-# Recursive copy
-:scp -r ~/experiment/ node001:/scratch/experiment/
-```
-
-### RSYNC Integration
-
-```bash
-# Sync directories with rsync
-:rsync ~/project/ node001:/scratch/project/ --delete
-
-# Sync with progress and compression
-:rsync ~/large-dataset/ node[001-004]:/scratch/data/ \
-  --progress --compress --parallel
-
-# Sync job results back
-:rsync node[001-004]:/scratch/results/ ~/results/ --merge
-```
+- **SSH Terminal Manager** - Advanced session management interface
+- **Quick Connect** - Direct SSH connection (fastest)
+- **Test Connection** - Verify SSH connectivity
+- **Get Node Info** - Retrieve basic node information
 
 ## SSH Security
 
 ### Authentication Methods
 
-**SSH Key Authentication** (Recommended):
+S9S uses SSH key authentication by default:
+
 ```yaml
 ssh:
   auth:
     method: key
     keyFile: ~/.ssh/id_rsa
-    keyType: ed25519  # or rsa, ecdsa
-```
-
-**Certificate Authentication**:
-```yaml
-ssh:
-  auth:
-    method: certificate
-    certFile: ~/.ssh/id_rsa-cert.pub
-    keyFile: ~/.ssh/id_rsa
-    ca: ~/.ssh/ca.pub
-```
-
-**Multi-Factor Authentication**:
-```yaml
-ssh:
-  auth:
-    method: key+otp
-    keyFile: ~/.ssh/id_rsa
-    otpMethod: totp  # or hotp, yubikey
 ```
 
 ### Security Best Practices
@@ -383,190 +181,161 @@ ssh:
 ```yaml
 ssh:
   security:
-    # Disable password auth
-    passwordAuth: false
-
-    # Require specific key types
-    allowedKeyTypes: ["ed25519", "rsa-sha2-256"]
+    # Require host key verification (recommended for production)
+    strictHostKeyChecking: true
+    knownHostsFile: ~/.ssh/known_hosts
 
     # Connection limits
-    maxConnections: 10
-    connectionTimeout: 30s
-
-    # Host verification
-    strictHostKeyChecking: true
-    verifyHostKeyDNS: true
+    connectTimeout: 30s
 
     # Audit logging
     logConnections: true
-    logCommands: true
     logFile: ~/.s9s/ssh.log
 ```
 
-## SSH Automation
-
-### Automated SSH Scripts
-
-Create reusable SSH automation:
-
-```yaml
-# ~/.s9s/ssh-scripts/maintenance.yaml
-name: "Node Maintenance"
-description: "Standard node maintenance tasks"
-script:
-  - ssh: "sudo apt update"
-  - ssh: "sudo apt upgrade -y"
-  - ssh: "sudo reboot"
-  - wait: 60s
-  - ssh: "uptime"  # Verify reboot
-```
-
-Execute SSH scripts:
-```bash
-:ssh-script maintenance --nodes node[001-010]
-```
-
-### Scheduled SSH Tasks
-
-```bash
-# Schedule regular health checks
-:schedule daily "health-check" \
-  ":ssh --all-nodes 'df -h && free -m && uptime' --log"
-
-# Schedule log rotation
-:schedule weekly "log-rotation" \
-  ":ssh --all-nodes 'sudo logrotate /etc/logrotate.conf'"
-```
+**Important Security Note**: By default, S9S disables strict host key checking for cluster environments where nodes are frequently rebuilt. For production use, enable strict host key checking in your configuration.
 
 ## SSH Troubleshooting
 
 ### Connection Issues
 
-```bash
-# Test SSH connectivity
-:ssh-test node001
+If SSH connection fails:
 
-SSH Connection Test Results:
-✅ DNS resolution: node001.cluster.edu (10.1.2.101)
-✅ Port 22 connectivity: Open
-✅ SSH handshake: Success
-✅ Authentication: Key accepted
-✅ Shell access: /bin/bash
+1. **Verify SSH connectivity manually**:
+   ```bash
+   ssh <nodename>
+   ```
 
-Connection successful in 1.2s
-```
+2. **Check SSH agent** (if using SSH agent):
+   ```bash
+   ssh-add -l
+   ```
 
-### Debug SSH Problems
+3. **Verify SSH key permissions**:
+   ```bash
+   chmod 600 ~/.ssh/id_rsa
+   ```
 
-```bash
-# Enable SSH debugging
-:config set ssh.debug true
+4. **Check S9S SSH configuration**:
+   ```yaml
+   ssh:
+     keyFile: ~/.ssh/id_rsa  # Verify this path is correct
+     defaultUser: ${USER}    # Verify username
+   ```
 
-# SSH with verbose output
-:ssh node001 --verbose
+### Common SSH Issues
 
-# Check SSH agent
-:ssh-agent status
+**Problem**: "Permission denied (publickey)"
+- **Solution**: Ensure your SSH public key is authorized on the target node
+- Verify `~/.ssh/authorized_keys` on the node contains your public key
 
-SSH Agent Status:
-✅ Agent running (PID 12345)
-✅ Keys loaded: 3
-   - ~/.ssh/id_rsa (RSA 4096)
-   - ~/.ssh/id_ed25519 (ED25519)
-   - ~/.ssh/gpu_key (RSA 2048)
-```
+**Problem**: "Connection timeout"
+- **Solution**: Check network connectivity to the node
+- Verify the node is reachable: `ping <nodename>`
 
-### Common SSH Fixes
-
-```bash
-# Fix known_hosts issues
-:ssh-keygen --remove-host node001
-
-# Reset SSH agent
-:ssh-agent restart
-
-# Update SSH config
-:ssh-config validate
-:ssh-config repair
-```
-
-## SSH Customization
-
-### Custom SSH Commands
-
-Define frequently used SSH commands:
-
-```yaml
-ssh:
-  aliases:
-    logs: "journalctl -f -n 100"
-    top: "htop -u $USER"
-    gpu: "nvidia-smi -l 5"
-    temp: "sensors | grep temp"
-    disk: "df -h && du -sh /scratch/$USER"
-```
-
-Use custom commands:
-```bash
-:ssh node001 logs    # Equivalent to: ssh node001 "journalctl -f -n 100"
-:ssh gpu-node gpu    # Equivalent to: ssh gpu-node "nvidia-smi -l 5"
-```
-
-### SSH Profiles
-
-Create SSH profiles for different scenarios:
-
-```yaml
-ssh:
-  profiles:
-    debug:
-      terminal: tmux
-      commands:
-        - "cd /scratch/$USER"
-        - "module load gdb"
-        - "export DEBUG=1"
-
-    monitoring:
-      commands:
-        - "watch -n 1 'ps aux | head -20'"
-        - "tail -f /var/log/slurm/slurmd.log"
-```
-
-Use profiles:
-```bash
-:ssh node001 --profile debug
-:ssh node002 --profile monitoring
-```
+**Problem**: "Host key verification failed"
+- **Solution**: Update known_hosts file
+- Remove old key: `ssh-keygen -R <nodename>`
+- Or disable strict host key checking (less secure)
 
 ## Best Practices
 
 ### SSH Usage
 
 1. **Use SSH keys** - Never use password authentication
-2. **Keep keys secure** - Protect private keys, rotate regularly
-3. **Use SSH agent** - Avoid typing passphrases repeatedly
-4. **Limit connections** - Don't open unnecessary SSH sessions
-5. **Close idle sessions** - Set appropriate timeouts
+2. **Keep keys secure** - Protect private keys with file permissions (600)
+3. **Use SSH agent** - Avoid entering passphrases repeatedly
+4. **Close sessions** - Exit SSH sessions when done to free resources
+5. **Verify node state** - Check node status before SSH (avoid DOWN or DRAIN nodes)
 
 ### Security
 
-1. **Verify host keys** - Always verify on first connection
-2. **Use strong ciphers** - Prefer modern encryption algorithms
-3. **Enable logging** - Audit SSH access and commands
-4. **Restrict access** - Use SSH certificates for access control
-5. **Monitor connections** - Watch for suspicious SSH activity
+1. **Verify host keys** - Use strict host key checking in production
+2. **Monitor connections** - Enable SSH connection logging
+3. **Restrict access** - Ensure only authorized users have SSH access to nodes
+4. **Audit regularly** - Review SSH logs for suspicious activity
 
-### Performance
+## Workflow Examples
 
-1. **Use compression** - Enable SSH compression for slow networks
-2. **Multiplex connections** - Reuse SSH connections when possible
-3. **Optimize ciphers** - Choose appropriate cipher for your network
-4. **Use connection pooling** - Maintain persistent connections
-5. **Limit concurrent sessions** - Avoid overwhelming nodes
+### Debug a Running Job
+
+```bash
+# 1. Navigate to jobs view
+:view jobs
+
+# 2. Find your running job
+12345  alice  RUNNING  node[001-004]
+
+# 3. Press 's' to SSH to a job node
+# S9S suspends, SSH session opens
+
+user@node001:~$ ps aux | grep <your_program>
+user@node001:~$ htop -u alice
+user@node001:~$ tail -f /path/to/job/output
+
+# 4. Exit SSH session (Ctrl+D or 'exit')
+# S9S resumes automatically
+```
+
+### Check Node Health
+
+```bash
+# 1. Navigate to nodes view
+:view nodes
+
+# 2. Select a problematic node
+# 3. Press 's' → choose "Get Node Info"
+
+# S9S retrieves and displays:
+# - Uptime
+# - Memory usage
+# - Disk space
+# - CPU count
+
+# Or choose "Quick Connect" for full SSH access
+```
+
+### Investigate Failed Job
+
+```bash
+# 1. Find failed job in jobs view
+12345  alice  FAILED  node003
+
+# 2. Press 's' to SSH to the node where it failed
+# 3. Investigate logs, check for errors
+
+user@node003:~$ cd /scratch/alice/job_12345
+user@node003:~$ less slurm-12345.out
+user@node003:~$ dmesg | tail
+```
+
+## Integration with S9S Workflows
+
+SSH access integrates seamlessly with S9S cluster management:
+
+- **Job Debugging**: SSH to nodes running specific jobs
+- **Node Inspection**: Quick access from node status screens
+- **Troubleshooting**: Direct access to nodes showing problems
+- **Performance Analysis**: Interactive exploration of node resources
+
+## Keyboard Reference
+
+**From Nodes View:**
+- `s` or `S` - Open SSH to selected node
+
+**From Jobs View:**
+- `s` or `S` - Open SSH to first node running selected job
+
+**From SSH Terminal Manager:**
+- `Enter` - Connect to selected node/session
+- `c` - Create new SSH connection
+- `i` - Show node information
+- `t` - Open terminal session
+- `s` - Show system information
+- `Esc` - Close SSH interface
 
 ## Next Steps
 
-- Configure [Node Operations](../node-operations.md) with SSH integration
-- Learn [Job Management](../job-management.md) with SSH debugging
-- Set up [Batch Operations](../batch-operations.md) with SSH automation
-- Explore [Performance Monitoring](../performance.md) via SSH
+- Learn more about [Node Operations](../node-operations.md)
+- Explore [Job Management](../job-management.md) with SSH debugging
+- Review [Troubleshooting Guide](../troubleshooting.md) for common issues

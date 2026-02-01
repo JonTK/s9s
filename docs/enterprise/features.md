@@ -1,468 +1,236 @@
-# s9s Enterprise Features
+# Enterprise Features
 
-s9s is designed to be enterprise-ready with features that support large-scale HPC environments, multi-tenant clusters, and organizational requirements.
+s9s is designed as a terminal UI interface for SLURM. For enterprise requirements, s9s leverages SLURM's native enterprise capabilities rather than reimplementing them.
 
-## Enterprise-Ready Features
+## Authentication
 
-### 1. Authentication and Authorization
+### OAuth2/OIDC Support
 
-#### Multi-Factor Authentication (MFA)
-- **TOTP Support**: Time-based One-Time Passwords
-- **Hardware Tokens**: FIDO2/WebAuthn support
-- **Smart Card Integration**: PKI-based authentication
-- **Biometric Authentication**: Integration with enterprise biometric systems
+s9s includes OAuth2/OIDC authentication support for integration with enterprise identity providers.
+
+**Supported Providers:**
+- Google OAuth2
+- Okta (with discovery URL)
+- Azure AD (with discovery URL)
+- Custom OAuth2/OIDC providers
+
+**Configuration:**
 
 ```yaml
-auth:
-  mfa:
-    enabled: true
-    providers:
-      - type: "totp"
-        issuer: "s9s-enterprise"
-      - type: "hardware"
-        challenge_timeout: 30s
+contexts:
+  - name: production
+    cluster:
+      endpoint: "https://slurm.example.com:6820"
+      auth:
+        type: oauth2
+        provider: google  # or okta, azure-ad, custom
+        client_id: "${OAUTH_CLIENT_ID}"
+        client_secret: "${OAUTH_CLIENT_SECRET}"
+        # For Okta/Azure AD/Custom:
+        discovery_url: "https://your-idp.example.com/.well-known/openid-configuration"
+        # Optional:
+        scopes: "openid profile email"
+        redirect_uri: "http://localhost:8080/callback"
 ```
 
-#### Single Sign-On (SSO)
-- **SAML 2.0**: Enterprise identity provider integration
-- **OpenID Connect**: Modern OAuth 2.0 flow
-- **Active Directory**: Direct AD/LDAP integration
-- **Kerberos**: Seamless domain authentication
+**Setup Wizard:**
 
-```yaml
-sso:
-  saml:
-    enabled: true
-    idp_url: "https://identity.company.com/saml"
-    certificate: "/etc/s9s/saml.crt"
+The s9s setup wizard includes OAuth2 configuration:
 
-  oidc:
-    enabled: true
-    issuer: "https://auth.company.com"
-    client_id: "${OIDC_CLIENT_ID}"
-    client_secret: "${OIDC_CLIENT_SECRET}"
+```bash
+s9s setup
+# Select option 3 for OAuth2 authentication
 ```
 
-#### Role-Based Access Control (RBAC)
-- **Hierarchical Roles**: Manager, User, Viewer, Admin
-- **Resource-Based Permissions**: Fine-grained access control
-- **Dynamic Authorization**: Context-aware permissions
-- **Audit Trail**: Complete access logging
+**Features:**
+- OIDC discovery for automatic endpoint detection
+- PKCE (Proof Key for Code Exchange) support
+- Automatic token refresh
+- Local callback server for authorization flow
+- Support for custom scopes and redirect URIs
+
+See [Configuration Guide](/docs/getting-started/configuration.md) for detailed authentication setup.
+
+## Enterprise Capabilities via SLURM
+
+For enterprise requirements beyond authentication, s9s relies on SLURM's native capabilities:
+
+### Security & Access Control
+
+**SLURM provides:**
+- Multi-Factor Authentication (MFA) via PAM integration
+- Pluggable Authentication Modules (PAM)
+- Account-based access control
+- Job submission policies and limits
+- Resource access restrictions
+
+**s9s integration:**
+- s9s respects SLURM's authentication and authorization
+- All operations are subject to SLURM's security policies
+- User permissions are enforced by SLURM
+
+### High Availability & Scalability
+
+**SLURM provides:**
+- Controller failover and redundancy
+- Distributed architecture
+- Multi-cluster federation
+- Database redundancy (MySQL, MariaDB with replication)
+
+**s9s integration:**
+- Supports connections to highly available SLURM endpoints
+- Can be configured with multiple cluster contexts
+- No single point of failure when SLURM is configured for HA
+
+### Multi-Tenancy & Resource Management
+
+**SLURM provides:**
+- Account hierarchies for organizational structure
+- Fair-share scheduling across accounts/users
+- Resource quotas and limits per account
+- QoS (Quality of Service) policies
+- Partition-based resource isolation
+
+**s9s integration:**
+- Full visibility into account hierarchies
+- QoS and partition management views
+- User and account resource tracking
+- Reservation management
+
+### Audit & Compliance
+
+**SLURM provides:**
+- Complete job accounting database
+- Detailed audit logs
+- Resource usage tracking
+- Job history and provenance
+
+**s9s integration:**
+- Export job data to CSV/JSON for compliance reporting
+- Real-time monitoring of resource usage
+- Historical job data access
+
+### Monitoring & Observability
+
+**s9s provides:**
+- Real-time cluster monitoring
+- Job and node status visibility
+- Resource utilization metrics
+- Optional observability plugin for Prometheus integration
+
+**See:** [Observability Plugin](/docs/plugins/observability.md)
+
+## Configuration for Enterprise Environments
+
+### Multiple Cluster Contexts
+
+Configure multiple SLURM clusters:
 
 ```yaml
-rbac:
-  roles:
-    cluster_admin:
-      permissions:
-        - "cluster:*"
-        - "jobs:*"
-        - "nodes:*"
-    project_manager:
-      permissions:
-        - "jobs:read,create,cancel"
-        - "nodes:read"
-      filters:
-        account: "${user.project}"
-    readonly_user:
-      permissions:
-        - "jobs:read"
-        - "nodes:read"
+currentContext: production
+
+contexts:
+  - name: production
+    cluster:
+      endpoint: "https://prod-slurm.example.com:6820"
+      auth:
+        type: oauth2
+        provider: okta
+        # ... oauth config ...
+
+  - name: development
+    cluster:
+      endpoint: "https://dev-slurm.example.com:6820"
+      auth:
+        type: slurm-token
+
+  - name: research
+    cluster:
+      endpoint: "https://research-slurm.example.com:6820"
+      auth:
+        type: oauth2
+        provider: azure-ad
+        # ... oauth config ...
 ```
 
-### 2. High Availability and Scalability
+Switch between clusters:
 
-#### Load Balancing
-- **Multi-SLURM Backend**: Connect to multiple SLURM clusters
-- **Automatic Failover**: Seamless cluster switching
-- **Health Monitoring**: Continuous cluster health checks
-- **Geographic Distribution**: Multi-region support
-
-```yaml
-clusters:
-  primary:
-    endpoints:
-      - "https://slurm1.company.com"
-      - "https://slurm2.company.com"
-    load_balancing:
-      strategy: "round_robin"
-      health_check_interval: 30s
-      failover_threshold: 3
+```bash
+s9s config use-context production
+s9s config use-context development
 ```
 
-#### Horizontal Scaling
-- **Multi-Instance Deployment**: Run multiple s9s instances
-- **Session Affinity**: Sticky sessions for consistency
-- **Shared State**: Redis/etcd for state synchronization
-- **Auto-Scaling**: Dynamic instance scaling
+### Secure Credential Storage
+
+s9s supports secure credential storage through system keyrings:
 
 ```yaml
-scaling:
-  mode: "horizontal"
-  min_instances: 2
-  max_instances: 10
-  target_cpu_utilization: 70
-  shared_state:
-    backend: "redis"
-    url: "redis://redis-cluster.company.com"
+# Enable keyring storage for OAuth tokens
+storage:
+  backend: keyring  # or: file, memory
 ```
 
-### 3. Security and Compliance
+### TLS Configuration
 
-#### Data Encryption
-- **End-to-End Encryption**: TLS 1.3 for all communications
-- **Data at Rest**: AES-256 encryption for stored data
-- **Key Management**: Enterprise key management integration
-- **Certificate Management**: Automated cert rotation
+For secure communication with SLURM REST API:
 
 ```yaml
-security:
-  encryption:
-    tls:
-      min_version: "1.3"
-      cipher_suites: ["TLS_AES_256_GCM_SHA384"]
-    data_at_rest:
-      algorithm: "AES-256-GCM"
-      key_provider: "vault"
-      key_rotation_interval: "30d"
+contexts:
+  - name: production
+    cluster:
+      endpoint: "https://slurm.example.com:6820"
+      insecure: false  # Enforce TLS certificate validation
+      timeout: 30s
 ```
 
-#### Compliance Features
-- **SOX Compliance**: Financial regulatory compliance
-- **GDPR**: Data privacy regulation compliance
-- **HIPAA**: Healthcare data protection
-- **SOC 2**: Security framework compliance
-- **Audit Logging**: Comprehensive audit trails
+## Deployment Considerations
 
-```yaml
-compliance:
-  frameworks: ["sox", "gdpr", "hipaa", "soc2"]
-  audit:
-    enabled: true
-    backend: "elasticsearch"
-    retention_days: 2555  # 7 years for SOX
-    fields: ["user", "action", "resource", "timestamp", "ip"]
+### Container Deployment
+
+s9s can be deployed in containerized environments:
+
+```dockerfile
+FROM alpine:latest
+COPY s9s /usr/local/bin/s9s
+RUN chmod +x /usr/local/bin/s9s
+
+# Run in non-interactive mode for monitoring
+ENTRYPOINT ["/usr/local/bin/s9s"]
+CMD ["jobs", "--format", "json"]
 ```
 
-#### Security Scanning
-- **Vulnerability Assessment**: Automated security scanning
-- **Dependency Scanning**: Third-party library security
-- **Code Analysis**: Static code security analysis
-- **Runtime Protection**: Real-time threat detection
+### SSH Integration
 
-### 4. Monitoring and Observability
-
-#### Enterprise Metrics
-- **Prometheus Integration**: Native metrics export
-- **Custom Dashboards**: Grafana integration
-- **APM Integration**: Application Performance Monitoring
-- **Distributed Tracing**: Request tracing across services
+For direct node access in enterprise environments:
 
 ```yaml
-observability:
-  metrics:
-    prometheus:
-      enabled: true
-      endpoint: "/metrics"
-      push_gateway: "https://pushgateway.company.com"
-  tracing:
-    jaeger:
-      enabled: true
-      endpoint: "https://jaeger.company.com:14268"
-```
-
-#### Alerting and Notifications
-- **Multi-Channel Alerts**: Email, Slack, PagerDuty, SMS
-- **Escalation Policies**: Hierarchical alert escalation
-- **Alert Aggregation**: Intelligent alert grouping
-- **Custom Webhooks**: Integration with enterprise tools
-
-```yaml
-alerting:
-  channels:
-    - type: "email"
-      endpoint: "alerts@company.com"
-    - type: "slack"
-      webhook: "${SLACK_WEBHOOK_URL}"
-    - type: "pagerduty"
-      integration_key: "${PAGERDUTY_KEY}"
-
-  policies:
-    critical:
-      escalation_time: 5m
-      channels: ["pagerduty", "email"]
-    warning:
-      escalation_time: 30m
-      channels: ["slack", "email"]
-```
-
-### 5. Multi-Tenancy
-
-#### Tenant Isolation
-- **Resource Isolation**: Separate resources per tenant
-- **Data Isolation**: Tenant-specific data separation
-- **Configuration Isolation**: Per-tenant configuration
-- **Performance Isolation**: QoS per tenant
-
-```yaml
-multi_tenancy:
+ssh:
   enabled: true
-  isolation_mode: "strict"
-  tenants:
-    engineering:
-      clusters: ["eng-cluster"]
-      users: ["eng-*"]
-      resources:
-        max_jobs: 1000
-        max_nodes: 100
-    research:
-      clusters: ["research-cluster"]
-      users: ["research-*"]
-      resources:
-        max_jobs: 500
-        max_nodes: 50
+  multiplexing: true
+  control_path: "/tmp/s9s-ssh-%r@%h:%p"
 ```
 
-#### Resource Quotas
-- **User Quotas**: Per-user resource limits
-- **Project Quotas**: Per-project resource allocation
-- **Dynamic Quotas**: Time-based quota adjustments
-- **Quota Monitoring**: Real-time quota tracking
+See [SSH Integration Guide](/docs/guides/ssh-integration.md) for details.
 
-### 6. Data Management
+## Future Development
 
-#### Backup and Recovery
-- **Automated Backups**: Scheduled configuration backups
-- **Point-in-Time Recovery**: Restore to specific timestamps
-- **Cross-Region Replication**: Geographic backup distribution
-- **Disaster Recovery**: Complete system recovery procedures
+Additional enterprise features are under consideration. See the [specs/missing-features/](/specs/missing-features/) directory for detailed specifications of features being evaluated:
 
-```yaml
-backup:
-  schedule: "0 2 * * *"  # Daily at 2 AM
-  retention: 90          # 90 days
-  encryption: true
-  destinations:
-    - type: "s3"
-      bucket: "s9s-backups-us-east"
-    - type: "gcs"
-      bucket: "s9s-backups-europe"
-```
+- Advanced backup and recovery capabilities
+- Extended API integrations
+- Enhanced multi-cluster management
 
-#### Data Export and Import
-- **Bulk Export**: Large-scale data export
-- **Format Support**: CSV, JSON, Parquet, Avro
-- **Incremental Sync**: Delta synchronization
-- **API Integration**: Programmatic data access
+For feature requests or to discuss enterprise requirements, please [open a discussion](https://github.com/jontk/s9s/discussions) or [file an issue](https://github.com/jontk/s9s/issues).
 
-### 7. Integration Capabilities
+## Support
 
-#### Enterprise Software Integration
-- **ServiceNow**: Incident management integration
-- **Jira**: Issue tracking integration
-- **Confluence**: Documentation integration
-- **Active Directory**: User directory integration
+- **Community Support**: [GitHub Discussions](https://github.com/jontk/s9s/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/jontk/s9s/issues)
+- **Contributing**: [Development Guide](/docs/development/contributing.md)
 
-```yaml
-integrations:
-  servicenow:
-    instance: "company.service-now.com"
-    username: "${SNOW_USER}"
-    password: "${SNOW_PASS}"
-    incident_table: "incident"
+## Resources
 
-  jira:
-    url: "https://company.atlassian.net"
-    project: "HPC"
-    issue_type: "Bug"
-```
-
-#### API Gateway Integration
-- **Kong**: API gateway integration
-- **Ambassador**: Kubernetes-native API gateway
-- **Istio**: Service mesh integration
-- **Custom Gateways**: Flexible gateway support
-
-### 8. Deployment and Operations
-
-#### Container Orchestration
-- **Kubernetes**: Native Kubernetes deployment
-- **Docker Swarm**: Docker Swarm support
-- **Helm Charts**: Kubernetes package management
-- **Operator Pattern**: Kubernetes operators
-
-```yaml
-# Kubernetes deployment example
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: s9s-enterprise
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: s9s
-  template:
-    spec:
-      containers:
-      - name: s9s
-        image: s9s:enterprise-v1.0.0
-        env:
-        - name: S9S_CONFIG
-          value: "/etc/s9s/enterprise.yaml"
-```
-
-#### Infrastructure as Code
-- **Terraform**: Infrastructure provisioning
-- **Ansible**: Configuration management
-- **Puppet**: System configuration
-- **Chef**: Infrastructure automation
-
-```hcl
-# Terraform example
-resource "aws_ecs_service" "s9s_enterprise" {
-  name            = "s9s-enterprise"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.s9s.arn
-  desired_count   = 3
-
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
-}
-```
-
-### 9. Support and Services
-
-#### Professional Support
-- **24/7 Support**: Round-the-clock technical support
-- **Dedicated Success Manager**: Assigned customer success
-- **Priority Bug Fixes**: Expedited issue resolution
-- **Version Compatibility**: Long-term support versions
-
-#### Professional Services
-- **Custom Development**: Feature development services
-- **Integration Services**: Custom integration development
-- **Training Programs**: Comprehensive user training
-- **Migration Services**: Legacy system migration
-
-#### Service Level Agreements (SLA)
-- **99.9% Uptime**: High availability guarantee
-- **Response Times**: Guaranteed response times
-- **Performance Metrics**: Service level monitoring
-- **Penalties**: SLA violation compensation
-
-## Enterprise Licensing
-
-### License Types
-
-#### Enterprise License
-- **Multi-Cluster Support**: Unlimited SLURM clusters
-- **Advanced Features**: All enterprise features enabled
-- **Commercial Use**: Unrestricted commercial usage
-- **Support**: Professional support included
-
-#### Site License
-- **Organization-Wide**: Unlimited users within organization
-- **Geographic Scope**: Multi-location deployment
-- **Volume Pricing**: Cost-effective for large deployments
-- **Customization**: License customization options
-
-### Compliance and Legal
-
-#### Open Source Compliance
-- **License Compatibility**: Open source license compliance
-- **Attribution**: Proper open source attribution
-- **Legal Review**: Legal team review process
-- **Compliance Reporting**: Regular compliance reports
-
-#### Export Control
-- **ITAR Compliance**: Export control regulation compliance
-- **EAR Compliance**: Export administration regulations
-- **Geographic Restrictions**: Region-specific limitations
-- **Documentation**: Compliance documentation
-
-## Implementation Roadmap
-
-### Phase 1: Security Foundation (Months 1-2)
-- [ ] SSO Integration (SAML/OIDC)
-- [ ] RBAC Implementation
-- [ ] Audit Logging
-- [ ] TLS 1.3 Enforcement
-
-### Phase 2: Scalability (Months 3-4)
-- [ ] Load Balancing
-- [ ] High Availability
-- [ ] Multi-Instance Support
-- [ ] Health Monitoring
-
-### Phase 3: Operations (Months 5-6)
-- [ ] Monitoring Integration
-- [ ] Backup/Recovery
-- [ ] Container Orchestration
-- [ ] Infrastructure as Code
-
-### Phase 4: Advanced Features (Months 7-8)
-- [ ] Multi-Tenancy
-- [ ] Advanced Analytics
-- [ ] Custom Integrations
-- [ ] Performance Optimization
-
-## Getting Started with Enterprise
-
-### Evaluation Setup
-```bash
-# Download enterprise evaluation
-curl -sSL https://get.s9s.dev/enterprise | bash
-
-# Configure for evaluation
-s9s config --enterprise --eval-key ${EVAL_KEY}
-
-# Enable enterprise features
-s9s --config enterprise-eval.yaml
-```
-
-### Production Deployment
-```bash
-# Production installation
-helm install s9s-enterprise s9s/s9s-enterprise \
-  --set enterprise.enabled=true \
-  --set license.key=${LICENSE_KEY}
-
-# Configure enterprise features
-kubectl apply -f enterprise-config.yaml
-```
-
-### Migration from Open Source
-```bash
-# Backup open source configuration
-s9s export-config > oss-config.yaml
-
-# Convert to enterprise format
-s9s migrate-config --from oss-config.yaml --to enterprise-config.yaml
-
-# Deploy enterprise version
-s9s deploy --config enterprise-config.yaml
-```
-
-## Enterprise Support
-
-### Contact Information
-- **Sales**: enterprise-sales@s9s.dev
-- **Support**: enterprise-support@s9s.dev
-- **Services**: professional-services@s9s.dev
-
-### Documentation
-- **Enterprise Portal**: https://enterprise.s9s.dev
-- **Knowledge Base**: https://kb.s9s.dev
-- **API Documentation**: https://api.s9s.dev/enterprise
-
-### Training Resources
-- **Admin Training**: 3-day enterprise administrator course
-- **User Training**: 1-day end-user training
-- **Custom Training**: Tailored training programs
-- **Certification**: s9s Enterprise Certification Program
-
----
-
-For more information about s9s Enterprise, contact the sales team at enterprise-sales@s9s.dev or visit https://s9s.dev/enterprise.
+- [SLURM Security Guide](https://slurm.schedmd.com/security.html)
+- [SLURM High Availability](https://slurm.schedmd.com/ha.html)
+- [SLURM Accounting](https://slurm.schedmd.com/accounting.html)
+- [SLURM Multi-Cluster](https://slurm.schedmd.com/multi_cluster.html)
