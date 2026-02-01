@@ -302,7 +302,7 @@ func TestRemoteFileReader_SSHError(t *testing.T) {
 func TestRemoteFileReader_ContextCancellation(t *testing.T) {
 	mockSSH := &mockSSHClient{
 		executeFunc: func(ctx context.Context, hostname, command string) (string, error) {
-			// Check if context is cancelled
+			// Check if context is canceled
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()
@@ -314,13 +314,13 @@ func TestRemoteFileReader_ContextCancellation(t *testing.T) {
 
 	reader := NewRemoteFileReader(mockSSH)
 
-	// Create cancelled context
+	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	_, err := reader.TailRemoteFile(ctx, "node01", "/path/to/file.txt", 10)
 	if err == nil {
-		t.Fatal("Expected error for cancelled context, got nil")
+		t.Fatal("Expected error for canceled context, got nil")
 	}
 }
 

@@ -336,13 +336,13 @@ func TestJobOutputReader_ContextCancellation(t *testing.T) {
 
 	reader := NewJobOutputReader(mockResolver, nil)
 
-	// Create cancelled context
+	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	_, err = reader.ReadJobOutput(ctx, "12345", "stdout")
 	if err == nil {
-		t.Fatal("Expected error for cancelled context, got nil")
+		t.Fatal("Expected error for canceled context, got nil")
 	}
 
 	// Error is wrapped, so check if it contains "context canceled"

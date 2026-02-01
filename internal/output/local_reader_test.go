@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -220,17 +221,17 @@ func TestLocalFileReader_ContextCancellation(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Create cancelled context
+	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	// Try to read with cancelled context
+	// Try to read with canceled context
 	_, err = reader.ReadFile(ctx, testFile)
 	if err == nil {
-		t.Fatal("Expected error for cancelled context, got nil")
+		t.Fatal("Expected error for canceled context, got nil")
 	}
 
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Expected context.Canceled error, got: %v", err)
 	}
 }
@@ -258,7 +259,7 @@ func TestLocalFileReader_ContextTimeout(t *testing.T) {
 		t.Fatal("Expected error for timed-out context, got nil")
 	}
 
-	if err != context.DeadlineExceeded {
+	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("Expected context.DeadlineExceeded error, got: %v", err)
 	}
 }

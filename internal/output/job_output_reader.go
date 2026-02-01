@@ -63,90 +63,23 @@ func (r *JobOutputReader) ReadPartial(ctx context.Context, jobID, outputType str
 		return nil, fmt.Errorf("failed to resolve output path: %w", err)
 	}
 
+	// Read content based on location
 	var content string
 	var metadata *FileMetadata
 	var source string
 
 	if isRemote {
-		// Read from remote node via SSH
-		source = fmt.Sprintf("remote:%s", nodeID)
-
-		// Get metadata first
-		metadata, err = r.remoteReader.GetRemoteFileInfo(ctx, nodeID, filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get remote file info: %w", err)
-		}
-
-		if !metadata.Exists {
-			return nil, fmt.Errorf("output file not found on remote node %s: %s", nodeID, filePath)
-		}
-
-		// Check file size and determine read strategy
-		if metadata.Size > opts.MaxBytes && opts.MaxBytes > 0 {
-			// File is too large, use tail mode
-			if opts.TailMode {
-				content, err = r.remoteReader.TailRemoteFile(ctx, nodeID, filePath, opts.MaxLines)
-			} else {
-				content, err = r.remoteReader.HeadRemoteFile(ctx, nodeID, filePath, opts.MaxLines)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to read remote file: %w", err)
-			}
-		} else {
-			// Read full file
-			content, err = r.remoteReader.ReadRemoteFile(ctx, nodeID, filePath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read remote file: %w", err)
-			}
-		}
+		content, metadata, source, err = r.readRemoteContent(ctx, nodeID, filePath, opts)
 	} else {
-		// Read from local filesystem
-		source = "local"
-
-		// Get metadata first
-		metadata, err = r.localReader.GetFileInfo(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get local file info: %w", err)
-		}
-
-		if !metadata.Exists {
-			return nil, fmt.Errorf("output file not found: %s (job may not have started yet)", filePath)
-		}
-
-		// Check file size and determine read strategy
-		if metadata.Size > opts.MaxBytes && opts.MaxBytes > 0 {
-			// File is too large, use tail or head mode
-			if opts.TailMode {
-				content, err = r.localReader.TailFile(ctx, filePath, opts.MaxLines)
-			} else {
-				content, err = r.localReader.HeadFile(ctx, filePath, opts.MaxLines)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to read local file: %w", err)
-			}
-		} else {
-			// Read full file
-			content, err = r.localReader.ReadFile(ctx, filePath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read local file: %w", err)
-			}
-		}
+		content, metadata, source, err = r.readLocalContent(ctx, filePath, opts)
 	}
 
-	// Calculate lines read
-	linesRead := strings.Count(content, "\n")
-	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
-		linesRead++ // Count last line if it doesn't end with newline
+	if err != nil {
+		return nil, err
 	}
 
-	// Determine if content was truncated
-	truncated := false
-	if opts.MaxBytes > 0 && metadata.Size > opts.MaxBytes {
-		truncated = true
-	}
-	if opts.MaxLines > 0 && linesRead >= opts.MaxLines {
-		truncated = true
-	}
+	// Compute output metrics
+	linesRead, truncated := r.computeOutputMetrics(content, metadata, opts)
 
 	result := &OutputContent{
 		Content:     content,
@@ -165,6 +98,91 @@ func (r *JobOutputReader) ReadPartial(ctx context.Context, jobID, outputType str
 	}
 
 	return result, nil
+}
+
+// readRemoteContent reads content from a remote node via SSH
+func (r *JobOutputReader) readRemoteContent(ctx context.Context, nodeID, filePath string, opts ReadOptions) (string, *FileMetadata, string, error) {
+	source := fmt.Sprintf("remote:%s", nodeID)
+
+	// Get metadata first
+	metadata, err := r.remoteReader.GetRemoteFileInfo(ctx, nodeID, filePath)
+	if err != nil {
+		return "", nil, "", fmt.Errorf("failed to get remote file info: %w", err)
+	}
+
+	if !metadata.Exists {
+		return "", nil, "", fmt.Errorf("output file not found on remote node %s: %s", nodeID, filePath)
+	}
+
+	// Read content based on file size
+	var content string
+	if metadata.Size > opts.MaxBytes && opts.MaxBytes > 0 {
+		// File is too large, use tail or head mode
+		if opts.TailMode {
+			content, err = r.remoteReader.TailRemoteFile(ctx, nodeID, filePath, opts.MaxLines)
+		} else {
+			content, err = r.remoteReader.HeadRemoteFile(ctx, nodeID, filePath, opts.MaxLines)
+		}
+	} else {
+		// Read full file
+		content, err = r.remoteReader.ReadRemoteFile(ctx, nodeID, filePath)
+	}
+
+	if err != nil {
+		return "", nil, "", fmt.Errorf("failed to read remote file: %w", err)
+	}
+
+	return content, metadata, source, nil
+}
+
+// readLocalContent reads content from the local filesystem
+func (r *JobOutputReader) readLocalContent(ctx context.Context, filePath string, opts ReadOptions) (string, *FileMetadata, string, error) {
+	source := "local"
+
+	// Get metadata first
+	metadata, err := r.localReader.GetFileInfo(filePath)
+	if err != nil {
+		return "", nil, "", fmt.Errorf("failed to get local file info: %w", err)
+	}
+
+	if !metadata.Exists {
+		return "", nil, "", fmt.Errorf("output file not found: %s (job may not have started yet)", filePath)
+	}
+
+	// Read content based on file size
+	var content string
+	if metadata.Size > opts.MaxBytes && opts.MaxBytes > 0 {
+		// File is too large, use tail or head mode
+		if opts.TailMode {
+			content, err = r.localReader.TailFile(ctx, filePath, opts.MaxLines)
+		} else {
+			content, err = r.localReader.HeadFile(ctx, filePath, opts.MaxLines)
+		}
+	} else {
+		// Read full file
+		content, err = r.localReader.ReadFile(ctx, filePath)
+	}
+
+	if err != nil {
+		return "", nil, "", fmt.Errorf("failed to read local file: %w", err)
+	}
+
+	return content, metadata, source, nil
+}
+
+// computeOutputMetrics calculates line count and truncation status
+func (r *JobOutputReader) computeOutputMetrics(content string, metadata *FileMetadata, opts ReadOptions) (int, bool) {
+	// Calculate lines read
+	linesRead := strings.Count(content, "\n")
+	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+		linesRead++ // Count last line if it doesn't end with newline
+	}
+
+	// Determine if content was truncated
+	truncated := (opts.MaxBytes > 0 && metadata.Size > opts.MaxBytes) ||
+		(opts.MaxLines > 0 && linesRead >= opts.MaxLines)
+
+	return linesRead, truncated
 }
 
 // GetMetadata returns file metadata without reading content

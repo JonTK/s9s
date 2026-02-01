@@ -351,13 +351,13 @@ func TestLocalFileReader_ReadRange_Error(t *testing.T) {
 		t.Error("Expected error for non-existent file")
 	}
 
-	// Test with cancelled context
-	cancelledCtx, cancel := context.WithCancel(context.Background())
+	// Test with canceled context
+	canceledCtx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err = reader.ReadRange(cancelledCtx, "/tmp/test.txt", 0, 100)
+	_, err = reader.ReadRange(canceledCtx, "/tmp/test.txt", 0, 100)
 	if err == nil {
-		t.Error("Expected error for cancelled context")
+		t.Error("Expected error for canceled context")
 	}
 }
 

@@ -3,6 +3,7 @@ package output
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,7 +50,7 @@ func (r *LocalFileReader) ReadFile(ctx context.Context, path string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }() // Close error irrelevant for read operations
 
 	// Read with context cancellation check
 	contentBytes, err := io.ReadAll(file)
@@ -78,7 +79,7 @@ func (r *LocalFileReader) TailFile(ctx context.Context, path string, lines int) 
 		}
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }() // Close error irrelevant for read operations
 
 	// Get file size
 	stat, err := file.Stat()
@@ -130,7 +131,7 @@ func (r *LocalFileReader) HeadFile(ctx context.Context, path string, lines int) 
 		}
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }() // Close error irrelevant for read operations
 
 	scanner := bufio.NewScanner(file)
 	var result strings.Builder
@@ -165,7 +166,7 @@ func (r *LocalFileReader) ReadRange(ctx context.Context, path string, offset, le
 		}
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }() // Close error irrelevant for read operations
 
 	// Seek to offset
 	_, err = file.Seek(offset, 0)
@@ -176,7 +177,7 @@ func (r *LocalFileReader) ReadRange(ctx context.Context, path string, offset, le
 	// Read specified length
 	buffer := make([]byte, length)
 	n, err := io.ReadFull(file, buffer)
-	if err != nil && err != io.ErrUnexpectedEOF {
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return "", fmt.Errorf("failed to read range: %w", err)
 	}
 
