@@ -50,6 +50,25 @@ func (s *S9s) initUI() error {
 		SetFieldTextColor(tcell.ColorWhite).
 		SetDoneFunc(s.onCommandDone).
 		SetAutocompleteFunc(s.getCompletions)
+
+	// Handle Esc key and Enter to ensure proper command line hiding
+	s.cmdLine.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			s.hideCommandLine()
+			return nil // Consume the event
+		}
+		// Handle Enter - execute command and hide command line
+		if event.Key() == tcell.KeyEnter {
+			command := s.cmdLine.GetText()
+			if command != "" {
+				s.executeCommand(command)
+			}
+			s.hideCommandLine()
+			return nil // Consume the event
+		}
+		return event
+	})
+
 	s.cmdLine.SetBorder(false)
 
 	// Create main layout with stable structure using contentPages

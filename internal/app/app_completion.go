@@ -33,6 +33,11 @@ func (s *S9s) getCompletions(currentText string) []string {
 	// Don't trim - trailing space is significant for argument completion
 	text := currentText
 
+	// Return nil for empty input to avoid showing empty dropdown
+	if strings.TrimSpace(text) == "" {
+		return nil
+	}
+
 	// If no space yet, complete command names
 	if !strings.Contains(text, " ") {
 		return s.getCommandCompletions(strings.TrimSpace(text))

@@ -9,6 +9,11 @@ import (
 
 // showCommandLine shows the command input field
 func (s *S9s) showCommandLine() {
+	// Ensure clean state: hide first if already visible
+	if s.cmdVisible {
+		s.mainLayout.ResizeItem(s.cmdLine, 0, 0)
+	}
+
 	s.cmdVisible = true
 	s.cmdLine.SetText("")
 	s.mainLayout.ResizeItem(s.cmdLine, 1, 0)
