@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jontk/s9s/plugins/observability/prometheus"
@@ -46,7 +47,7 @@ type DataCollector struct {
 	series   map[string]*MetricSeries
 	queries  map[string]string
 	mu       sync.RWMutex
-	running  bool
+	running  atomic.Bool   // Use atomic for thread-safe access
 	stopChan chan struct{}
 }
 
@@ -124,15 +125,14 @@ func NewHistoricalDataCollector(client *prometheus.CachedClient, config Collecto
 
 // Start starts the historical data collection
 func (hdc *HistoricalDataCollector) Start(ctx context.Context) error {
-	hdc.mu.Lock()
-	defer hdc.mu.Unlock()
-
-	if hdc.running {
+	// Use atomic compare-and-swap to ensure we only start once
+	if !hdc.running.CompareAndSwap(false, true) {
 		return fmt.Errorf("historical data collector is already running")
 	}
 
-	hdc.running = true
+	hdc.mu.Lock()
 	hdc.stopChan = make(chan struct{})
+	hdc.mu.Unlock()
 
 	// Start collection loop
 	go hdc.collectionLoop(ctx)
@@ -149,18 +149,16 @@ func (hdc *HistoricalDataCollector) Stop() error {
 		return nil
 	}
 
-	hdc.mu.Lock()
-	defer hdc.mu.Unlock()
-
-	if !hdc.running {
+	// Use atomic compare-and-swap to ensure we only stop once
+	if !hdc.running.CompareAndSwap(true, false) {
 		return fmt.Errorf("historical data collector is not running")
 	}
 
-	hdc.running = false
+	hdc.mu.Lock()
 	close(hdc.stopChan)
-
 	// Save current data (already holding lock)
 	hdc.saveHistoricalDataLocked()
+	hdc.mu.Unlock()
 
 	return nil
 }
@@ -311,7 +309,7 @@ func (hdc *HistoricalDataCollector) GetCollectorStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"running":            hdc.running,
+		"running":            hdc.running.Load(),
 		"metrics_count":      len(hdc.series),
 		"total_data_points":  totalDataPoints,
 		"collect_interval":   hdc.collectInterval.String(),
