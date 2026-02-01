@@ -2,6 +2,7 @@ package output
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,10 +25,10 @@ type OutputCache struct {
 	maxSize  int
 	defaultTTL time.Duration
 
-	// Statistics
-	hits      int64
-	misses    int64
-	evictions int64
+	// Statistics (using atomic for thread-safe access)
+	hits      atomic.Int64
+	misses    atomic.Int64
+	evictions atomic.Int64
 }
 
 // NewOutputCache creates a new output cache
@@ -53,17 +54,17 @@ func (c *OutputCache) Get(key string) (*OutputContent, bool) {
 
 	entry, exists := c.entries[key]
 	if !exists {
-		c.misses++
+		c.misses.Add(1)
 		return nil, false
 	}
 
 	// Check if expired
 	if entry.IsExpired() {
-		c.misses++
+		c.misses.Add(1)
 		return nil, false
 	}
 
-	c.hits++
+	c.hits.Add(1)
 	return entry.Content, true
 }
 
@@ -103,9 +104,9 @@ func (c *OutputCache) Clear() {
 	defer c.mu.Unlock()
 
 	c.entries = make(map[string]*CacheEntry)
-	c.hits = 0
-	c.misses = 0
-	c.evictions = 0
+	c.hits.Store(0)
+	c.misses.Store(0)
+	c.evictions.Store(0)
 }
 
 // CleanupExpired removes expired entries
@@ -142,7 +143,7 @@ func (c *OutputCache) evictOldest() {
 
 	if oldestKey != "" {
 		delete(c.entries, oldestKey)
-		c.evictions++
+		c.evictions.Add(1)
 	}
 }
 
@@ -151,17 +152,21 @@ func (c *OutputCache) Stats() CacheStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
+	hits := c.hits.Load()
+	misses := c.misses.Load()
+	evictions := c.evictions.Load()
+
 	var hitRate float64
-	total := c.hits + c.misses
+	total := hits + misses
 	if total > 0 {
-		hitRate = float64(c.hits) / float64(total) * 100
+		hitRate = float64(hits) / float64(total) * 100
 	}
 
 	return CacheStats{
 		Entries:   len(c.entries),
-		Hits:      c.hits,
-		Misses:    c.misses,
-		Evictions: c.evictions,
+		Hits:      hits,
+		Misses:    misses,
+		Evictions: evictions,
 		HitRate:   hitRate,
 		MaxSize:   c.maxSize,
 	}
