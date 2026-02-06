@@ -46,8 +46,7 @@ func NewSlurmAdapter(ctx context.Context, cfg *config.ClusterConfig) (*SlurmAdap
 	// Create client options
 	opts := []slurm.ClientOption{
 		slurm.WithConfig(slurmCfg),
-		// Use adapter implementation instead of wrapper for better job management
-		slurm.WithUseAdapters(true),
+		// Adapter implementation is now the default (WithUseAdapters removed in v0.3+)
 	}
 
 	// Add authentication if token is provided
@@ -249,7 +248,16 @@ func (j *jobManager) Get(id string) (*Job, error) {
 		debug.Logger.Printf("JobManager.Get() returned nil job for %s", id)
 		return nil, nil
 	}
-	debug.Logger.Printf("JobManager.Get() returned job: ID=%s, State=%s", job.ID, job.State)
+	// Log job details (handling pointer fields)
+	jobID := "unknown"
+	if job.JobID != nil {
+		jobID = fmt.Sprintf("%d", *job.JobID)
+	}
+	jobState := "unknown"
+	if len(job.JobState) > 0 {
+		jobState = string(job.JobState[0])
+	}
+	debug.Logger.Printf("JobManager.Get() returned job: ID=%s, State=%s", jobID, jobState)
 	return convertJob(job), nil
 }
 
@@ -263,7 +271,8 @@ func (j *jobManager) Submit(job *JobSubmission) (string, error) {
 		return "", errs.SlurmAPI("submit job", err)
 	}
 
-	return result.JobID, nil
+	// Convert JobId (int32) to string
+	return fmt.Sprintf("%d", result.JobId), nil
 }
 
 // convertJobSubmissionToSlurm converts our JobSubmission to the format expected by slurm-client
@@ -700,40 +709,114 @@ func (i *infoManager) GetStats() (*ClusterMetrics, error) {
 
 // Conversion functions
 func convertJob(job *slurm.Job) *Job {
+	// Handle ExitCode - now a struct with ReturnCode field
 	var exitCode *int
-	if job.ExitCode != 0 {
-		exitCode = &job.ExitCode
-	}
-
-	// Prefer UserName if available, fall back to UserID with system lookup
-	username := job.UserName
-	if username == "" {
-		// Try to resolve numeric UID to username via system call
-		if u, err := osuser.LookupId(job.UserID); err == nil {
-			username = u.Username
-		} else {
-			username = job.UserID // Fall back to raw ID
+	if job.ExitCode != nil && job.ExitCode.ReturnCode != nil {
+		code := int(*job.ExitCode.ReturnCode)
+		if code != 0 {
+			exitCode = &code
 		}
 	}
 
+	// Prefer UserName if available, fall back to UserID with system lookup
+	username := ""
+	if job.UserName != nil && *job.UserName != "" {
+		username = *job.UserName
+	} else if job.UserID != nil {
+		// Try to resolve numeric UID to username via system call
+		userIDStr := fmt.Sprintf("%d", *job.UserID)
+		if u, err := osuser.LookupId(userIDStr); err == nil {
+			username = u.Username
+		} else {
+			username = userIDStr // Fall back to raw ID
+		}
+	}
+
+	// Convert JobID from *int32 to string
+	jobID := ""
+	if job.JobID != nil {
+		jobID = fmt.Sprintf("%d", *job.JobID)
+	}
+
+	// Convert JobState slice to string (take first state if available)
+	state := ""
+	if len(job.JobState) > 0 {
+		state = string(job.JobState[0])
+	}
+
+	// Handle pointer fields with safe dereferencing
+	name := ""
+	if job.Name != nil {
+		name = *job.Name
+	}
+
+	partition := ""
+	if job.Partition != nil {
+		partition = *job.Partition
+	}
+
+	priority := 0.0
+	if job.Priority != nil {
+		priority = float64(*job.Priority)
+	}
+
+	// TimeLimit is *uint32 in OpenAPI
+	timeLimit := "0"
+	if job.TimeLimit != nil {
+		timeLimit = fmt.Sprintf("%d", *job.TimeLimit)
+	}
+
+	// Command is *string
+	command := ""
+	if job.Command != nil {
+		command = *job.Command
+	}
+
+	// WorkingDir is *string (CurrentWorkingDirectory in OpenAPI)
+	workingDir := ""
+	if job.CurrentWorkingDirectory != nil {
+		workingDir = *job.CurrentWorkingDirectory
+	}
+
+	// Nodes is *string (comma-separated list)
+	nodeList := ""
+	nodeCount := 0
+	if job.Nodes != nil {
+		nodeList = *job.Nodes
+		if nodeList != "" {
+			// Count nodes by splitting on comma
+			nodeCount = len(strings.Split(nodeList, ","))
+		}
+	}
+
+	// Convert time.Time to *time.Time for StartTime and EndTime
+	var startTime *time.Time
+	if !job.StartTime.IsZero() {
+		startTime = &job.StartTime
+	}
+	var endTime *time.Time
+	if !job.EndTime.IsZero() {
+		endTime = &job.EndTime
+	}
+
 	return &Job{
-		ID:         job.ID,
-		Name:       job.Name,
+		ID:         jobID,
+		Name:       name,
 		User:       username,
 		Account:    "", // Not available in basic Job struct
-		Partition:  job.Partition,
-		State:      job.State,
-		Priority:   float64(job.Priority),
+		Partition:  partition,
+		State:      state,
+		Priority:   priority,
 		QOS:        "", // Not available in basic Job struct
-		NodeCount:  len(job.Nodes),
-		TimeLimit:  fmt.Sprintf("%d", job.TimeLimit),
+		NodeCount:  nodeCount,
+		TimeLimit:  timeLimit,
 		TimeUsed:   "", // Not available in basic Job struct
 		SubmitTime: job.SubmitTime,
-		StartTime:  job.StartTime,
-		EndTime:    job.EndTime,
-		NodeList:   strings.Join(job.Nodes, ","),
-		Command:    job.Command,
-		WorkingDir: job.WorkingDir,
+		StartTime:  startTime,
+		EndTime:    endTime,
+		NodeList:   nodeList,
+		Command:    command,
+		WorkingDir: workingDir,
 		StdOut:     "", // Not available in basic Job struct
 		StdErr:     "", // Not available in basic Job struct
 		ExitCode:   exitCode,
@@ -741,47 +824,88 @@ func convertJob(job *slurm.Job) *Job {
 }
 
 func convertNode(node *slurm.Node) *Node {
-	// Use available fields from the slurm-client, with fallbacks for missing fields
-	memoryTotalMB := int64(node.Memory)
+	// Handle pointer fields with safe dereferencing
+	nodeName := ""
+	if node.Name != nil {
+		nodeName = *node.Name
+	}
+
+	// Get state as string (take first if multiple)
+	stateStr := ""
+	if len(node.State) > 0 {
+		stateStr = string(node.State[0])
+	}
+
+	// CPUs is *int32
+	cpusTotal := 0
+	if node.CPUs != nil {
+		cpusTotal = int(*node.CPUs)
+	}
+
+	// RealMemory is *int64 (Memory field was renamed)
+	memoryTotalMB := int64(0)
+	if node.RealMemory != nil {
+		memoryTotalMB = *node.RealMemory
+	}
+
+	// Calculate estimates
 	allocCPUs := estimateAllocatedCPUs(node)
 	allocMemory := estimateAllocatedMemory(node, memoryTotalMB)
-	idleCPUs := safeSubtract(node.CPUs, allocCPUs)
+	idleCPUs := safeSubtract(cpusTotal, allocCPUs)
 	freeMemory := safeSubtract64(memoryTotalMB, allocMemory)
-	cpuLoad := calculateCPULoad(allocCPUs, node.CPUs)
+	cpuLoad := calculateCPULoad(allocCPUs, cpusTotal)
+
+	// Reason is *string
+	reason := ""
+	if node.Reason != nil {
+		reason = *node.Reason
+	}
+
+	// LastBusy is time.Time, ReasonTime expects *time.Time
+	var reasonTime *time.Time
+	if !node.LastBusy.IsZero() {
+		reasonTime = &node.LastBusy
+	}
 
 	debug.Logger.Printf("convertNode: %s state='%s' CPULoad=%.2f AllocCPUs=%d AllocMem=%dMB MemTotal=%dMB FreeMem=%dMB",
-		node.Name, node.State, cpuLoad, allocCPUs, allocMemory, memoryTotalMB, freeMemory)
+		nodeName, stateStr, cpuLoad, allocCPUs, allocMemory, memoryTotalMB, freeMemory)
 
 	return &Node{
-		Name:            node.Name,
-		State:           node.State,
-		Partitions:      node.Partitions,
-		CPUsTotal:       node.CPUs,
+		Name:            nodeName,
+		State:           stateStr,
+		Partitions:      node.Partitions,  // []string, safe to use directly
+		CPUsTotal:       cpusTotal,
 		CPUsAllocated:   allocCPUs,
 		CPUsIdle:        idleCPUs,
 		CPULoad:         cpuLoad,
 		MemoryTotal:     memoryTotalMB,
 		MemoryAllocated: allocMemory, // Memory allocated by SLURM to jobs
 		MemoryFree:      freeMemory,  // Actual free memory on the system
-		Features:        node.Features,
-		Reason:          node.Reason,
-		ReasonTime:      node.LastBusy,
+		Features:        node.Features,    // []string, safe to use directly
+		Reason:          reason,
+		ReasonTime:      reasonTime,
 		AllocatedJobs:   []string{}, // Would need to query jobs for this node
 	}
 }
 
 // estimateAllocatedCPUs estimates CPU allocation based on node state
 func estimateAllocatedCPUs(node *slurm.Node) int {
-	if node.CPUs <= 0 {
+	if node.CPUs == nil || *node.CPUs <= 0 {
 		return 0
 	}
 
-	switch node.State {
-	case "mixed", "allocated":
-		return node.CPUs / 2 // Estimate 50% utilization
-	default:
-		return 0
+	cpus := int(*node.CPUs)
+
+	// Check state (now a slice of NodeState)
+	if len(node.State) > 0 {
+		stateStr := string(node.State[0])
+		switch stateStr {
+		case "MIXED", "ALLOCATED", "mixed", "allocated":
+			return cpus / 2 // Estimate 50% utilization
+		}
 	}
+
+	return 0
 }
 
 // estimateAllocatedMemory estimates memory allocation based on node state
@@ -790,12 +914,16 @@ func estimateAllocatedMemory(node *slurm.Node, totalMemory int64) int64 {
 		return 0
 	}
 
-	switch node.State {
-	case "mixed", "allocated":
-		return totalMemory / 2 // Estimate 50% utilization
-	default:
-		return 0
+	// Check state (now a slice of NodeState)
+	if len(node.State) > 0 {
+		stateStr := string(node.State[0])
+		switch stateStr {
+		case "MIXED", "ALLOCATED", "mixed", "allocated":
+			return totalMemory / 2 // Estimate 50% utilization
+		}
 	}
+
+	return 0
 }
 
 // safeSubtract subtracts two integers and returns 0 if result is negative
@@ -825,30 +953,108 @@ func calculateCPULoad(allocCPUs, totalCPUs int) float64 {
 }
 
 func convertPartition(partition *slurm.Partition) *Partition {
+	// Handle pointer fields
+	name := ""
+	if partition.Name != nil {
+		name = *partition.Name
+	}
+
+	// State is in partition.Partition.State (nested struct)
+	state := ""
+	if partition.Partition != nil && len(partition.Partition.State) > 0 {
+		state = string(partition.Partition.State[0])
+	}
+
+	// TotalCPUs is in partition.CPUs.Total
+	totalCPUs := 0
+	if partition.CPUs != nil && partition.CPUs.Total != nil {
+		totalCPUs = int(*partition.CPUs.Total)
+	}
+
+	// TotalNodes is in partition.Nodes.Total
+	totalNodes := 0
+	if partition.Nodes != nil && partition.Nodes.Total != nil {
+		totalNodes = int(*partition.Nodes.Total)
+	}
+
+	// DefaultTime is in partition.Defaults.Time
+	defaultTime := "0"
+	if partition.Defaults != nil && partition.Defaults.Time != nil {
+		defaultTime = fmt.Sprintf("%d", *partition.Defaults.Time)
+	}
+
+	// MaxTime is in partition.Maximums.Time
+	maxTime := "0"
+	if partition.Maximums != nil && partition.Maximums.Time != nil {
+		maxTime = fmt.Sprintf("%d", *partition.Maximums.Time)
+	}
+
 	return &Partition{
-		Name:        partition.Name,
-		State:       partition.State,
-		TotalNodes:  partition.TotalNodes,
-		TotalCPUs:   partition.TotalCPUs,
-		DefaultTime: fmt.Sprintf("%d", partition.DefaultTime),
-		MaxTime:     fmt.Sprintf("%d", partition.MaxTime),
+		Name:        name,
+		State:       state,
+		TotalNodes:  totalNodes,
+		TotalCPUs:   totalCPUs,
+		DefaultTime: defaultTime,
+		MaxTime:     maxTime,
 		QOS:         []string{}, // Not available in basic Partition struct
 		Nodes:       []string{}, // Not available in basic Partition struct
 	}
 }
 
 func convertReservation(res *slurm.Reservation) *Reservation {
+	// Handle pointer fields
+	name := ""
+	if res.Name != nil {
+		name = *res.Name
+	}
+
+	// State field doesn't exist - use Flags instead
+	state := ""
+	if len(res.Flags) > 0 {
+		state = string(res.Flags[0])
+	}
+
+	// NodeList is *string (comma-separated)
+	nodeList := []string{}
+	if res.NodeList != nil && *res.NodeList != "" {
+		nodeList = strings.Split(*res.NodeList, ",")
+	}
+
+	// NodeCount is *int32
+	nodeCount := 0
+	if res.NodeCount != nil {
+		nodeCount = int(*res.NodeCount)
+	}
+
+	// CoreCount is *int32
+	coreCount := 0
+	if res.CoreCount != nil {
+		coreCount = int(*res.CoreCount)
+	}
+
+	// Users is *string (comma-separated)
+	users := []string{}
+	if res.Users != nil && *res.Users != "" {
+		users = strings.Split(*res.Users, ",")
+	}
+
+	// Accounts is *string (comma-separated)
+	accounts := []string{}
+	if res.Accounts != nil && *res.Accounts != "" {
+		accounts = strings.Split(*res.Accounts, ",")
+	}
+
 	return &Reservation{
-		Name:      res.Name,
-		State:     res.State,
+		Name:      name,
+		State:     state,
 		StartTime: res.StartTime,
 		EndTime:   res.EndTime,
 		Duration:  res.EndTime.Sub(res.StartTime),
-		Nodes:     res.Nodes,
-		NodeCount: res.NodeCount,
-		CoreCount: res.CoreCount,
-		Users:     res.Users,
-		Accounts:  res.Accounts,
+		Nodes:     nodeList,
+		NodeCount: nodeCount,
+		CoreCount: coreCount,
+		Users:     users,
+		Accounts:  accounts,
 	}
 }
 
@@ -1172,84 +1378,117 @@ func (u *userManager) Get(name string) (*User, error) {
 
 // Conversion functions for new types
 func convertQoS(qos *slurm.QoS) *QoS {
+	// Handle pointer fields
+	name := ""
+	if qos.Name != nil {
+		name = *qos.Name
+	}
+
+	priority := 0
+	if qos.Priority != nil {
+		priority = int(*qos.Priority)
+	}
+
+	// Flags is now []QoSFlagsValue - convert to strings
+	flags := []string{}
+	for _, flag := range qos.Flags {
+		flags = append(flags, string(flag))
+	}
+
+	// PreemptMode is in qos.Preempt.Mode
+	preemptMode := ""
+	if qos.Preempt != nil && len(qos.Preempt.Mode) > 0 {
+		preemptMode = string(qos.Preempt.Mode[0])
+	}
+
+	// GraceTime is in qos.Limits.GraceTime (*int32 seconds)
+	graceTime := 0
+	if qos.Limits != nil && qos.Limits.GraceTime != nil {
+		graceTime = int(*qos.Limits.GraceTime) / 60 // Convert seconds to minutes
+	}
+
+	// Most max/min fields are deeply nested in Limits - using defaults for now
+	// These would require extensive navigation through the nested structure
+	// TODO: Map nested QoS limits fields when needed
+
 	return &QoS{
-		Name:                 qos.Name,
-		Priority:             qos.Priority,
-		PreemptMode:          qos.PreemptMode,
-		Flags:                qos.Flags,
-		GraceTime:            qos.GraceTime,
-		MaxJobsPerUser:       qos.MaxJobsPerUser,
-		MaxJobsPerAccount:    qos.MaxJobsPerAccount,
-		MaxSubmitJobsPerUser: qos.MaxSubmitJobs,
-		MaxCPUsPerUser:       qos.MaxCPUsPerUser,
-		MaxNodesPerUser:      qos.MaxNodes,
-		MaxWallTime:          qos.MaxWallTime,
-		MaxMemoryPerUser:     0, // Not directly available
-		MinCPUs:              qos.MinCPUs,
-		MinNodes:             qos.MinNodes,
+		Name:                 name,
+		Priority:             priority,
+		PreemptMode:          preemptMode,
+		Flags:                flags,
+		GraceTime:            graceTime,
+		MaxJobsPerUser:       0, // Not directly available in flat structure
+		MaxJobsPerAccount:    0, // Not directly available in flat structure
+		MaxSubmitJobsPerUser: 0, // Not directly available in flat structure
+		MaxCPUsPerUser:       0, // Not directly available in flat structure
+		MaxNodesPerUser:      0, // Not directly available in flat structure
+		MaxWallTime:          0, // Not directly available in flat structure
+		MaxMemoryPerUser:     0, // Not directly available in flat structure
+		MinCPUs:              0, // Not directly available in flat structure
+		MinNodes:             0, // Not directly available in flat structure
 	}
 }
 
 func convertAccount(acc *slurm.Account) *Account {
+	// Extract coordinator names from Coord structs
+	coordinators := []string{}
+	for _, coord := range acc.Coordinators {
+		coordinators = append(coordinators, coord.Name)
+	}
+
+	// Most limit fields are no longer available in the simplified Account struct
+	// These would need to be queried from associations or other endpoints
 	return &Account{
 		Name:         acc.Name,
 		Description:  acc.Description,
 		Organization: acc.Organization,
-		Coordinators: acc.CoordinatorUsers,
-		DefaultQoS:   acc.DefaultQoS,
-		QoSList:      acc.AllowedQoS,
-		MaxJobs:      acc.MaxJobs,
-		MaxNodes:     acc.MaxNodes,
-		MaxCPUs:      acc.CPULimit,
-		MaxSubmit:    acc.MaxJobsPerUser,
-		MaxWall:      acc.MaxWallTime,
-		Parent:       acc.ParentAccount,
-		Children:     acc.ChildAccounts,
+		Coordinators: coordinators,
+		DefaultQoS:   "",       // Not available in base Account
+		QoSList:      []string{}, // Not available in base Account
+		MaxJobs:      0,        // Not available in base Account
+		MaxNodes:     0,        // Not available in base Account
+		MaxCPUs:      0,        // Not available in base Account
+		MaxSubmit:    0,        // Not available in base Account
+		MaxWall:      0,        // Not available in base Account
+		Parent:       "",       // Not available in base Account
+		Children:     []string{}, // Not available in base Account
 	}
 }
 
 func convertUser(user *slurm.User) *User {
-	// Extract account names from UserAccount structs
-	accountNames := make([]string, len(user.Accounts))
-	for i, acc := range user.Accounts {
-		accountNames[i] = acc.AccountName
-	}
-
-	// Find default QoS and other info from first account association
-	var defaultQoS string
-	var qosList []string
-	var maxJobs, maxNodes, maxCPUs, maxSubmit int
-
-	if len(user.Accounts) > 0 {
-		defaultAccount := user.Accounts[0]
-		defaultQoS = defaultAccount.DefaultQoS
-		if defaultAccount.QoS != "" {
-			qosList = []string{defaultAccount.QoS}
-		}
-		maxJobs = defaultAccount.MaxJobs
-		maxSubmit = defaultAccount.MaxSubmitJobs
-		// Get TRES values for CPUs and nodes if available
-		if defaultAccount.MaxTRES != nil {
-			if cpu, ok := defaultAccount.MaxTRES["cpu"]; ok {
-				maxCPUs = cpu
-			}
-			if node, ok := defaultAccount.MaxTRES["node"]; ok {
-				maxNodes = node
-			}
+	// Extract account names from Associations
+	accountNames := []string{}
+	for _, assoc := range user.Associations {
+		if assoc.Account != nil {
+			accountNames = append(accountNames, *assoc.Account)
 		}
 	}
 
+	// Get default account from Default.Account
+	defaultAccount := ""
+	if user.Default != nil && user.Default.Account != nil {
+		defaultAccount = *user.Default.Account
+	}
+
+	// Get admin level (take first if multiple)
+	adminLevel := ""
+	if len(user.AdministratorLevel) > 0 {
+		adminLevel = string(user.AdministratorLevel[0])
+	}
+
+	// Most limit fields are not available in the simplified User struct
+	// These would need to be queried from associations or other endpoints
 	return &User{
 		Name:           user.Name,
-		UID:            user.UID,
-		DefaultAccount: user.DefaultAccount,
+		UID:            0,         // UID not available in User struct
+		DefaultAccount: defaultAccount,
 		Accounts:       accountNames,
-		AdminLevel:     user.AdminLevel,
-		DefaultQoS:     defaultQoS,
-		QoSList:        qosList,
-		MaxJobs:        maxJobs,
-		MaxNodes:       maxNodes,
-		MaxCPUs:        maxCPUs,
-		MaxSubmit:      maxSubmit,
+		AdminLevel:     adminLevel,
+		DefaultQoS:     "",         // Not available in base User
+		QoSList:        []string{}, // Not available in base User
+		MaxJobs:        0,          // Not available in base User
+		MaxNodes:       0,          // Not available in base User
+		MaxCPUs:        0,          // Not available in base User
+		MaxSubmit:      0,          // Not available in base User
 	}
 }
