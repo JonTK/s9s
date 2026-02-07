@@ -64,15 +64,11 @@ type PerformanceThresholds struct {
 
 // NewPerformanceDashboard creates a new performance dashboard
 func NewPerformanceDashboard(profiler *performance.Profiler, optimizer *performance.Optimizer) *PerformanceDashboard {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	pd := &PerformanceDashboard{
 		profiler:       profiler,
 		optimizer:      optimizer,
 		maxHistory:     50,
 		updateInterval: 1 * time.Second,
-		ctx:            ctx,
-		cancel:         cancel,
 		showAlerts:     true,
 		autoOptimize:   true,
 		thresholds: PerformanceThresholds{
@@ -235,6 +231,9 @@ func (pd *PerformanceDashboard) Start() error {
 		return fmt.Errorf("dashboard already running")
 	}
 
+	// Create new context for this run
+	pd.ctx, pd.cancel = context.WithCancel(context.Background())
+
 	pd.running = true
 	go pd.updateLoop()
 
@@ -251,7 +250,9 @@ func (pd *PerformanceDashboard) Stop() {
 	}
 
 	pd.running = false
-	pd.cancel()
+	if pd.cancel != nil {
+		pd.cancel()
+	}
 }
 
 // updateLoop runs the main update loop
