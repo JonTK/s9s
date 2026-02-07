@@ -14,6 +14,7 @@ import (
 	"github.com/jontk/s9s/internal/errs"
 	"github.com/jontk/s9s/internal/layouts"
 	"github.com/jontk/s9s/internal/logging"
+	"github.com/jontk/s9s/internal/notifications"
 	"github.com/jontk/s9s/internal/plugins"
 	"github.com/jontk/s9s/internal/preferences"
 	"github.com/jontk/s9s/internal/ui/components"
@@ -51,10 +52,10 @@ type S9s struct {
 	viewMgr         *views.ViewManager
 	alertsManager   *components.AlertsManager
 	alertsBadge     *components.AlertsBadge
-	notificationMgr interface{} // Will be set to *notifications.NotificationManager
+	notificationMgr *notifications.NotificationManager
 
 	userPrefs     *preferences.UserPreferences
-	layoutManager interface{} // Will be set to *layouts.LayoutManager
+	layoutManager *layouts.LayoutManager
 
 	// Main layout
 	mainLayout   *tview.Flex
@@ -265,8 +266,10 @@ func (s *S9s) startRefreshTimer(duration time.Duration) {
 			case <-s.refreshTicker.C:
 				if s.isRunning {
 					if currentView, err := s.viewMgr.GetCurrentView(); err == nil {
-						// Refresh synchronously to prevent goroutine explosion
-						_ = currentView.Refresh()
+						// Wrap UI updates in QueueUpdateDraw to prevent race conditions
+						s.app.QueueUpdateDraw(func() {
+							_ = currentView.Refresh()
+						})
 					}
 				}
 			case <-s.ctx.Done():

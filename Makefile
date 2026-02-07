@@ -108,7 +108,7 @@ bench:
 # Run tests with coverage
 coverage:
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./internal/... ./test/unit/...
+	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./internal/...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
@@ -169,12 +169,12 @@ dev:
 # Quick tests (short mode)
 test-quick:
 	@echo "Running quick tests..."
-	$(GOTEST) -short -timeout 5m ./internal/... ./test/unit/...
+	$(GOTEST) -short -timeout 5m ./internal/...
 
 # Verbose tests
 test-verbose:
 	@echo "Running verbose tests..."
-	$(GOTEST) -v -timeout $(TEST_TIMEOUT) ./internal/... ./test/unit/...
+	$(GOTEST) -v -timeout $(TEST_TIMEOUT) ./internal/...
 
 # Short tests only
 test-short:
@@ -206,7 +206,7 @@ ci: ci-lint ci-test ci-build
 # CI test phase
 ci-test:
 	@echo "Running CI tests..."
-	$(GOTEST) -timeout $(TEST_TIMEOUT) -race -coverprofile=coverage.out ./internal/... ./test/unit/...
+	$(GOTEST) -timeout $(TEST_TIMEOUT) -race -coverprofile=coverage.out ./internal/...
 	$(GOTEST) -timeout $(INTEGRATION_TEST_TIMEOUT) ./test/integration/...
 
 # CI build phase

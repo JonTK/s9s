@@ -71,10 +71,13 @@ jobs:
 
     - name: Run tests
       run: |
-        go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Check coverage thresholds
       run: ./scripts/check-coverage.sh
+      # Enforces per-package minimum coverage gates (see scripts/check-coverage.sh)
+      # Thresholds: dao 6%, monitoring 47%, app 33%, config 20%, global 6%
+      # Targets: All packages aim for 80% (docs/development/testing.md)
 
     - name: Upload coverage
       if: matrix.go == env.GO_VERSION
