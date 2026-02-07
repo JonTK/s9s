@@ -129,8 +129,8 @@ func (pv *PerformanceView) runeHandlers() map[rune]func() {
 		'R': pv.toggleAutoRefresh,
 		'p': pv.showProfilerReport,
 		'P': pv.showProfilerReport,
-		'o': pv.showOptimizerSettings,
-		'O': pv.showOptimizerSettings,
+		'o': pv.toggleAutoOptimization,
+		'O': pv.toggleAutoOptimization,
 		'e': pv.exportMetrics,
 		'E': pv.exportMetrics,
 		'h': pv.showHelp,
@@ -158,6 +158,20 @@ func (pv *PerformanceView) toggleMonitoring() {
 // toggleAutoRefresh toggles automatic refresh
 func (pv *PerformanceView) toggleAutoRefresh() {
 	pv.autoRefresh = !pv.autoRefresh
+
+	// Start or stop monitoring based on new state
+	if pv.dashboard != nil {
+		if pv.autoRefresh && pv.monitoringEnabled {
+			// Start monitoring
+			if err := pv.dashboard.Start(); err != nil {
+				logging.Warnf("Failed to start performance monitoring: %v", err)
+			}
+		} else {
+			// Stop monitoring
+			pv.dashboard.Stop()
+		}
+	}
+
 	pv.updateControlBar()
 }
 
@@ -223,15 +237,24 @@ func (pv *PerformanceView) showOptimizerSettings() {
 	content += "• Garbage collection tuning\n"
 	content += "• Connection pooling\n\n"
 	content += "Auto-optimization: "
-	if pv.dashboard.IsRunning() {
+	if pv.dashboard != nil && pv.dashboard.GetAutoOptimize() {
 		content += "Enabled\n"
 	} else {
 		content += "Disabled\n"
 	}
 
-	content += "\nPress O to toggle auto-optimization"
+	content += "\nPress O to toggle auto-optimization\n"
+	content += "Press Ctrl+O to show this settings menu"
 
 	pv.showModal("Optimizer Settings", content)
+}
+
+// toggleAutoOptimization toggles automatic optimization
+func (pv *PerformanceView) toggleAutoOptimization() {
+	if pv.dashboard != nil {
+		pv.dashboard.ToggleAutoOptimize()
+		pv.updateControlBar()
+	}
 }
 
 // exportMetrics shows the export dialog for performance metrics
@@ -360,8 +383,8 @@ func (pv *PerformanceView) Render() tview.Primitive {
 
 // OnFocus is called when the view gains focus
 func (pv *PerformanceView) OnFocus() error {
-	// Start monitoring when the view becomes active
-	if pv.monitoringEnabled && pv.dashboard != nil {
+	// Start monitoring when the view becomes active (only if auto-refresh is enabled)
+	if pv.monitoringEnabled && pv.autoRefresh && pv.dashboard != nil {
 		if err := pv.dashboard.Start(); err != nil {
 			logging.Warnf("Failed to start performance monitoring: %v", err)
 		}
@@ -380,15 +403,17 @@ func (pv *PerformanceView) OnLoseFocus() error {
 
 // Update refreshes the view data
 func (pv *PerformanceView) Update() error {
-	if pv.autoRefresh {
-		_ = pv.dashboard.Start()
+	if pv.autoRefresh && pv.dashboard != nil {
+		pv.dashboard.Refresh()
 	}
 	return nil
 }
 
 // Refresh manually refreshes the view
 func (pv *PerformanceView) Refresh() error {
-	_ = pv.dashboard.Start()
+	if pv.dashboard != nil {
+		pv.dashboard.Refresh()
+	}
 	return nil
 }
 
