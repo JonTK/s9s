@@ -693,6 +693,12 @@ func (i *infoManager) GetStats() (*ClusterMetrics, error) {
 		return nil, errs.SlurmAPI("get cluster stats", err)
 	}
 
+	// Calculate CPU usage with divide-by-zero guard
+	cpuUsage := 0.0
+	if stats.TotalCPUs > 0 {
+		cpuUsage = float64(stats.AllocatedCPUs) / float64(stats.TotalCPUs) * 100
+	}
+
 	return &ClusterMetrics{
 		TotalJobs:   stats.TotalJobs,
 		RunningJobs: stats.RunningJobs,
@@ -700,9 +706,9 @@ func (i *infoManager) GetStats() (*ClusterMetrics, error) {
 		TotalNodes:  stats.TotalNodes,
 		ActiveNodes: stats.AllocatedNodes,
 		IdleNodes:   stats.IdleNodes,
-		DownNodes:   0, // Not available in basic ClusterStats
-		CPUUsage:    float64(stats.AllocatedCPUs) / float64(stats.TotalCPUs) * 100,
-		MemoryUsage: 0.0, // Not available in basic ClusterStats
+		DownNodes:   0,   // Not available in basic ClusterStats
+		CPUUsage:    cpuUsage,
+		MemoryUsage: 0.0, // Not available in basic ClusterStats (would require aggregating node data)
 		LastUpdated: time.Now(),
 	}, nil
 }
