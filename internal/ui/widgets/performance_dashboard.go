@@ -39,11 +39,12 @@ type PerformanceDashboard struct {
 	maxHistory     int
 
 	// State
-	running        bool
-	updateInterval time.Duration
-	ctx            context.Context
-	cancel         context.CancelFunc
-	previousStats  map[string]performance.OperationSummary
+	running         bool
+	updateInterval  time.Duration
+	intervalChanged chan time.Duration
+	ctx             context.Context
+	cancel          context.CancelFunc
+	previousStats   map[string]performance.OperationSummary
 
 	// Configuration
 	showAlerts   bool
@@ -235,6 +236,9 @@ func (pd *PerformanceDashboard) Start() error {
 	// Create new context for this run
 	pd.ctx, pd.cancel = context.WithCancel(context.Background())
 
+	// Create channel for interval changes
+	pd.intervalChanged = make(chan time.Duration, 1)
+
 	pd.running = true
 	go pd.updateLoop()
 
@@ -254,6 +258,12 @@ func (pd *PerformanceDashboard) Stop() {
 	if pd.cancel != nil {
 		pd.cancel()
 	}
+
+	// Close interval change channel
+	if pd.intervalChanged != nil {
+		close(pd.intervalChanged)
+		pd.intervalChanged = nil
+	}
 }
 
 // Refresh triggers an immediate metrics update without restarting the monitoring loop
@@ -267,6 +277,7 @@ func (pd *PerformanceDashboard) updateLoop() {
 	pd.mu.RLock()
 	interval := pd.updateInterval
 	ctx := pd.ctx
+	intervalChanged := pd.intervalChanged
 	pd.mu.RUnlock()
 
 	ticker := time.NewTicker(interval)
@@ -276,6 +287,11 @@ func (pd *PerformanceDashboard) updateLoop() {
 		select {
 		case <-ctx.Done():
 			return
+		case newInterval := <-intervalChanged:
+			// Rebuild ticker with new interval
+			ticker.Stop()
+			ticker = time.NewTicker(newInterval)
+			logging.Debugf("Performance dashboard interval changed to %v", newInterval)
 		case <-ticker.C:
 			pd.updateMetrics()
 		}
@@ -791,9 +807,19 @@ func (pd *PerformanceDashboard) GetContainer() tview.Primitive {
 // SetUpdateInterval sets the dashboard update frequency
 func (pd *PerformanceDashboard) SetUpdateInterval(interval time.Duration) {
 	pd.mu.Lock()
-	defer pd.mu.Unlock()
-
+	wasRunning := pd.running
+	intervalChanged := pd.intervalChanged
 	pd.updateInterval = interval
+	pd.mu.Unlock()
+
+	// Signal interval change to update loop (non-blocking)
+	if wasRunning && intervalChanged != nil {
+		select {
+		case intervalChanged <- interval:
+		default:
+			// Channel full or closed, interval will be picked up on next iteration
+		}
+	}
 }
 
 // SetThresholds updates the alerting thresholds
