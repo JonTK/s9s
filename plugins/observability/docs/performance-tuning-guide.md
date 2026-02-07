@@ -180,13 +180,17 @@ client := &http.Client{
 ```
 
 ### Request Batching
+⚠ **NOT YET CONFIGURABLE VIA YAML** - Batch query functionality exists in code (see `prometheus.Client.BatchQuery`) but configuration via YAML is not yet implemented. See `plugins/observability/todo.md:105` for planned enhancement.
+
 ```yaml
-# Enable request batching for multiple queries
-prometheus:
-  enableBatching: true
-  batchSize: 10
-  batchTimeout: 5s
+# ⚠ NOT YET IMPLEMENTED - Future configuration (planned)
+# prometheus:
+#   enableBatching: true
+#   batchSize: 10
+#   batchTimeout: 5s
 ```
+
+**Current behavior**: Batch queries use hard-coded defaults (concurrency: 10, timeout: 30s). To use batch queries, call the API programmatically via `prometheus.Client.BatchQuery()` or `prometheus.Client.BatchQueryWithConfig()`.
 
 ## Deployment Scenarios
 
@@ -293,14 +297,16 @@ ab -n 1000 -c 10 -H "Authorization: Bearer test-token" \
 ```
 
 ### Performance Profiling
-```bash
-# Enable Go profiling
-export ENABLE_PPROF=true
+⚠ **NOT YET IMPLEMENTED** - Pprof endpoints are not currently exposed by the observability plugin. The external API server (plugins/observability/endpoints/external.go) does not register pprof handlers.
 
-# Access profiling endpoints
-go tool pprof http://localhost:6060/debug/pprof/profile
-go tool pprof http://localhost:6060/debug/pprof/heap
+```bash
+# ⚠ NOT YET IMPLEMENTED - Future capability (planned)
+# export ENABLE_PPROF=true
+# go tool pprof http://localhost:6060/debug/pprof/profile
+# go tool pprof http://localhost:6060/debug/pprof/heap
 ```
+
+**Workaround**: For Go runtime profiling, use the main s9s binary's profiling capabilities (if enabled) or add pprof import and handler registration to `plugins/observability/endpoints/external.go`.
 
 ## Recommended Configurations
 
