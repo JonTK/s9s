@@ -10,44 +10,59 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
-	// Skip this test for now since it depends on environment state
-	t.Skip("Skipping environment-dependent test")
-
-	// Clear environment variables
-	_ = os.Unsetenv("SLURM_REST_URL")
-	_ = os.Unsetenv("SLURM_JWT")
-
-	cfg, err := Load()
-	require.NoError(t, err)
+	// Test DefaultConfig() function directly to verify default values
+	// This doesn't require environment isolation as it doesn't read env vars
+	cfg := DefaultConfig()
 	require.NotNil(t, cfg)
 
-	// UI defaults
+	// UI defaults (aligned with setDefaults)
 	assert.Equal(t, "default", cfg.UI.Skin)
 	assert.True(t, cfg.UI.EnableMouse)
 	assert.False(t, cfg.UI.Logoless)
 
-	// Views defaults
+	// Views defaults (aligned with setDefaults)
 	assert.Equal(t, []string{"id", "name", "user", "state", "time", "nodes", "priority"}, cfg.Views.Jobs.Columns)
 	assert.True(t, cfg.Views.Jobs.ShowOnlyActive)
 	assert.Equal(t, "time", cfg.Views.Jobs.DefaultSort)
 	assert.Equal(t, 1000, cfg.Views.Jobs.MaxJobs)
 
-	// Features defaults
+	// Features defaults (aligned with setDefaults)
 	assert.True(t, cfg.Features.Streaming)
 	assert.True(t, cfg.Features.Pulseye)
 	assert.False(t, cfg.Features.Xray)
 
-	// Aliases
+	// Aliases (aligned with setDefaults)
 	assert.Equal(t, "context", cfg.Aliases["ctx"])
 	assert.Equal(t, "kill job", cfg.Aliases["kj"])
 }
 
 func TestEnvironmentOverrides(t *testing.T) {
-	// Skip this test for now since it depends on environment state
-	t.Skip("Skipping environment-dependent test")
+	// Isolate environment from host
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("SLURM_REST_URL", "https://env-override.example.com:6820")
+	t.Setenv("SLURM_JWT", "env-token")
+	t.Setenv("SLURM_API_VERSION", "v0.0.42")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Verify environment overrides are applied
+	assert.Equal(t, "https://env-override.example.com:6820", cfg.Cluster.Endpoint)
+	assert.Equal(t, "env-token", cfg.Cluster.Token)
+	assert.Equal(t, "v0.0.42", cfg.Cluster.APIVersion)
+	assert.Equal(t, "default", cfg.CurrentContext)
 }
 
 func TestLoadWithYAMLFile(t *testing.T) {
+	// Isolate environment from host
+	t.Setenv("SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("SLURM_JWT", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
+
 	// Create a temporary config file
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
@@ -178,6 +193,13 @@ func TestGetContext(t *testing.T) {
 }
 
 func TestSaveToFile(t *testing.T) {
+	// Isolate environment from host
+	t.Setenv("SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("SLURM_JWT", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
+
 	cfg := &Config{
 		RefreshRate:    "3s",
 		MaxRetries:     2,
@@ -219,10 +241,11 @@ func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 	require.NotNil(t, cfg)
 
-	// Test basic settings
-	assert.Equal(t, "5s", cfg.RefreshRate)
+	// Test basic settings (aligned with setDefaults)
+	assert.Equal(t, "2s", cfg.RefreshRate)
 	assert.Equal(t, 3, cfg.MaxRetries)
 	assert.Equal(t, "default", cfg.CurrentContext)
+	assert.True(t, cfg.UseMockClient)
 
 	// Test UI defaults
 	assert.Equal(t, "default", cfg.UI.Skin)
@@ -231,36 +254,36 @@ func TestDefaultConfig(t *testing.T) {
 	assert.False(t, cfg.UI.Statusless)
 	assert.False(t, cfg.UI.Headless)
 	assert.False(t, cfg.UI.NoIcons)
-	assert.False(t, cfg.UI.EnableMouse)
+	assert.True(t, cfg.UI.EnableMouse) // Aligned with setDefaults
 
 	// Test Views defaults
 	assert.NotNil(t, cfg.Views.Jobs)
-	assert.Equal(t, []string{"id", "name", "user", "account", "state", "partition", "nodes", "time"}, cfg.Views.Jobs.Columns)
-	assert.False(t, cfg.Views.Jobs.ShowOnlyActive)
-	assert.Equal(t, "id", cfg.Views.Jobs.DefaultSort)
-	assert.Equal(t, 100, cfg.Views.Jobs.MaxJobs)
+	assert.Equal(t, []string{"id", "name", "user", "state", "time", "nodes", "priority"}, cfg.Views.Jobs.Columns)
+	assert.True(t, cfg.Views.Jobs.ShowOnlyActive)  // Aligned with setDefaults
+	assert.Equal(t, "time", cfg.Views.Jobs.DefaultSort) // Aligned with setDefaults
+	assert.Equal(t, 1000, cfg.Views.Jobs.MaxJobs)       // Aligned with setDefaults
 
 	assert.NotNil(t, cfg.Views.Nodes)
-	assert.Equal(t, "state", cfg.Views.Nodes.GroupBy)
+	assert.Equal(t, "partition", cfg.Views.Nodes.GroupBy) // Aligned with setDefaults
 	assert.True(t, cfg.Views.Nodes.ShowUtilization)
-	assert.Equal(t, 100, cfg.Views.Nodes.MaxNodes)
+	assert.Equal(t, 500, cfg.Views.Nodes.MaxNodes) // Aligned with setDefaults
 
 	assert.NotNil(t, cfg.Views.Partitions)
 	assert.True(t, cfg.Views.Partitions.ShowQueueDepth)
 	assert.True(t, cfg.Views.Partitions.ShowWaitTime)
 
 	// Test Features defaults
-	assert.False(t, cfg.Features.Streaming)
-	assert.False(t, cfg.Features.Pulseye)
+	assert.True(t, cfg.Features.Streaming)  // Aligned with setDefaults
+	assert.True(t, cfg.Features.Pulseye)    // Aligned with setDefaults
 	assert.False(t, cfg.Features.Xray)
 
 	// Test Plugin Settings defaults
 	assert.False(t, cfg.PluginSettings.EnableAll)
-	assert.Empty(t, cfg.PluginSettings.PluginDir)
+	assert.Equal(t, "$HOME/.s9s/plugins", cfg.PluginSettings.PluginDir) // Aligned with setDefaults
 	assert.True(t, cfg.PluginSettings.AutoDiscover)
 	assert.False(t, cfg.PluginSettings.SafeMode)
-	assert.Equal(t, 512, cfg.PluginSettings.MaxMemoryMB)
-	assert.Equal(t, 50.0, cfg.PluginSettings.MaxCPUPercent)
+	assert.Equal(t, 100, cfg.PluginSettings.MaxMemoryMB)    // Aligned with setDefaults
+	assert.Equal(t, 25.0, cfg.PluginSettings.MaxCPUPercent) // Aligned with setDefaults
 
 	// Test Discovery defaults
 	assert.False(t, cfg.Discovery.Enabled)
@@ -276,12 +299,17 @@ func TestDefaultConfig(t *testing.T) {
 	assert.NotNil(t, cfg.Shortcuts)
 	assert.Empty(t, cfg.Shortcuts)
 	assert.NotNil(t, cfg.Aliases)
-	assert.Empty(t, cfg.Aliases)
+	// Aliases now have defaults (aligned with setDefaults)
+	assert.Equal(t, "context", cfg.Aliases["ctx"])
+	assert.Equal(t, "kill job", cfg.Aliases["kj"])
+	assert.Equal(t, "describe job", cfg.Aliases["dj"])
+	assert.Equal(t, "describe node", cfg.Aliases["dn"])
+	assert.Equal(t, "submit job", cfg.Aliases["sub"])
 	assert.NotNil(t, cfg.Plugins)
 	assert.Empty(t, cfg.Plugins)
 
-	// Test mock client default
-	assert.False(t, cfg.UseMockClient)
+	// Test mock client default (aligned with setDefaults)
+	assert.True(t, cfg.UseMockClient)
 }
 
 func TestValidateMockUsage(t *testing.T) {
@@ -319,23 +347,14 @@ func TestValidateMockUsage(t *testing.T) {
 }
 
 func TestLoad(t *testing.T) {
-	// Save current environment
-	oldSlurmRestURL := os.Getenv("SLURM_REST_URL")
-	oldSlurmJWT := os.Getenv("SLURM_JWT")
-
-	// Ensure we have environment variables set for this test
-	if oldSlurmRestURL == "" {
-		_ = os.Setenv("SLURM_REST_URL", "http://localhost:6820")
-		defer func() {
-			_ = os.Unsetenv("SLURM_REST_URL")
-		}()
-	}
-	if oldSlurmJWT == "" {
-		_ = os.Setenv("SLURM_JWT", "test-token")
-		defer func() {
-			_ = os.Unsetenv("SLURM_JWT")
-		}()
-	}
+	// Isolate environment and set test values
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("SLURM_REST_URL", "http://localhost:6820")
+	t.Setenv("SLURM_JWT", "test-token")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
 
 	// Test Load() function
 	cfg, err := Load()
@@ -352,22 +371,14 @@ func TestLoad(t *testing.T) {
 }
 
 func TestLoadWithEmptyPath(t *testing.T) {
-	// Ensure we have environment variables set for this test
-	oldSlurmRestURL := os.Getenv("SLURM_REST_URL")
-	oldSlurmJWT := os.Getenv("SLURM_JWT")
-
-	if oldSlurmRestURL == "" {
-		_ = os.Setenv("SLURM_REST_URL", "http://localhost:6820")
-		defer func() {
-			_ = os.Unsetenv("SLURM_REST_URL")
-		}()
-	}
-	if oldSlurmJWT == "" {
-		_ = os.Setenv("SLURM_JWT", "test-token")
-		defer func() {
-			_ = os.Unsetenv("SLURM_JWT")
-		}()
-	}
+	// Isolate environment and set test values
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("SLURM_REST_URL", "http://localhost:6820")
+	t.Setenv("SLURM_JWT", "test-token")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
 
 	// Test that LoadWithPath("") works like Load()
 	cfg, err := LoadWithPath("")
@@ -392,6 +403,13 @@ func TestLoadWithNonExistentFile(t *testing.T) {
 }
 
 func TestConfigWithMultipleContexts(t *testing.T) {
+	// Isolate environment from host
+	t.Setenv("SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("SLURM_JWT", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
+
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "multi-context.yaml")
 
@@ -444,6 +462,13 @@ contexts:
 }
 
 func TestConfigWithDiscoverySettings(t *testing.T) {
+	// Isolate environment from host
+	t.Setenv("SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("SLURM_JWT", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
+
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "discovery-config.yaml")
 
@@ -482,6 +507,13 @@ discovery:
 }
 
 func TestConfigWithPluginSettings(t *testing.T) {
+	// Isolate environment from host
+	t.Setenv("SLURM_REST_URL", "")
+	t.Setenv("S9S_SLURM_REST_URL", "")
+	t.Setenv("SLURM_JWT", "")
+	t.Setenv("S9S_SLURM_JWT", "")
+	t.Setenv("SLURM_API_VERSION", "")
+
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "plugin-config.yaml")
 

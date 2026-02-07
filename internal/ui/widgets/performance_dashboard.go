@@ -43,6 +43,7 @@ type PerformanceDashboard struct {
 	updateInterval time.Duration
 	ctx            context.Context
 	cancel         context.CancelFunc
+	previousStats  map[string]performance.OperationSummary
 
 	// Configuration
 	showAlerts   bool
@@ -64,15 +65,11 @@ type PerformanceThresholds struct {
 
 // NewPerformanceDashboard creates a new performance dashboard
 func NewPerformanceDashboard(profiler *performance.Profiler, optimizer *performance.Optimizer) *PerformanceDashboard {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	pd := &PerformanceDashboard{
 		profiler:       profiler,
 		optimizer:      optimizer,
 		maxHistory:     50,
 		updateInterval: 1 * time.Second,
-		ctx:            ctx,
-		cancel:         cancel,
 		showAlerts:     true,
 		autoOptimize:   true,
 		thresholds: PerformanceThresholds{
@@ -235,6 +232,9 @@ func (pd *PerformanceDashboard) Start() error {
 		return fmt.Errorf("dashboard already running")
 	}
 
+	// Create new context for this run
+	pd.ctx, pd.cancel = context.WithCancel(context.Background())
+
 	pd.running = true
 	go pd.updateLoop()
 
@@ -251,13 +251,16 @@ func (pd *PerformanceDashboard) Stop() {
 	}
 
 	pd.running = false
-	pd.cancel()
+	if pd.cancel != nil {
+		pd.cancel()
+	}
 }
 
 // updateLoop runs the main update loop
 func (pd *PerformanceDashboard) updateLoop() {
 	pd.mu.RLock()
 	interval := pd.updateInterval
+	ctx := pd.ctx
 	pd.mu.RUnlock()
 
 	ticker := time.NewTicker(interval)
@@ -265,7 +268,7 @@ func (pd *PerformanceDashboard) updateLoop() {
 
 	for {
 		select {
-		case <-pd.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			pd.updateMetrics()
@@ -318,6 +321,9 @@ func (pd *PerformanceDashboard) updateMetrics() {
 	if pd.autoOptimize && pd.optimizer != nil {
 		pd.performAutoOptimization(cpuUsage, memUsage, netUsage, opsRate)
 	}
+
+	// Save current stats for delta calculation in next update
+	pd.previousStats = stats
 }
 
 // addToHistory adds a value to a history slice, maintaining max size
@@ -334,10 +340,23 @@ func (pd *PerformanceDashboard) calculateCPUUsage(stats map[string]performance.O
 		return 0.0
 	}
 
-	// Calculate CPU usage based on operation timings
-	totalTime := time.Duration(0)
-	for _, op := range stats {
-		totalTime += op.AverageTime * time.Duration(op.Count)
+	// If no previous stats, return 0 (need at least 2 samples for rate)
+	if pd.previousStats == nil {
+		return 0.0
+	}
+
+	// Calculate delta in total time across all operations
+	deltaTime := time.Duration(0)
+	for name, currentOp := range stats {
+		if prevOp, exists := pd.previousStats[name]; exists {
+			// Calculate delta in total time for this operation
+			currentTotal := currentOp.TotalTime
+			prevTotal := prevOp.TotalTime
+			deltaTime += currentTotal - prevTotal
+		} else {
+			// New operation, use its full total time
+			deltaTime += currentOp.TotalTime
+		}
 	}
 
 	// Estimate CPU usage percentage
@@ -346,7 +365,7 @@ func (pd *PerformanceDashboard) calculateCPUUsage(stats map[string]performance.O
 		windowDuration = 1 * time.Second
 	}
 
-	cpuUsage := float64(totalTime.Nanoseconds()) / float64(windowDuration.Nanoseconds()) * 100.0
+	cpuUsage := float64(deltaTime.Nanoseconds()) / float64(windowDuration.Nanoseconds()) * 100.0
 	if cpuUsage > 100.0 {
 		cpuUsage = 100.0
 	}
@@ -370,18 +389,35 @@ func (pd *PerformanceDashboard) calculateNetworkUsage(stats map[string]performan
 		return 0.0
 	}
 
-	// Estimate network usage based on operations
-	networkOps := int64(0)
-	for name, op := range stats {
+	// If no previous stats, return 0 (need at least 2 samples for rate)
+	if pd.previousStats == nil {
+		return 0.0
+	}
+
+	// Calculate delta in network operations
+	deltaOps := int64(0)
+	for name, currentOp := range stats {
 		if strings.Contains(strings.ToLower(name), "ssh") ||
 			strings.Contains(strings.ToLower(name), "api") ||
 			strings.Contains(strings.ToLower(name), "network") {
-			networkOps += op.Count
+			if prevOp, exists := pd.previousStats[name]; exists {
+				deltaOps += currentOp.Count - prevOp.Count
+			} else {
+				// New operation, use its full count
+				deltaOps += currentOp.Count
+			}
 		}
 	}
 
-	// Convert to MB/s estimate
-	return float64(networkOps) * 0.1 // Rough estimate
+	// Convert delta ops to MB/s estimate (ops per interval)
+	windowSeconds := pd.updateInterval.Seconds()
+	if windowSeconds == 0 {
+		windowSeconds = 1.0
+	}
+
+	// Calculate rate and convert to MB/s estimate
+	opsPerSecond := float64(deltaOps) / windowSeconds
+	return opsPerSecond * 0.1 // Rough estimate: 0.1 MB per operation
 }
 
 // calculateOpsRate calculates operations per second
@@ -390,10 +426,20 @@ func (pd *PerformanceDashboard) calculateOpsRate(stats map[string]performance.Op
 		return 0.0
 	}
 
-	// Calculate ops/sec based on total operations
-	totalOps := int64(0)
-	for _, op := range stats {
-		totalOps += op.Count
+	// If no previous stats, return 0 (need at least 2 samples for rate)
+	if pd.previousStats == nil {
+		return 0.0
+	}
+
+	// Calculate delta in total operations
+	deltaOps := int64(0)
+	for name, currentOp := range stats {
+		if prevOp, exists := pd.previousStats[name]; exists {
+			deltaOps += currentOp.Count - prevOp.Count
+		} else {
+			// New operation, use its full count
+			deltaOps += currentOp.Count
+		}
 	}
 
 	windowSeconds := pd.updateInterval.Seconds()
@@ -401,7 +447,7 @@ func (pd *PerformanceDashboard) calculateOpsRate(stats map[string]performance.Op
 		windowSeconds = 1.0
 	}
 
-	return float64(totalOps) / windowSeconds
+	return float64(deltaOps) / windowSeconds
 }
 
 // updateCPUChart updates the CPU usage chart
@@ -689,6 +735,7 @@ func (pd *PerformanceDashboard) reset() {
 	defer pd.mu.Unlock()
 
 	pd.initializeHistory()
+	pd.previousStats = nil
 	pd.cpuChart.Clear()
 	pd.memoryChart.Clear()
 	pd.networkChart.Clear()
@@ -727,6 +774,7 @@ func (pd *PerformanceDashboard) clearHistory() {
 	defer pd.mu.Unlock()
 
 	pd.initializeHistory()
+	pd.previousStats = nil
 }
 
 // GetContainer returns the main dashboard container

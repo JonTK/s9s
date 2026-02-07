@@ -23,12 +23,10 @@ s9s provides a terminal interface for managing SLURM clusters, inspired by the p
 ## 📚 Documentation
 
 - **User Documentation**: [https://s9s.dev/docs](https://s9s.dev/docs)
-- **Plugin Development**: [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md)
-- **Performance Analysis**: [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md)  
-- **Streaming Guide**: [docs/STREAMING_GUIDE.md](docs/STREAMING_GUIDE.md)
-- **API Reference**: [docs/API.md](docs/API.md)
-- **Architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- **Development Guide**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- **Getting Started**: [docs/getting-started/](docs/getting-started/)
+- **User Guide**: [docs/user-guide/](docs/user-guide/)
+- **Development**: [docs/development/](docs/development/)
+- **Plugins**: [docs/plugins/](docs/plugins/)
 
 ## ✨ Features
 
@@ -206,12 +204,14 @@ internal/
   ├── views/      # Terminal UI views
   ├── config/     # Configuration management
   ├── ui/         # UI components and utilities
-  └── slurm/      # SLURM client implementation
+  ├── monitoring/ # Health monitoring and alerts
+  ├── performance/# Performance profiling and optimization
+  └── plugins/    # Plugin system implementation
 pkg/
-  └── slurm/      # Mock SLURM implementation
+  └── mock/       # Mock SLURM implementation for testing
 ```
 
-For detailed architecture information, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For more information about the project structure, see the [docs/](docs/) directory.
 
 ## 🔧 Development
 

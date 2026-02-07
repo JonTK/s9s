@@ -171,9 +171,16 @@ func (hm *HealthMonitor) performHealthChecks() {
 
 	// Run all health checks
 	for name, checkFunc := range hm.checks {
+		// Get prior count if check exists
+		priorCount := 0
+		if priorCheck, exists := hm.health.Checks[name]; exists {
+			priorCount = priorCheck.CheckCount
+		}
+
 		check := checkFunc(hm.client)
 		if check != nil {
-			check.CheckCount++
+			// Carry forward and increment the count
+			check.CheckCount = priorCount + 1
 			hm.health.Checks[name] = check
 
 			// Generate alerts for critical/warning status
@@ -303,12 +310,11 @@ func (hm *HealthMonitor) checkQueue(client dao.SlurmClient) *HealthCheck {
 	pendingJobs := float64(len(jobList.Jobs))
 
 	hm.setCheckStatus(check, pendingJobs, func(status HealthStatus) string {
-		if status != HealthStatusHealthy {
-			return fmt.Sprintf("%.0f pending jobs (threshold: %.0f)",
-				pendingJobs, *check.Threshold.CriticalMax)
-		}
+		return fmt.Sprintf("%.0f pending jobs (threshold: warning %.0f, critical %.0f)",
+			pendingJobs, *check.Threshold.WarningMax, *check.Threshold.CriticalMax)
+	}, func() string {
 		return fmt.Sprintf("Queue healthy with %.0f pending jobs", pendingJobs)
-	}, nil)
+	})
 
 	return check
 }
@@ -346,9 +352,12 @@ func (hm *HealthMonitor) checkUtilization(client dao.SlurmClient) *HealthCheck {
 		maxUtil = memUtil
 	}
 
-	hm.setCheckStatus(check, maxUtil, func(_ HealthStatus) string {
-		return fmt.Sprintf("Resource utilization: CPU %.1f%%, Memory %.1f%%", cpuUtil, memUtil)
-	}, nil)
+	hm.setCheckStatus(check, maxUtil, func(status HealthStatus) string {
+		return fmt.Sprintf("High resource utilization: CPU %.1f%%, Memory %.1f%% (max %.1f%%)",
+			cpuUtil, memUtil, maxUtil)
+	}, func() string {
+		return fmt.Sprintf("Resource utilization healthy: CPU %.1f%%, Memory %.1f%%", cpuUtil, memUtil)
+	})
 
 	return check
 }
