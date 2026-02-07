@@ -12,17 +12,31 @@ import (
 // CacheKeyGenerator provides optimized cache key generation for Prometheus queries
 type CacheKeyGenerator struct {
 	// Compiled regex patterns for query normalization
-	whitespaceRegex *regexp.Regexp
-	numberRegex     *regexp.Regexp
-	stringRegex     *regexp.Regexp
+	whitespaceRegex   *regexp.Regexp
+	numberRegex       *regexp.Regexp
+	stringRegex       *regexp.Regexp
+	durationRegex     *regexp.Regexp
+	parenRegex        *regexp.Regexp
+	braceRegex        *regexp.Regexp
+	metricBraceRegex  *regexp.Regexp
+	commaRegex        *regexp.Regexp
+	equalsRegex       *regexp.Regexp
+	selectorRegex     *regexp.Regexp
 }
 
 // NewCacheKeyGenerator creates a new cache key generator with compiled patterns
 func NewCacheKeyGenerator() *CacheKeyGenerator {
 	return &CacheKeyGenerator{
-		whitespaceRegex: regexp.MustCompile(`\s+`),
-		numberRegex:     regexp.MustCompile(`\b\d+\.?\d*\b`),
-		stringRegex:     regexp.MustCompile(`"[^"]*"`),
+		whitespaceRegex:  regexp.MustCompile(`\s+`),
+		numberRegex:      regexp.MustCompile(`\b\d+\.?\d*\b`),
+		stringRegex:      regexp.MustCompile(`"[^"]*"`),
+		durationRegex:    regexp.MustCompile(`\[\s*([^]]+?)\s*\]`),
+		parenRegex:       regexp.MustCompile(`\(\s+|\s+\)`),
+		braceRegex:       regexp.MustCompile(`\{\s+|\s+\}`),
+		metricBraceRegex: regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:]*)\s+\{`),
+		commaRegex:       regexp.MustCompile(`\s*,\s*`),
+		equalsRegex:      regexp.MustCompile(`\s*=\s*`),
+		selectorRegex:    regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]+)\}`),
 	}
 }
 
@@ -114,12 +128,9 @@ func (g *CacheKeyGenerator) normalizeQuery(query string) string {
 
 // normalizeDurationBrackets normalizes whitespace within duration brackets
 func (g *CacheKeyGenerator) normalizeDurationBrackets(query string) string {
-	// Pattern to match duration brackets like [5m], [ 1h ], etc.
-	durationRegex := regexp.MustCompile(`\[\s*([^]]+?)\s*\]`)
-
-	return durationRegex.ReplaceAllStringFunc(query, func(match string) string {
+	return g.durationRegex.ReplaceAllStringFunc(query, func(match string) string {
 		// Extract the duration part between brackets
-		submatch := durationRegex.FindStringSubmatch(match)
+		submatch := g.durationRegex.FindStringSubmatch(match)
 		if len(submatch) > 1 {
 			// Remove extra whitespace from duration and rebuild bracket
 			duration := strings.TrimSpace(submatch[1])
@@ -135,8 +146,7 @@ func (g *CacheKeyGenerator) normalizeOperatorWhitespace(query string) string {
 	// But preserve necessary spaces between keywords and identifiers
 
 	// Handle parentheses - remove spaces inside
-	parenRegex := regexp.MustCompile(`\(\s+|\s+\)`)
-	normalized := parenRegex.ReplaceAllStringFunc(query, func(match string) string {
+	normalized := g.parenRegex.ReplaceAllStringFunc(query, func(match string) string {
 		if strings.HasPrefix(match, "(") {
 			return "("
 		}
@@ -144,8 +154,7 @@ func (g *CacheKeyGenerator) normalizeOperatorWhitespace(query string) string {
 	})
 
 	// Handle braces - remove spaces inside AND before metric selectors
-	braceRegex := regexp.MustCompile(`\{\s+|\s+\}`)
-	normalized = braceRegex.ReplaceAllStringFunc(normalized, func(match string) string {
+	normalized = g.braceRegex.ReplaceAllStringFunc(normalized, func(match string) string {
 		if strings.HasPrefix(match, "{") {
 			return "{"
 		}
@@ -153,27 +162,21 @@ func (g *CacheKeyGenerator) normalizeOperatorWhitespace(query string) string {
 	})
 
 	// Remove spaces before braces for metric selectors like "metric {labels}" -> "metric{labels}"
-	metricBraceRegex := regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:]*)\s+\{`)
-	normalized = metricBraceRegex.ReplaceAllString(normalized, "$1{")
+	normalized = g.metricBraceRegex.ReplaceAllString(normalized, "$1{")
 
 	// Handle commas - remove extra spaces
-	commaRegex := regexp.MustCompile(`\s*,\s*`)
-	normalized = commaRegex.ReplaceAllString(normalized, ",")
+	normalized = g.commaRegex.ReplaceAllString(normalized, ",")
 
 	// Handle equals - remove extra spaces around equals in label selectors
-	equalsRegex := regexp.MustCompile(`\s*=\s*`)
-	normalized = equalsRegex.ReplaceAllString(normalized, "=")
+	normalized = g.equalsRegex.ReplaceAllString(normalized, "=")
 
 	return normalized
 }
 
 // normalizeLabelSelectors sorts label selectors within metric selectors
 func (g *CacheKeyGenerator) normalizeLabelSelectors(query string) string {
-	// Pattern to match metric selectors: metric_name{label1="value1",label2="value2"}
-	selectorRegex := regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]+)\}`)
-
-	return selectorRegex.ReplaceAllStringFunc(query, func(match string) string {
-		parts := selectorRegex.FindStringSubmatch(match)
+	return g.selectorRegex.ReplaceAllStringFunc(query, func(match string) string {
+		parts := g.selectorRegex.FindStringSubmatch(match)
 		if len(parts) != 3 {
 			return match // Return unchanged if pattern doesn't match expected format
 		}
