@@ -171,9 +171,16 @@ func (hm *HealthMonitor) performHealthChecks() {
 
 	// Run all health checks
 	for name, checkFunc := range hm.checks {
+		// Get prior count if check exists
+		priorCount := 0
+		if priorCheck, exists := hm.health.Checks[name]; exists {
+			priorCount = priorCheck.CheckCount
+		}
+
 		check := checkFunc(hm.client)
 		if check != nil {
-			check.CheckCount++
+			// Carry forward and increment the count
+			check.CheckCount = priorCount + 1
 			hm.health.Checks[name] = check
 
 			// Generate alerts for critical/warning status
