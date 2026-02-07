@@ -129,8 +129,8 @@ func (pv *PerformanceView) runeHandlers() map[rune]func() {
 		'R': pv.toggleAutoRefresh,
 		'p': pv.showProfilerReport,
 		'P': pv.showProfilerReport,
-		'o': pv.showOptimizerSettings,
-		'O': pv.showOptimizerSettings,
+		'o': pv.toggleAutoOptimization,
+		'O': pv.toggleAutoOptimization,
 		'e': pv.exportMetrics,
 		'E': pv.exportMetrics,
 		'h': pv.showHelp,
@@ -237,15 +237,24 @@ func (pv *PerformanceView) showOptimizerSettings() {
 	content += "• Garbage collection tuning\n"
 	content += "• Connection pooling\n\n"
 	content += "Auto-optimization: "
-	if pv.dashboard.IsRunning() {
+	if pv.dashboard != nil && pv.dashboard.GetAutoOptimize() {
 		content += "Enabled\n"
 	} else {
 		content += "Disabled\n"
 	}
 
-	content += "\nPress O to toggle auto-optimization"
+	content += "\nPress O to toggle auto-optimization\n"
+	content += "Press Ctrl+O to show this settings menu"
 
 	pv.showModal("Optimizer Settings", content)
+}
+
+// toggleAutoOptimization toggles automatic optimization
+func (pv *PerformanceView) toggleAutoOptimization() {
+	if pv.dashboard != nil {
+		pv.dashboard.ToggleAutoOptimize()
+		pv.updateControlBar()
+	}
 }
 
 // exportMetrics shows the export dialog for performance metrics

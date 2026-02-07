@@ -198,9 +198,6 @@ func (pd *PerformanceDashboard) handleInput(event *tcell.EventKey) *tcell.EventK
 	case tcell.KeyCtrlR:
 		pd.reset()
 		return nil
-	case tcell.KeyCtrlO:
-		pd.toggleAutoOptimize()
-		return nil
 	case tcell.KeyCtrlA:
 		pd.toggleAlerts()
 		return nil
@@ -209,9 +206,6 @@ func (pd *PerformanceDashboard) handleInput(event *tcell.EventKey) *tcell.EventK
 	switch event.Rune() {
 	case 'r', 'R':
 		pd.refresh()
-		return nil
-	case 'o', 'O':
-		pd.toggleAutoOptimize()
 		return nil
 	case 'a', 'A':
 		pd.toggleAlerts()
@@ -767,7 +761,8 @@ func (pd *PerformanceDashboard) reset() {
 }
 
 // toggleAutoOptimize toggles automatic optimization
-func (pd *PerformanceDashboard) toggleAutoOptimize() {
+// ToggleAutoOptimize toggles automatic optimization
+func (pd *PerformanceDashboard) ToggleAutoOptimize() {
 	pd.mu.Lock()
 	defer pd.mu.Unlock()
 
@@ -777,6 +772,13 @@ func (pd *PerformanceDashboard) toggleAutoOptimize() {
 		status = "enabled"
 	}
 	logging.Infof("Auto-optimization %s", status)
+}
+
+// GetAutoOptimize returns the current auto-optimization state
+func (pd *PerformanceDashboard) GetAutoOptimize() bool {
+	pd.mu.RLock()
+	defer pd.mu.RUnlock()
+	return pd.autoOptimize
 }
 
 // toggleAlerts toggles alert monitoring
