@@ -71,7 +71,7 @@ jobs:
 
     - name: Run tests
       run: |
-        go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Check coverage thresholds
       run: ./scripts/check-coverage.sh
