@@ -257,11 +257,9 @@ func (pd *PerformanceDashboard) Stop() {
 		pd.cancel()
 	}
 
-	// Close interval change channel
-	if pd.intervalChanged != nil {
-		close(pd.intervalChanged)
-		pd.intervalChanged = nil
-	}
+	// Don't close intervalChanged channel - let it be garbage collected
+	// Closing it would cause updateLoop to receive zero value and panic in time.NewTicker(0)
+	// The updateLoop will terminate via ctx.Done() anyway
 }
 
 // Refresh triggers an immediate metrics update without restarting the monitoring loop
