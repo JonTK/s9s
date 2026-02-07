@@ -376,6 +376,9 @@ func (j *jobManager) simulateJobOutput(id string) (string, error) {
 	if err != nil {
 		return "", errs.DAOError("get", "job", err).WithContext("job_id", id).WithContext("operation", "get_output")
 	}
+	if job == nil {
+		return "", errs.NotFound("job").WithContext("job_id", id).WithContext("operation", "get_output")
+	}
 
 	// Build output header with job info
 	output := j.buildJobOutputHeader(job)
