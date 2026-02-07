@@ -148,8 +148,8 @@ func (s *S9s) showConfiguration() {
 
 // showLayoutSwitcher displays the layout switcher modal
 func (s *S9s) showLayoutSwitcher() {
-	if layoutMgr, ok := s.layoutManager.(*layouts.LayoutManager); ok {
-		layouts.ShowLayoutSwitcher(layoutMgr, s.app, s.pages, func(layoutID string) {
+	if s.layoutManager != nil {
+		layouts.ShowLayoutSwitcher(s.layoutManager, s.app, s.pages, func(layoutID string) {
 			// Update preferences with selected layout
 			_ = s.userPrefs.Update(func(p *preferences.UserPreferences) error {
 				p.Layouts.CurrentLayout = layoutID
