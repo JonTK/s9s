@@ -37,18 +37,6 @@ Sleep 1s
 Escape
 Sleep 500ms
 
-# Sort by organization
-Type "2"
-Sleep 1s
-
-# Sort by default QoS
-Type "4"
-Sleep 1s
-
-# Back to name sort
-Type "1"
-Sleep 500ms
-
 # Global search (Ctrl+F)
 Ctrl+F
 Sleep 500ms

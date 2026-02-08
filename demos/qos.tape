@@ -25,18 +25,6 @@ Sleep 3s
 Escape
 Sleep 500ms
 
-# Sort by priority
-Type "2"
-Sleep 1s
-
-# Sort by preemption mode
-Type "3"
-Sleep 1s
-
-# Back to name
-Type "1"
-Sleep 500ms
-
 # Quick filter
 Type "/"
 Sleep 500ms

@@ -37,18 +37,6 @@ Sleep 500ms
 Type "f"
 Sleep 1s
 
-# Sort by start time
-Type "3"
-Sleep 1s
-
-# Sort by duration
-Type "4"
-Sleep 1s
-
-# Back to name
-Type "1"
-Sleep 500ms
-
 # Quick filter
 Type "/"
 Sleep 500ms

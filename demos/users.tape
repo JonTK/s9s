@@ -39,14 +39,6 @@ Sleep 1s
 Escape
 Sleep 500ms
 
-# Sort by different columns
-Type "2"
-Sleep 1s
-Type "3"
-Sleep 1s
-Type "1"
-Sleep 500ms
-
 # Exit
 Type "q"
 Sleep 500ms

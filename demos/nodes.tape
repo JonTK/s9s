@@ -33,32 +33,6 @@ Sleep 1500ms
 Type "a"
 Sleep 1s
 
-# Group by partition
-Type "g"
-Sleep 500ms
-Type "2"
-Sleep 1500ms
-
-# Toggle group expansion with Space
-Down
-Sleep 500ms
-Space
-Sleep 1s
-Space
-Sleep 500ms
-
-# Group by state
-Type "g"
-Sleep 500ms
-Type "3"
-Sleep 1500ms
-
-# Back to no grouping
-Type "g"
-Sleep 500ms
-Type "1"
-Sleep 1s
-
 # Filter by partition
 Type "p"
 Sleep 500ms
