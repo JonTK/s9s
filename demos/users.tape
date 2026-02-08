@@ -4,16 +4,8 @@ Output demos/output/users.gif
 Output demos/output/users.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to Users view (key 7)
 Type "7"
@@ -21,9 +13,9 @@ Sleep 1500ms
 
 # Navigate through users
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 
 # Show user details (Enter)
 Enter
@@ -41,7 +33,7 @@ Sleep 1s
 
 # Quick filter by name
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "admin"
 Sleep 1s
 Escape

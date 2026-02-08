@@ -4,16 +4,8 @@ Output demos/output/accounts.gif
 Output demos/output/accounts.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to Accounts view (key 6)
 Type "6"
@@ -21,9 +13,9 @@ Sleep 1500ms
 
 # Navigate through accounts
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 
 # Show account details (Enter)
 Enter
@@ -39,7 +31,7 @@ Sleep 500ms
 
 # Quick filter
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "research"
 Sleep 1s
 Escape

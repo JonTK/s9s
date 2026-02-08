@@ -4,30 +4,15 @@ Output demos/output/overview.gif
 Output demos/output/overview.mp4
 
 Source demos/common.tape
-
-# Setup environment
-Hide
-Type "export S9S_ENABLE_MOCK=dev"
-Enter
-Sleep 500ms
-Type "clear"
-Enter
-Sleep 500ms
-Show
-
-# Launch s9s
-Type "./s9s"
-Sleep 500ms
-Enter
-Sleep 2s
+Source demos/bootstrap.tape
 
 # Jobs view (default - key 1) - show job details
 Down
-Sleep 200ms
+Sleep 500ms
 Enter
 Sleep 1500ms
 Escape
-Sleep 300ms
+Sleep 500ms
 
 # Nodes view (key 2) - show resource bars
 Type "2"
@@ -67,7 +52,7 @@ Sleep 500ms
 Type "compute"
 Sleep 1s
 Down
-Sleep 200ms
+Sleep 500ms
 Enter
 Sleep 1500ms
 
@@ -77,17 +62,17 @@ Sleep 800ms
 
 # Quick filter (/)
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "RUNNING"
 Sleep 800ms
 Escape
-Sleep 300ms
+Sleep 500ms
 
 # Show help (?)
 Type "?"
 Sleep 2s
 Escape
-Sleep 300ms
+Sleep 500ms
 
 # Exit
 Type "q"
