@@ -173,7 +173,7 @@ Sort accounts by clicking column headers or using number keys.
 - By account name (alphabetical)
 - By parent (group by hierarchy level)
 
-Press `1-9` to sort by column number.
+Press `S` to open the interactive sort modal.
 
 ## Keyboard Shortcuts Reference
 
@@ -195,7 +195,7 @@ Press `1-9` to sort by column number.
 | Key | Action |
 |-----|--------|
 | `R` | Manual refresh |
-| `1-9` | Sort by column |
+| `S` | Sort modal |
 
 ## Account Details Example
 

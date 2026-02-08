@@ -223,7 +223,7 @@ Sort partitions by clicking column headers or using number keys.
 - By wait time (prioritize improvements)
 - By node count (understand capacity)
 
-Press `1-9` to sort by column number.
+Press `S` to open the interactive sort modal.
 
 ## Keyboard Shortcuts Reference
 
@@ -248,7 +248,7 @@ Press `1-9` to sort by column number.
 | Key | Action |
 |-----|--------|
 | `R` | Manual refresh |
-| `1-9` | Sort by column |
+| `S` | Sort modal |
 
 ## Partition Details Example
 

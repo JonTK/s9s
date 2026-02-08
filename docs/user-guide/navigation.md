@@ -14,12 +14,22 @@ These shortcuts work across all views:
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| `Ctrl+C` | Quit | Exit S9S |
+| `q` or `Ctrl+C` | Quit | Exit s9s application |
+| `?` | Help | Show help modal with shortcuts |
+| `:` | Command Mode | Enter vim-style command mode |
 | `Esc` | Cancel | Exit current mode/dialog |
 | `Tab` | Next View | Cycle to next view |
+| `Shift+Tab` | Previous View | Cycle to previous view |
+| `h` | Previous View | Move to previous view |
+| `l` | Next View | Move to next view |
 | `F1` | Help | Show context-sensitive help |
 | `F2` | Alerts | Show system alerts |
+| `F3` | Preferences | Show preferences dialog |
+| `F4` | Layout | Show layout switcher |
 | `F5` | Refresh | Refresh current view |
+| `F10` | Configuration | Show configuration |
+| `Ctrl+F` | Global Search | Search across all resources |
+| `R` | Manual Refresh | Force refresh current view |
 
 ### View Navigation
 
@@ -28,12 +38,13 @@ These shortcuts work across all views:
 | `1` | Switch View | Jobs |
 | `2` | Switch View | Nodes |
 | `3` | Switch View | Partitions |
-| `4` | Switch View | Users |
-| `5` | Switch View | Accounts |
-| `6` | Switch View | QoS |
-| `7` | Switch View | Reservations |
+| `4` | Switch View | Reservations |
+| `5` | Switch View | QoS |
+| `6` | Switch View | Accounts |
+| `7` | Switch View | Users |
 | `8` | Switch View | Dashboard |
 | `9` | Switch View | Health |
+| `0` | Switch View | Performance |
 
 ### Movement
 

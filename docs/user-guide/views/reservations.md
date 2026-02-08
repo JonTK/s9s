@@ -197,7 +197,7 @@ Sort reservations by clicking column headers or using number keys.
 - By nodes (largest reservations)
 - By state (group active/future/past)
 
-Press `1-9` to sort by column number.
+Press `S` to open the interactive sort modal.
 
 ## Keyboard Shortcuts Reference
 
@@ -212,13 +212,15 @@ Press `1-9` to sort by column number.
 | `/` | Simple filter |
 | `F3` | Advanced filter |
 | `Ctrl+F` | Global search |
+| `a` | Toggle active filter (show active reservations only) |
+| `f` | Toggle future filter (show future reservations only) |
 | `ESC` | Exit filter mode |
 
 ### Data Management
 | Key | Action |
 |-----|--------|
 | `R` | Manual refresh |
-| `1-9` | Sort by column |
+| `S` | Sort modal |
 
 ## Reservation Details Example
 
