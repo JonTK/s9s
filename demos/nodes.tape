@@ -47,6 +47,14 @@ Ctrl+U
 Enter
 Sleep 500ms
 
+# Sort by column (S key)
+Type "S"
+Sleep 500ms
+Down
+Sleep 500ms
+Enter
+Sleep 1s
+
 # Show SSH options (s key)
 Type "s"
 Sleep 2s
