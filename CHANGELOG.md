@@ -15,6 +15,143 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.4.0] - 2026-02-08
+
+### Added
+
+- **Performance View with Cluster Metrics** (#72, #73)
+  - New cluster-focused Performance view accessible via key `9`
+  - Real-time cluster-wide metrics: Jobs (total/running/pending), Nodes (total/active/idle/down), Resources (CPU%/Memory%)
+  - Color-coded resource utilization bars (green: 0-75%, yellow: 75-90%, red: 90-100%)
+  - Auto-refresh every 5 seconds with manual refresh support (`R` to toggle, `F5` for immediate refresh)
+  - Comprehensive documentation with interpretation guide and example scenarios
+  - Integrated demo GIF showing cluster metrics and auto-refresh
+
+- **App Diagnostics View** (#72)
+  - Debug-only view for monitoring s9s application performance (hidden by default)
+  - Enables via `features.appDiagnostics: true` in config
+  - Shows app-level metrics: memory, goroutines, CPU, network, operations
+  - Useful for debugging s9s performance issues
+
+- **Sorting Modal for All Table Views** (#71)
+  - Press `S` key to open interactive sorting modal in all table-based views
+  - Visual sort indicators in table headers showing current sort column and direction
+  - Sort indicators preserved during table refresh operations
+  - Added sorting demonstrations to jobs, nodes, and partitions demos
+
+- **Reservation Time-Based Filters** (#63)
+  - Press `a` to toggle "Active Only" filter (shows reservations currently running)
+  - Press `f` to toggle "Future Only" filter (shows reservations not yet started)
+  - Visual feedback with green checkmarks (✓) in status hints when filters active
+  - Filters use OR logic when both enabled (excludes only past reservations)
+
+- **Job Output File Reading** (#62)
+  - Core infrastructure for reading SLURM job output files (stdout/stderr)
+  - Supports local filesystem reading (NFS, Lustre, GPFS)
+  - Remote file access via SSH for distributed clusters
+  - Efficient tail/head operations for large files with configurable limits
+  - Context-aware cancellation and thread-safe operations
+  - New `internal/output/` package with comprehensive test coverage
+
+- **Command Mode with Arguments** (#59)
+  - Vim-style command mode with argument support
+  - Intelligent Tab completion for commands and arguments
+  - Job operations: `:cancel JOBID`, `:hold JOBID`, `:release JOBID`, `:requeue JOBID`
+  - Node operations: `:drain NODE [REASON]`, `:resume NODE`
+  - Autocomplete suggests job IDs and node names from current view
+
+- **Demo GIFs with Git LFS** (#60)
+  - 12 comprehensive demo GIFs (~17MB total) for documentation
+  - Git LFS integration to prevent repository bloat
+  - Auto-regeneration workflow via GitHub Actions
+  - Covers all major views and features (accounts, dashboard, health, jobs, nodes, partitions, QoS, reservations, users, search, job submission, overview)
+
+- **VHS Demo Recordings** (#56)
+  - Automated demo recording infrastructure using VHS
+  - Terminal recordings for documentation and website integration
+  - Consistent theme and timing across all demos
+
+### Changed
+
+- **Performance View Purpose** (#72)
+  - Changed from app diagnostics to cluster performance monitoring
+  - Focus on cluster health assessment and capacity planning
+  - App profiling tools moved to separate App Diagnostics view
+
+- **Dependencies** (#74, #64)
+  - Updated `slurm-client` to v0.3.0 (from v0.2.5)
+    - SDK architectural refactor with adapter pattern for improved extensibility
+    - Multiple bug fixes and lint improvements
+  - Previous update to latest slurm-client API version (#64)
+
+### Fixed
+
+- **Critical Performance Dashboard Deadlock** (#72)
+  - Fixed race condition causing s9s to freeze when accessing Performance view
+  - Root cause: Background goroutine holding mutex while calling `QueueUpdateDraw()` blocked by main thread trying to acquire same mutex
+  - Solution: Lock-free callbacks with copied data and prevention of concurrent updates
+  - Removed 93 lines of unused update methods after refactor
+
+- **Architectural Quality & Correctness** (#67)
+  - Fixed UI threading race conditions from background goroutines updating UI directly
+  - Fixed channel panic on PerformanceDashboard stop from closed channel
+  - Added nil check in job output fallback preventing crash
+  - Stabilized flaky performance test with `testing.Short()` guard
+  - Precompiled 7 regexes in cache key generator (3.5x speedup: 28µs → 8µs)
+  - Added 4,100+ lines of comprehensive tests (performance dashboard: 100%, health monitoring: 96.6%, views: 95%+)
+  - Replaced `interface{}` with typed interfaces eliminating runtime assertions
+
+- **Performance Monitoring Runtime Controls** (#66)
+  - Improved lifecycle management of performance monitoring components
+  - Better resource cleanup and goroutine management
+
+- **Observability Production Hardening** (#61, #69)
+  - Fixed goroutine leaks in observability plugin
+  - Added lifecycle tests for proper start/stop behavior
+  - Prevented information disclosure in validation errors
+
+- **Demo Recording Improvements** (#70)
+  - Comprehensive fixes to demo recordings for accuracy
+  - Removed non-functional sorting/grouping demonstrations
+  - Fixed misleading sort hints across all views
+  - Corrected accounts view sorting hint and demo search term
+  - Removed redundant view jumping from dashboard demo
+
+- **Sort Indicators in MultiSelectTable** (#71)
+  - Fixed sort indicators being lost during table refresh
+  - Sort column and direction now properly preserved
+
+- **Nodes View 'S' Key Binding** (#71)
+  - Fixed 'S' key not opening sort modal in nodes view
+  - Now consistent with all other table-based views
+
+### Documentation
+
+- **Complete Documentation Restructure** (#57, #58, #73)
+  - Per-view guides with comprehensive keyboard shortcuts and features
+  - Removed all unimplemented features from documentation
+  - Added Performance view documentation with interpretation guide
+  - Demo GIF integration throughout documentation
+  - Example scenarios for cluster health assessment
+
+- **Updated README** (#73)
+  - Changed Performance feature description to accurately reflect cluster monitoring
+  - Updated feature list to match current capabilities
+
+### Internal Improvements
+
+- **Test Coverage** (#67)
+  - Strengthened coverage thresholds to prevent regression
+  - Added cross-package coverage tracking with `-coverpkg` flag
+  - Per-package coverage enforcement in CI (dao: 70%, monitoring: 80%, config: 80%)
+  - Performance dashboard: 100% coverage on metric calculations
+  - Health monitoring: 96.6% package coverage
+  - View calculations: 95%+ coverage on critical functions
+
+- **Code Quality** (#67)
+  - Removed empty test/unit package references from Makefile
+  - Type safety improvements throughout codebase
+
 ## [0.3.0] - 2026-01-30
 
 ### Added
@@ -136,6 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Note**: Versions prior to 0.1.0 were in active development and did not follow semantic versioning.
 
-[Unreleased]: https://github.com/jontk/s9s/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jontk/s9s/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jontk/s9s/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jontk/s9s/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/jontk/s9s/releases/tag/v0.1.0
