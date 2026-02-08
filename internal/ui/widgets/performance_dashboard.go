@@ -296,11 +296,13 @@ func (pd *PerformanceDashboard) updateLoop() {
 
 // updateMetrics collects and updates all performance metrics
 func (pd *PerformanceDashboard) updateMetrics() {
-	// Calculate metrics and update history while holding lock
+	// Calculate metrics and copy ALL data while holding lock
 	var cpuUsage, memUsage, netUsage, opsRate float64
 	var showAlerts, autoOptimize bool
 	var app *tview.Application
 	var optimizer *performance.Optimizer
+	var cpuHistory, memoryHistory, networkHistory, opsHistory []float64
+	var thresholds PerformanceThresholds
 
 	func() {
 		pd.mu.Lock()
@@ -333,22 +335,33 @@ func (pd *PerformanceDashboard) updateMetrics() {
 		// Save current stats for delta calculation in next update
 		pd.previousStats = stats
 
-		// Capture config values we need outside the lock
+		// Copy ALL data we need outside the lock - no locks in QueueUpdateDraw callback!
+		cpuHistory = make([]float64, len(pd.cpuHistory))
+		copy(cpuHistory, pd.cpuHistory)
+		memoryHistory = make([]float64, len(pd.memoryHistory))
+		copy(memoryHistory, pd.memoryHistory)
+		networkHistory = make([]float64, len(pd.networkHistory))
+		copy(networkHistory, pd.networkHistory)
+		opsHistory = make([]float64, len(pd.opsHistory))
+		copy(opsHistory, pd.opsHistory)
+
 		showAlerts = pd.showAlerts
 		autoOptimize = pd.autoOptimize
 		app = pd.app
 		optimizer = pd.optimizer
+		thresholds = pd.thresholds
 	}()
 
-	// Perform UI updates and auto-optimization OUTSIDE the mutex lock
-	// to prevent deadlock with Stop() calls from the main UI thread
+	// Perform UI updates OUTSIDE the mutex lock with copied data
+	// CRITICAL: No lock acquisition inside QueueUpdateDraw to prevent deadlock
 	if app != nil {
 		app.QueueUpdateDraw(func() {
-			pd.updateCPUChart()
-			pd.updateMemoryChart()
-			pd.updateNetworkChart()
-			pd.updateOpsChart()
-			pd.updateMetricsTable(cpuUsage, memUsage, netUsage, opsRate)
+			pd.updateCPUChartWithData(cpuHistory, thresholds)
+			pd.updateMemoryChartWithData(memoryHistory, thresholds)
+			pd.updateNetworkChartWithData(networkHistory, thresholds)
+			pd.updateOpsChartWithData(opsHistory, thresholds)
+			pd.updateMetricsTableWithData(cpuUsage, memUsage, netUsage, opsRate,
+				cpuHistory, memoryHistory, networkHistory, opsHistory, thresholds)
 
 			// Check for alerts and recommendations
 			if showAlerts {
@@ -495,11 +508,23 @@ func (pd *PerformanceDashboard) updateCPUChart() {
 	pd.cpuChart.SetText(chart)
 }
 
+// updateCPUChartWithData updates CPU chart with provided data (no locks)
+func (pd *PerformanceDashboard) updateCPUChartWithData(history []float64, thresholds PerformanceThresholds) {
+	chart := pd.generateASCIIChart(history, "CPU", "%", thresholds.CPUWarning, thresholds.CPUCritical)
+	pd.cpuChart.SetText(chart)
+}
+
 // updateMemoryChart updates the memory usage chart
 func (pd *PerformanceDashboard) updateMemoryChart() {
 	pd.mu.RLock()
 	chart := pd.generateASCIIChart(pd.memoryHistory, "Memory", "%", pd.thresholds.MemoryWarning, pd.thresholds.MemoryCritical)
 	pd.mu.RUnlock()
+	pd.memoryChart.SetText(chart)
+}
+
+// updateMemoryChartWithData updates memory chart with provided data (no locks)
+func (pd *PerformanceDashboard) updateMemoryChartWithData(history []float64, thresholds PerformanceThresholds) {
+	chart := pd.generateASCIIChart(history, "Memory", "%", thresholds.MemoryWarning, thresholds.MemoryCritical)
 	pd.memoryChart.SetText(chart)
 }
 
@@ -511,11 +536,23 @@ func (pd *PerformanceDashboard) updateNetworkChart() {
 	pd.networkChart.SetText(chart)
 }
 
+// updateNetworkChartWithData updates network chart with provided data (no locks)
+func (pd *PerformanceDashboard) updateNetworkChartWithData(history []float64, thresholds PerformanceThresholds) {
+	chart := pd.generateASCIIChart(history, "Network", "MB/s", thresholds.NetworkWarning, thresholds.NetworkCritical)
+	pd.networkChart.SetText(chart)
+}
+
 // updateOpsChart updates the operations rate chart
 func (pd *PerformanceDashboard) updateOpsChart() {
 	pd.mu.RLock()
 	chart := pd.generateASCIIChart(pd.opsHistory, "Ops", "/sec", pd.thresholds.OpsWarning, pd.thresholds.OpsCritical)
 	pd.mu.RUnlock()
+	pd.opsChart.SetText(chart)
+}
+
+// updateOpsChartWithData updates operations chart with provided data (no locks)
+func (pd *PerformanceDashboard) updateOpsChartWithData(history []float64, thresholds PerformanceThresholds) {
+	chart := pd.generateASCIIChart(history, "Ops", "/sec", thresholds.OpsWarning, thresholds.OpsCritical)
 	pd.opsChart.SetText(chart)
 }
 
@@ -636,6 +673,66 @@ func (pd *PerformanceDashboard) updateMetricsTable(cpuUsage, memUsage, netUsage,
 		{"Operations", opsRate, pd.opsHistory, "/sec", pd.thresholds.OpsWarning, pd.thresholds.OpsCritical},
 	}
 	pd.mu.RUnlock()
+
+	for i, metric := range metrics {
+		row := i + 1
+
+		// Metric name
+		pd.metricsTable.SetCell(row, 0, tview.NewTableCell(metric.name))
+
+		// Current value
+		color := tcell.ColorGreen
+		if metric.current >= metric.critical {
+			color = tcell.ColorRed
+		} else if metric.current >= metric.warning {
+			color = tcell.ColorYellow
+		}
+
+		currentCell := tview.NewTableCell(fmt.Sprintf("%.1f%s", metric.current, metric.unit))
+		currentCell.SetTextColor(color)
+		pd.metricsTable.SetCell(row, 1, currentCell)
+
+		// Average
+		avg := pd.calculateAverage(metric.history)
+		pd.metricsTable.SetCell(row, 2, tview.NewTableCell(fmt.Sprintf("%.1f%s", avg, metric.unit)))
+
+		// Peak
+		peak := pd.calculateMax(metric.history)
+		pd.metricsTable.SetCell(row, 3, tview.NewTableCell(fmt.Sprintf("%.1f%s", peak, metric.unit)))
+
+		// Status
+		status := "OK"
+		statusColor := tcell.ColorGreen
+		if metric.current >= metric.critical {
+			status = "CRITICAL"
+			statusColor = tcell.ColorRed
+		} else if metric.current >= metric.warning {
+			status = "WARNING"
+			statusColor = tcell.ColorYellow
+		}
+
+		statusCell := tview.NewTableCell(status)
+		statusCell.SetTextColor(statusColor)
+		pd.metricsTable.SetCell(row, 4, statusCell)
+	}
+}
+
+// updateMetricsTableWithData updates metrics table with provided data (no locks)
+func (pd *PerformanceDashboard) updateMetricsTableWithData(cpuUsage, memUsage, netUsage, opsRate float64,
+	cpuHistory, memoryHistory, networkHistory, opsHistory []float64, thresholds PerformanceThresholds) {
+	metrics := []struct {
+		name     string
+		current  float64
+		history  []float64
+		unit     string
+		warning  float64
+		critical float64
+	}{
+		{"CPU", cpuUsage, cpuHistory, "%", thresholds.CPUWarning, thresholds.CPUCritical},
+		{"Memory", memUsage, memoryHistory, "%", thresholds.MemoryWarning, thresholds.MemoryCritical},
+		{"Network", netUsage, networkHistory, "MB/s", thresholds.NetworkWarning, thresholds.NetworkCritical},
+		{"Operations", opsRate, opsHistory, "/sec", thresholds.OpsWarning, thresholds.OpsCritical},
+	}
 
 	for i, metric := range metrics {
 		row := i + 1
