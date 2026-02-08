@@ -251,7 +251,7 @@ Sort nodes by clicking column headers or using number keys.
 - CPUs (total or allocated)
 - Memory (total or allocated)
 
-Press `1-9` to sort by column number.
+Press `S` to open the interactive sort modal.
 
 ## Keyboard Shortcuts Reference
 
@@ -285,7 +285,7 @@ Press `1-9` to sort by column number.
 | Key | Action |
 |-----|--------|
 | `R` | Manual refresh |
-| `1-9` | Sort by column |
+| `S` | Sort modal |
 
 ## Node Details Example
 

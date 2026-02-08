@@ -230,7 +230,7 @@ Sort jobs by clicking column headers or using keyboard shortcuts.
 - Priority
 - Submit Time
 
-Press column number `1-9` to sort by that column. Press again to reverse sort direction.
+Press `S` to open the interactive sort modal. Select a column and sort direction.
 
 ## Auto-Refresh
 
@@ -286,7 +286,7 @@ Shows context-sensitive action menu with all available actions for the selected 
 | `R` | Manual refresh |
 | `m/M` | Toggle auto-refresh |
 | `F1` | Action menu |
-| `1-9` | Sort by column |
+| `S` | Sort modal |
 
 ## Job Submission
 
