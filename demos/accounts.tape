@@ -52,7 +52,7 @@ Sleep 500ms
 # Global search (Ctrl+F)
 Ctrl+F
 Sleep 500ms
-Type "root"
+Type "physics"
 Sleep 1s
 Escape
 Sleep 500ms
