@@ -4,16 +4,8 @@ Output demos/output/nodes.gif
 Output demos/output/nodes.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to Nodes view (key 2)
 Type "2"
@@ -21,9 +13,9 @@ Sleep 1500ms
 
 # Navigate to a node and show details
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 Enter
 Sleep 2s
 Escape
@@ -49,7 +41,7 @@ Sleep 1500ms
 
 # Toggle group expansion with Space
 Down
-Sleep 300ms
+Sleep 500ms
 Space
 Sleep 1s
 Space

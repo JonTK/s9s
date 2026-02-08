@@ -8,7 +8,7 @@ Set FontFamily "JetBrains Mono"
 Set Width 1200
 Set Height 700
 Set Padding 15
-Set Theme "Catppuccin Mocha"
+Set Theme "Dracula"
 Set WindowBar Colorful
 Set BorderRadius 8
 

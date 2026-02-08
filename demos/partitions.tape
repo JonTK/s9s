@@ -4,16 +4,8 @@ Output demos/output/partitions.gif
 Output demos/output/partitions.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to Partitions view (key 3)
 Type "3"
@@ -21,7 +13,7 @@ Sleep 1500ms
 
 # Navigate and show partition details
 Down
-Sleep 300ms
+Sleep 500ms
 Enter
 Sleep 2s
 Escape
@@ -41,7 +33,7 @@ Sleep 500ms
 
 # Jump to jobs for selected partition (J key)
 Down
-Sleep 300ms
+Sleep 500ms
 Type "J"
 Sleep 2s
 
@@ -59,7 +51,7 @@ Sleep 1s
 
 # Quick filter
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "gpu"
 Sleep 1s
 Escape

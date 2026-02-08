@@ -4,16 +4,8 @@ Output demos/output/search.gif
 Output demos/output/search.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Open global search (Ctrl+F)
 Ctrl+F
@@ -39,11 +31,11 @@ Sleep 500ms
 
 # Navigate through search results
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 
 # Select a result - Enter navigates to the item
 Enter

@@ -6,7 +6,7 @@ This directory contains VHS tape recordings for demonstrating the s9s SLURM TUI 
 
 1. **Install VHS**: The charmbracelet VHS tool is required to generate demos.
    ```bash
-   go install github.com/charmbracelet/vhs@latest
+   go install github.com/charmbracelet/vhs@v0.8.0
    ```
 
 2. **Build s9s**: Demos require a built binary.
@@ -90,7 +90,7 @@ Edit individual `.tape` files to:
 
 ## Best Practices
 
-1. **Keep it concise**: Demos should be under 90 seconds
+1. **Keep it concise**: Demos should be under 60 seconds
 2. **Show, don't tell**: Let the UI speak for itself
 3. **Realistic timing**: Allow viewers time to read the screen
 4. **Smooth navigation**: Avoid jarring transitions
@@ -173,11 +173,13 @@ GIFs can be large. To optimize:
 When adding new demos:
 
 1. Create a new `.tape` file in `demos/`
-2. Source `common.tape` for consistent styling
-3. Use mock mode (`S9S_ENABLE_MOCK=dev`)
-4. Keep duration under 60 seconds
-5. Test the recording before committing
-6. Update this README with the new demo
+2. Source `common.tape` for consistent styling (theme, fonts, dimensions)
+3. Source `bootstrap.tape` for common startup sequence (env setup, launch s9s)
+4. Use mock mode (`S9S_ENABLE_MOCK=dev`)
+5. Keep duration under 60 seconds
+6. Use minimum 500ms sleeps for view/modal transitions (avoid flaky timing)
+7. Test the recording before committing
+8. Update this README with the new demo
 
 ## License
 

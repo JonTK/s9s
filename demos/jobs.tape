@@ -4,25 +4,16 @@ Output demos/output/jobs.gif
 Output demos/output/jobs.mp4
 
 Source demos/common.tape
-
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
+Source demos/bootstrap.tape
 
 # Jobs view is default - show the list
 Sleep 1s
 
 # Navigate and show job details (Enter)
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 Enter
 Sleep 2s
 Escape
@@ -30,7 +21,7 @@ Sleep 500ms
 
 # Filter jobs by text
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "RUNNING"
 Sleep 500ms
 Enter
@@ -52,7 +43,7 @@ Sleep 500ms
 
 # View job output (o key)
 Down
-Sleep 300ms
+Sleep 500ms
 Type "o"
 Sleep 2s
 Escape
@@ -70,13 +61,13 @@ Sleep 500ms
 
 # Select multiple jobs with Space
 Space
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 Space
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 Space
 Sleep 1s
 

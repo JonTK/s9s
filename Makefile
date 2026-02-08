@@ -290,10 +290,19 @@ docs-serve:
 	godoc -http=:6060
 
 # Demo targets
-.PHONY: demos demo-overview demo-clean
+.PHONY: demos demos-ci demos-full demo-overview demo-clean
 
-# Generate all VHS demos
-demos: build
+# Generate demos (alias to demos-full for backwards compatibility)
+demos: demos-full
+
+# Generate demos for CI (fast, GIF only - just overview)
+demos-ci: demo-overview
+	@echo "CI demos complete (overview.gif generated)"
+	@rm -f demos/output/*.mp4
+	@echo "Removed MP4 files (CI only uses GIFs)"
+
+# Generate all VHS demos (GIF + MP4)
+demos-full: build
 	@echo "Generating all VHS demos..."
 	@if ! command -v vhs >/dev/null 2>&1; then \
 		echo "Error: vhs is not installed. Install with: go install github.com/charmbracelet/vhs@latest"; \

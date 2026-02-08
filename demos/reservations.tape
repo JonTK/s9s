@@ -4,16 +4,8 @@ Output demos/output/reservations.gif
 Output demos/output/reservations.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to Reservations view (key 4)
 Type "4"
@@ -21,9 +13,9 @@ Sleep 1500ms
 
 # Navigate through reservations
 Down
-Sleep 300ms
+Sleep 500ms
 Down
-Sleep 300ms
+Sleep 500ms
 
 # Show reservation details (Enter)
 Enter
@@ -59,7 +51,7 @@ Sleep 500ms
 
 # Quick filter
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "maint"
 Sleep 1s
 Escape

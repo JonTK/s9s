@@ -4,16 +4,8 @@ Output demos/output/qos.gif
 Output demos/output/qos.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Switch to QoS view (key 5)
 Type "5"
@@ -47,7 +39,7 @@ Sleep 500ms
 
 # Quick filter
 Type "/"
-Sleep 300ms
+Sleep 500ms
 Type "high"
 Sleep 1s
 Escape

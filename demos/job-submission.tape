@@ -4,19 +4,11 @@ Output demos/output/job-submission.gif
 Output demos/output/job-submission.mp4
 
 Source demos/common.tape
+Source demos/bootstrap.tape
 
 # Override height for job submission wizard (needs more space)
 Set Height 900
 
-Hide
-Type "export S9S_ENABLE_MOCK=dev && clear"
-Enter
-Sleep 500ms
-Show
-
-Type "./s9s"
-Enter
-Sleep 2s
 
 # Open job submission directly (s key)
 Type "s"
@@ -29,7 +21,7 @@ Sleep 500ms
 
 # Skip to script content (Tab through fields)
 Tab
-Sleep 300ms
+Sleep 500ms
 
 # Add script content
 Type "#!/bin/bash"
@@ -44,11 +36,11 @@ Sleep 1s
 
 # Navigate through other fields
 Tab
-Sleep 300ms
+Sleep 500ms
 Tab
-Sleep 300ms
+Sleep 500ms
 Tab
-Sleep 300ms
+Sleep 500ms
 
 # Show preview of the job script
 Tab
@@ -69,9 +61,9 @@ Sleep 1500ms
 # Quick submit without template
 Type "quick-test"
 Tab
-Sleep 300ms
+Sleep 500ms
 Tab
-Sleep 300ms
+Sleep 500ms
 Type "echo 'Hello World'"
 Sleep 1s
 
