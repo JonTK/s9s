@@ -13,7 +13,9 @@ These shortcuts work from any view:
 | `:` | Command mode | Enter command mode (vim-style) |
 | `Tab` | Next view | Cycle through views |
 | `Shift+Tab` | Previous view | Cycle backwards through views |
-| `Ctrl+r` | Force refresh | Refresh current view data |
+| `h` | Previous view | Move to previous view |
+| `l` | Next view | Move to next view |
+| `F5` | Force refresh | Refresh current view data |
 | `R` | Manual refresh | Refresh view (most views) |
 | `Ctrl+F` | Global search | Search across all cluster resources |
 | `Ctrl+C` | Cancel | Cancel current operation or close modal |
@@ -90,7 +92,7 @@ These shortcuts work from any view:
 | `R` | Manual refresh | Refresh jobs data |
 | `m/M` | Toggle auto-refresh | Enable/disable auto-refresh (30s) |
 | `F1` | Action menu | Show context-sensitive actions |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Nodes View
 
@@ -124,7 +126,7 @@ These shortcuts work from any view:
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh nodes data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Partitions View
 
@@ -149,7 +151,7 @@ These shortcuts work from any view:
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh partitions data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Users View
 
@@ -171,7 +173,7 @@ These shortcuts work from any view:
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh users data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Accounts View
 
@@ -193,7 +195,7 @@ These shortcuts work from any view:
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh accounts data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## QoS View
 
@@ -214,7 +216,7 @@ These shortcuts work from any view:
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh QoS data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Reservations View
 
@@ -229,15 +231,15 @@ These shortcuts work from any view:
 | `/` | Simple filter | Activate filter input |
 | `F3` | Advanced filter | Open advanced filter bar |
 | `Ctrl+F` | Global search | Search all cluster resources |
-| `a/A` | Toggle active | Show active reservations only (TODO) |
-| `f/F` | Toggle future | Show future reservations only (TODO) |
+| `a/A` | Toggle active | Show active reservations only |
+| `f/F` | Toggle future | Show future reservations only |
 | `ESC` | Exit filter | Clear filter and exit filter mode |
 
 ### Data Management
 | Key | Action | Description |
 |-----|--------|-------------|
 | `R` | Manual refresh | Refresh reservations data |
-| `1-9` | Sort by column | Sort by column number |
+| `S` | Sort modal | Open interactive sorting dialog |
 
 ## Health View
 
