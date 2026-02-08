@@ -1,21 +1,19 @@
 # s9s - Terminal UI for SLURM
 
 <p align="center">
-  <img src="https://s9s.dev/logo.png" alt="s9s logo" width="200">
+  <a href="https://s9s.dev">
+    <img src="docs/assets/s9s_logo.png" alt="s9s logo" width="400">
+  </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/jontk/s9s/releases/latest"><img src="https://img.shields.io/github/v/release/jontk/s9s" alt="Release"></a>
-  <a href="https://github.com/jontk/s9s/actions/workflows/ci.yml"><img src="https://github.com/jontk/s9s/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/jontk/s9s"><img src="https://codecov.io/gh/jontk/s9s/branch/main/graph/badge.svg" alt="codecov"></a>
-  <a href="https://pkg.go.dev/github.com/jontk/s9s"><img src="https://pkg.go.dev/badge/github.com/jontk/s9s.svg" alt="Go Reference"></a>
-  <a href="https://goreportcard.com/report/github.com/jontk/s9s"><img src="https://goreportcard.com/badge/github.com/jontk/s9s" alt="Go Report Card"></a>
-</p>
-<p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/jontk/s9s/blob/main/go.mod"><img src="https://img.shields.io/github/go-mod/go-version/jontk/s9s" alt="Go Version"></a>
-  <a href="https://api.securityscorecards.dev/projects/github.com/jontk/s9s"><img src="https://api.securityscorecards.dev/projects/github.com/jontk/s9s/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://s9s.dev/docs"><img src="https://img.shields.io/badge/docs-s9s.dev-brightgreen.svg" alt="Documentation"></a>
+  <a href="https://github.com/jontk/s9s/releases/latest"><img src="https://img.shields.io/github/v/release/jontk/s9s?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/jontk/s9s/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jontk/s9s/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://codecov.io/gh/jontk/s9s"><img src="https://img.shields.io/codecov/c/github/jontk/s9s?style=flat-square" alt="codecov"></a>
+  <a href="https://goreportcard.com/report/github.com/jontk/s9s"><img src="https://goreportcard.com/badge/github.com/jontk/s9s?style=flat-square" alt="Go Report"></a>
+  <a href="https://pkg.go.dev/github.com/jontk/s9s"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?style=flat-square&logo=go&logoColor=white" alt="Go Reference"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License"></a>
+  <a href="https://s9s.dev"><img src="https://img.shields.io/badge/docs-s9s.dev-brightgreen?style=flat-square" alt="Documentation"></a>
 </p>
 
 s9s provides a terminal interface for managing SLURM clusters, inspired by the popular [k9s](https://k9scli.io/) Kubernetes CLI. It allows HPC administrators and users to monitor and manage jobs, nodes, and cluster resources efficiently from the terminal.
