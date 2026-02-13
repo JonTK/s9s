@@ -85,7 +85,8 @@ jobs:
       - name: Build mock SLURM API image
         run: |
           echo "Building mock SLURM API image..."
-          curl -sL https://raw.githubusercontent.com/jontk/brokkr-apps/main/apps/slurm-test/mock/mock-slurm-server.py > /tmp/mock-slurm-server.py
+          curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://raw.githubusercontent.com/jontk/brokkr-apps/main/apps/slurm-test/mock/mock-slurm-server.py > /tmp/mock-slurm-server.py
 
           cat > /tmp/Dockerfile.mock << 'DOCKERFILE'
           FROM python:3-alpine
