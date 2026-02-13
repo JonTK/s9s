@@ -82,6 +82,26 @@ jobs:
             --from-literal=token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI2NTQzMDU1NzksImlhdCI6MTc1NDMwNTU3OSwic3VuIjoicm9vdCJ9.ECpVcCqD1eXUk5-3LZLCDVDolvCJkhGNj24IvqwCkPs" \
             -n slurm-test
 
+      - name: Build mock SLURM API image
+        run: |
+          echo "Building mock SLURM API image..."
+          curl -sL https://raw.githubusercontent.com/jontk/brokkr-apps/main/apps/slurm-test/mock/mock-slurm-server.py > /tmp/mock-slurm-server.py
+
+          cat > /tmp/Dockerfile.mock << 'DOCKERFILE'
+          FROM python:3-alpine
+          COPY mock-slurm-server.py /app/mock-slurm-server.py
+          RUN chmod +x /app/mock-slurm-server.py
+          WORKDIR /app
+          EXPOSE 6820
+          CMD ["python3", "/app/mock-slurm-server.py"]
+          DOCKERFILE
+
+          cd /tmp
+          docker build -f Dockerfile.mock -t mock-slurm-api:local .
+          k3d image import mock-slurm-api:local -c slurm-test
+
+          echo "Mock SLURM API image built and imported to k3d"
+
       - name: Deploy mock SLURM API
         run: |
           # Create ConfigMap with test configuration
@@ -118,8 +138,8 @@ jobs:
               spec:
                 containers:
                 - name: mock-slurm-api
-                  image: ghcr.io/jontk/mock-slurm-api:latest
-                  imagePullPolicy: IfNotPresent
+                  image: mock-slurm-api:local
+                  imagePullPolicy: Never
                   ports:
                   - name: https
                     containerPort: 6820
